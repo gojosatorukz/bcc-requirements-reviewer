@@ -8,6 +8,7 @@ from xml.etree import ElementTree
 
 from reviewer.executable import simulate
 from reviewer.execution_view import explain_simulation, render_execution, render_explanation
+from reviewer.full_render import execution_markdown
 from reviewer.serve import Workbench, WorkbenchError
 
 
@@ -15,6 +16,32 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExecutionViewTests(TestCase):
+    def test_replays_and_handoffs_preserve_exact_non_numeric_api_values(self):
+        states = [{"key": "status", "label": "Ответ на заявку", "unit": "enum:status"}]
+        first, second = "AWAITING_SIGNATURE", "MANUAL_REVIEW"
+        start = [{"key": "status", "value": "READY"}]
+        program = {"states": states, "inputs": [], "observe": ["status"], "scenario": {"initial": start},
+                   "control": {"initial": start}, "first": {"source": {"line": 2, "quote": "Первый ответ"}},
+                   "second": {"source": {"line": 3, "quote": "Второй ответ"}}}
+        def replay(a, b):
+            ends = {"first": {"status": a}, "second": {"status": b}}
+            step = {"step": 1, "label": "Запрос API", "inputs": {}, **ends}
+            return {"steps": [step], "first_difference": None if a == b else
+                    {"step": 1, "field": "status", "first": a, "second": b}, "final": ends}
+
+        item = {"finding_id": "D-04", "status": "executed", "program": program,
+                "result": {"scenario": replay(first, second), "control": replay("REJECTED", "REJECTED")}}
+        panel = ElementTree.fromstring(render_execution(item))
+        self.assertEqual(["".join(e.itertext()) for e in panel.findall('dl[@data-values="enum"]/div/dd')],
+                         [first, second])
+        text = "".join(panel.itertext())
+        self.assertIn("REJECTED", text)
+        self.assertNotIn("enum:status", text)
+        md = execution_markdown(item)
+        for literal in (first, second, "READY", "REJECTED"):
+            self.assertIn(f"`{literal}`", md)
+        self.assertNotIn("enum:status", md)
+
     def test_amount_outside_the_table_case_shows_the_actually_skipped_guard(self):
         report = json.loads((ROOT / "eval/executable/runs/official.json").read_bytes())
         item = report["executables"]["items"][0]

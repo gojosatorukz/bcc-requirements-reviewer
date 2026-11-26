@@ -41,6 +41,10 @@
   font-variant-numeric: tabular-nums;
   line-height: 1.07;
 }
+.execution .execution-comparison[data-values="enum"] dd {
+  font: 700 clamp(1rem, 1.9vw, 1.52rem)/1.2 ui-monospace, monospace;
+  letter-spacing: -.035em;
+}
 .execution-break {display: grid; gap: .12rem}
 .execution-break b {font-size: .8rem; color: var(--proof-muted)}
 .execution-break span {font-size: 1rem; font-weight: 670}
@@ -160,7 +164,7 @@
 .lab-fields .lab-event summary {padding: .12rem 0; color: var(--proof-muted); font-size: .8rem}
 .lab-fields .lab-event p {font-size: .84rem}
 .lab-fields label {display: grid; gap: .2rem; font-size: .84rem; color: var(--proof-muted)}
-.lab-fields input {
+.lab-fields input, .lab-fields select {
   width: 100%;
   min-width: 0;
   padding: .42rem .56rem;
@@ -171,6 +175,8 @@
   color: var(--proof-ink);
   background: #fffdfa;
 }
+.lab-enum-field {min-width: 0}
+.lab-value-source {display: inline-block; margin-top: .18rem; font-size: .76rem}
 .lab-dialog .lab-submit {margin-top: .9rem; background: var(--proof-ink); color: #fffaf0}
 .lab-dialog .lab-submit:disabled {opacity: .65; cursor: wait}
 @media (prefers-reduced-motion: no-preference) {

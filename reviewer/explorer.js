@@ -7,7 +7,7 @@
     return node;
   };
   const format = new Intl.NumberFormat('ru-RU', {maximumFractionDigits:0});
-  const units = (value, unit) => format.format(value) + (unit === '1' ? '' : ' ' + unit);
+  const units = (value, unit) => typeof value === 'string' ? value : format.format(value) + (unit === '1' ? '' : ' ' + unit);
   const button = text => {
     const node = element('button', text);
     node.type = 'button';
@@ -71,6 +71,7 @@
     const program = item.program;
     const states = new Map(program.states.map(field => [field.key, field]));
     const inputs = new Map(program.inputs.map(field => [field.key, field]));
+    const domains = new Map((program.domains ?? []).map(d => ['enum:' + d.key, d.options]));
     const dialog = element('dialog', undefined, 'execution lab-dialog');
     const title = element('h2', 'Расчёт на своих данных');
     title.id = 'lab-title';
@@ -81,7 +82,7 @@
     close.addEventListener('click', () => dialog.close());
     const header = element('div', undefined, 'lab-head');
     header.append(title, close);
-    const description = element('p', 'Меняйте числа для тех же событий. Результат показывает, как поведут себя две модели из отчёта ' + item.finding_id + '.');
+    const description = element('p', 'Меняйте входные данные для тех же событий. Результат показывает, как поведут себя две модели из отчёта ' + item.finding_id + '.');
     const presets = element('div', undefined, 'lab-presets');
     presets.setAttribute('role', 'group');
     presets.setAttribute('aria-label', 'Набор входных значений');
@@ -114,22 +115,41 @@
       }
       for (const entry of values) {
         const field = definitions.get(entry.key);
-        const label = element('label', field.label + (field.unit === '1' ? '' : ' · ' + field.unit));
-        const input = element('input');
-        input.type = 'number';
-        input.min = String(Number.MIN_SAFE_INTEGER);
-        input.max = String(Number.MAX_SAFE_INTEGER);
-        input.step = '1';
+        const options = domains.get(field.unit);
+        const label = element('label', field.label + (options || field.unit === '1' ? '' : ' · ' + field.unit));
+        const input = element(options ? 'select' : 'input');
+        const citation = options ? element('a', undefined, 'lab-value-source') : null;
+        function showCitation() {
+          const source = options.find(option => option.value === input.value).source;
+          citation.href = reportUrl + '#source-line-' + source.line;
+          citation.textContent = 'Значение из строки ' + source.line + ' ↗';
+        }
+        if (options) {
+          for (const option of options) input.append(new Option(option.value, option.value));
+          citation.target = '_blank';
+          citation.rel = 'noopener';
+        } else {
+          input.type = 'number';
+          input.min = String(Number.MIN_SAFE_INTEGER);
+          input.max = String(Number.MAX_SAFE_INTEGER);
+          input.step = '1';
+        }
         input.required = true;
         input.value = String(entry.value);
-        input.addEventListener('input', () => {
+        input.addEventListener(options ? 'change' : 'input', () => {
           cancel();
-          entry.value = input.valueAsNumber;
+          entry.value = options ? input.value : input.valueAsNumber;
+          if (options) showCitation();
           for (const b of presetButtons.values()) b.setAttribute('aria-pressed', 'false');
           output.textContent = 'Значения изменены. Пересчитайте исходы.';
         });
         label.append(input);
-        fieldset.append(label);
+        if (options) {
+          showCitation();
+          const group = element('div', undefined, 'lab-enum-field');
+          group.append(label, citation);
+          fieldset.append(group);
+        } else fieldset.append(label);
       }
       fields.append(fieldset);
     }

@@ -14,6 +14,8 @@ def render_executions(report, lines):
 
 
 def quantity(value, unit):
+    if isinstance(value, str):
+        return safe(value)
     digits = f"{value:,}".replace(",", "\u202f").replace("-", "−")
     return digits if unit == "1" else f"{digits} {safe(unit)}"
 
@@ -116,14 +118,18 @@ def render_execution(item, explanation=None):
     difference = example["first_difference"]
     definition = states[difference["field"]]
     step = example["steps"][difference["step"] - 1]
+    symbolic = definition["unit"].startswith("enum:")
     comparisons = []
     for side, letter in (("first", "А"), ("second", "Б")):
         source = program[side]["source"]
         line = source["line"]
+        value = quantity(difference[side], definition["unit"])
+        if symbolic:
+            value = value.replace("_", "_<wbr/>")
         comparisons.append(
             f'<div class="execution-side"><dt>Правило {letter} · '
             f'<a href="#source-line-{line}">строка {line}</a></dt>'
-            f'<dd>{quantity(difference[side], definition["unit"])}</dd></div>')
+            f'<dd>{value}</dd></div>')
     rules = ""
     for key, letter in (("first", "А"), ("second", "Б")):
         source = program[key]["source"]
@@ -142,7 +148,7 @@ def render_execution(item, explanation=None):
     return (f'<div class="execution" id="execution-{fid}">'
             '<p class="execution-caption">Исполняемый пример</p>'
             f'<h4>{safe(definition["label"])}</h4>'
-            f'<dl class="execution-comparison">{"".join(comparisons)}</dl>'
+            f'<dl class="execution-comparison" data-values="{"enum" if symbolic else "number"}">{"".join(comparisons)}</dl>'
             f'<p class="execution-break"><b>Первое расхождение · шаг {step["step"]}</b>'
             f'<span>{safe(step["label"])}</span></p>'
             + (f'<dl class="execution-values execution-shared" aria-label="Общий вход этого шага">{event_inputs}</dl>'

@@ -91,6 +91,11 @@ def execution_markdown(item):
     fields = {f["key"]: f for f in program["states"] + program["inputs"]}
 
     def value(key, n):
+        if isinstance(n, str):
+            # Preserve the literal API value, including underscores or backticks.
+            fence = "`" * (1 + max((len(s) for s in re.findall(r"`+", n)), default=0))
+            padding = " " if n.startswith("`") or n.endswith("`") else ""
+            return fence + padding + n + padding + fence
         unit = fields[key]["unit"]
         digits = format(n, ",").replace(",", "\u202f").replace("-", "−")
         return digits if unit == "1" else f"{digits} {markdown_text(unit)}"
