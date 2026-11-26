@@ -1,0 +1,45 @@
+{
+  "base_report": "source.json",
+  "base_report_sha256": "fcfa2203f94f17a94676001242b4f36ad8b0ede18abc3192d333b186c0c3df0b",
+  "warm_report_sha256": "20637fdadc2ff03a1745c81014d0823beb9b758c5f2a58d1fd12bff363b1c7f4",
+  "run": {
+    "started_utc": "2026-11-26T19:20:30.081510+00:00",
+    "elapsed_seconds": 0.02,
+    "provider": "codex-cli",
+    "model": "gpt-6.2-astra",
+    "agent_version": "91a77ae961ce",
+    "engine_sha256": "707386417ae5716c609ec446dd4ed329cc4a0e3af6fb09d28ceabd6d37def00f",
+    "input_name": "source.md",
+    "input_sha256": "72bfbe5b21f481bbb47c6708547c3855ca3949089c51ab709618e318c3b5420b",
+    "input_lines": 18,
+    "usage": {
+      "input_tokens": 42102,
+      "cached_input_tokens": 10880,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 4143,
+      "reasoning_output_tokens": 79
+    },
+    "current_usage": {},
+    "fresh_calls": 0,
+    "restored_attempts": 3,
+    "max_workers": 6
+  },
+  "restored_stages": [
+    "Сценарии",
+    "Блоки 1–18",
+    "Весь документ"
+  ],
+  "equal_top_level_fields": [
+    "schema_version",
+    "scope",
+    "source",
+    "segments",
+    "registry",
+    "whole",
+    "json_checks",
+    "priority_policy",
+    "conflicts"
+  ],
+  "findings_equal": true,
+  "registry_equal": true
+}
