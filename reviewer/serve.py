@@ -53,6 +53,8 @@ SAFE_FAILURES = {
     "нет текстового слоя": "В PDF отсутствует текстовый слой. Загрузите версию после OCR.",
     "PDF повреждён или требует пароль": "PDF повреждён или защищён паролем.",
     "установите зависимости": "Для обработки PDF установите зависимости из requirements.txt.",
+    "401 Unauthorized": "Для нового ответа войдите в Codex командой codex login и проверьте codex login status.",
+    "not logged in": "Для нового ответа войдите в Codex командой codex login и проверьте codex login status.",
     "Codex CLI не найден": "Установите Codex CLI перед запуском проверки.",
     "Codex CLI не завершил запрос за": "Codex CLI не ответил за отведённое время.",
     "UnicodeDecodeError": "Сохраните текстовый файл в UTF-8.",
@@ -220,6 +222,19 @@ class Workbench:
         with self.lock:
             return [item for key, item in self.dialogues.items() if key[:2] == (baseline, sha)]
 
+    def saved_example(self, baseline, sha):
+        if baseline != "demo":
+            return None
+        folder = self.reports(baseline) / "owner"
+        try:
+            record = json.loads((folder / "dialogue.json").read_bytes())
+        except (FileNotFoundError, ValueError):
+            return None
+        if record.get("baseline_sha256") != sha:
+            return None
+        return {"finding_id": record["finding_id"], "dialogue": "/reports/demo/owner/dialogue.html",
+                "recheck": "/reports/demo/owner/wrong-revision.html"}
+
     def execution_panels(self, baseline, sha):
         from .execution_view import render_executions
         from .full_render import validate_report
@@ -271,7 +286,11 @@ class Workbench:
                 self.dialogues[key] = entry
             return entry
         except (ValueError, KeyError, TypeError) as exc:
-            raise WorkbenchError(HTTPStatus.BAD_GATEWAY, "Агенту не удалось проверить ответ. Текст можно отправить ещё раз.") from exc
+            message = next((hint for key, hint in SAFE_FAILURES.items() if key in str(exc)),
+                           "Агенту не удалось проверить ответ. Текст можно отправить ещё раз.")
+            if "Codex CLI не найден" in str(exc):
+                message += " После установки выполните codex login. Черновик ответа сохранён в этой вкладке."
+            raise WorkbenchError(HTTPStatus.BAD_GATEWAY, message) from exc
         finally:
             with self.lock:
                 self.pending_dialogues.discard(key)
@@ -463,8 +482,11 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Disposition", f'attachment; filename="{download}"')
         if report_digest:
             self.send_header("X-Report-SHA256", sha256(body).hexdigest())
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
 
     def json(self, status, response):
         self.reply(status, json.dumps(response, ensure_ascii=False).encode(), REPORT_FILES["review.json"])
@@ -502,7 +524,8 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 return
             dialogue = re.fullmatch(DIALOGUE_ROUTE, route.path)
             if dialogue:
-                self.json(HTTPStatus.OK, {"entries": app.conversations(*dialogue.groups())})
+                self.json(HTTPStatus.OK, {"entries": app.conversations(*dialogue.groups()),
+                                          "sample": app.saved_example(*dialogue.groups())})
                 return
             history = re.fullmatch(DIALOGUE_ROUTE + rf"/({FINDING_ID})/({JOB_ID})\.json", route.path)
             if history:
@@ -514,6 +537,11 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 body = (app.storage / "clarifications" / (token + ".json")).read_bytes()
                 self.reply(HTTPStatus.OK, body, REPORT_FILES["review.json"],
                            f"owner-{fid}-turn-{tokens.index(token) + 1}.json")
+                return
+            sample = re.fullmatch(r"/reports/demo/owner/(dialogue|wrong-revision)\.html", route.path)
+            if sample:
+                path = app.reports("demo") / "owner" / (sample[1] + ".html")
+                self.reply(HTTPStatus.OK, path.read_bytes(), REPORT_FILES["review.html"])
                 return
             report = re.fullmatch(rf"/reports/(demo|{JOB_ID})/(review\.(?:html|json))", route.path)
             if report:

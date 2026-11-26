@@ -157,6 +157,9 @@ def render_fields(fields):
 
 
 def render_report(report):
+    if isinstance(report, dict) and report.get("report_type") == "owner_dialogue":
+        from .dialogue_view import render_dialogue
+        return render_dialogue(report)
     version = report.get("schema_version") if isinstance(report, dict) else None
     if type(version) is int and version == 1 and report.get("report_type") == "recheck":
         from .recheck import render_html
