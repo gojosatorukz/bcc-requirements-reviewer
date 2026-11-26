@@ -8,7 +8,8 @@ from reviewer.__main__ import review_document
 from reviewer.contract import HTTP_STATUS_POLICY, explicit_http_statuses, source_http_statuses, validate_review
 from reviewer.render import render_report
 
-HISTORICAL = Path(__file__).resolve().parents[1] / "eval/public-payments/runs/mutated.json"
+ROOT = Path(__file__).resolve().parents[1]
+HISTORICAL = ROOT / "eval/public-payments/runs/mutated.json"
 
 
 def conflict(scenario="Получен HTTP-ответ об ошибке, ключ p-17."):
@@ -47,6 +48,12 @@ class HttpStatusGroundingTests(unittest.TestCase):
             8: "Стоимость 502 тенге.",
         }
         self.assertEqual(source_http_statuses(lines, HTTP_STATUS_POLICY), {"409"})
+
+    def test_official_source_marks_http_statuses_in_response_sections(self):
+        official = json.loads((ROOT / "runs/bcc-final/review.json").read_text(encoding="utf-8"))
+        lines = {row["line"]: row["text"] for row in official["source"]}
+        self.assertEqual(source_http_statuses(lines, HTTP_STATUS_POLICY),
+                         {"200", "201", "400", "401", "403", "404", "500"})
 
     def test_requires_exact_status_and_accepts_abstract_class(self):
         lines = ["Остановиться.", "Повторить.", "Возвращается HTTP 4xx."]

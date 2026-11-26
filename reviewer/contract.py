@@ -12,6 +12,10 @@ HTTP_STATUS_INSTRUCTIONS = """
 Это ограничение не запрещает конкретные допустимые суммы, даты или ключи примера."""
 
 _STATUS_TOKEN = r"(?<!\w)[1-5](?:\d{2}|xx)(?!\w|\s*(?:[₸₽€$]|тенге\b|руб\w*\b|USD\b|KZT\b))"
+_STATUS_LIST = (
+    rf"{_STATUS_TOKEN}"
+    rf"(?:[\s\x60*]*(?:[,/]|\b(?:or|and|или|либо|и)\b)[\s\x60*]*{_STATUS_TOKEN})*"
+)
 _STATUS_LABEL = (
     r"\b(?:HTTP(?:/\d+(?:\.\d+)?)?"
     r"(?:[\s-]+(?:status(?:[\s-]+code)?|response(?:[\s-]+code)?|статус\w*|код\w*|ответ\w*))?"
@@ -19,8 +23,7 @@ _STATUS_LABEL = (
     r"|(?:статус|код)\w*\s+(?:HTTP[\s-]+)?ответ\w*)\b"
 )
 _EXPLICIT_STATUSES = re.compile(
-    _STATUS_LABEL + rf"[\s:=(\[\x60*\"']*(?P<codes>{_STATUS_TOKEN}"
-    rf"(?:[\s\x60*]*(?:[,/]|\b(?:or|and|или|либо|и)\b)[\s\x60*]*{_STATUS_TOKEN})*)",
+    _STATUS_LABEL + rf"[\s:=(\[\x60*\"']*(?P<codes>{_STATUS_LIST})",
     re.I,
 )
 _STATUS_WITH_REASON = re.compile(
@@ -33,6 +36,17 @@ _STATUS_WITH_REASON = re.compile(
 _STATUS_VALUE = re.compile(_STATUS_TOKEN, re.I)
 _STATUS_HEADER = re.compile(_STATUS_LABEL, re.I)
 _STATUS_CELL = re.compile(rf"[\s\x60*]*(?P<code>{_STATUS_TOKEN})[\s\x60*]*", re.I)
+_HEADING = re.compile(r"^\s*(?P<level>#{1,6})\s+(?P<title>.+)")
+_RESPONSE_SECTION = re.compile(
+    r"(?:ответ(?:ы)?|response(?:s)?|статусы|(?:http\s+)?status(?:es| codes)?|коды ответа)",
+    re.I,
+)
+_RESPONSE_ENTRY = re.compile(
+    rf"^\s*(?:(?:#{{1,6}}|[-*])\s+)?[\x60*]*(?P<code>{_STATUS_TOKEN})"
+    r"[.\x60*]*\s*(?:Ответ\b|(?:Un)?Successful\b|$)",
+    re.I,
+)
+_RESPONSE_RESULT = re.compile(rf"\b(?:результат|result)\s+(?P<codes>{_STATUS_LIST})", re.I)
 
 
 def explicit_http_statuses(text):
@@ -52,11 +66,23 @@ def source_http_statuses(lines, policy):
     statuses = set()
     columns = []
     previous = 0
+    response_level = None
     for number, text in (sorted(lines.items()) if isinstance(lines, dict) else enumerate(lines, 1)):
         if number != previous + 1:
             columns = []
         previous = number
         statuses.update(explicit_http_statuses(text))
+        if heading := _HEADING.match(text):
+            level = len(heading["level"])
+            if _RESPONSE_SECTION.fullmatch(heading["title"].strip(" *`#")):
+                response_level = level
+            elif response_level is not None and level <= response_level:
+                response_level = None
+        if response_level is not None:
+            if entry := _RESPONSE_ENTRY.match(text):
+                statuses.add(entry["code"].lower())
+            for result in _RESPONSE_RESULT.finditer(text):
+                statuses.update(code.lower() for code in _STATUS_VALUE.findall(result["codes"]))
         if not text.strip().startswith("|"):
             columns = []
             continue
