@@ -20,6 +20,13 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parent.parent
 PAGE = ROOT / "reviewer" / "workbench.html"
 REPORT_FILES = {"review.html": "text/html; charset=utf-8", "review.json": "application/json; charset=utf-8"}
+GALLERY_FILES = {
+    "/design/concepts/index.html": "text/html; charset=utf-8",
+    "/design/concepts/gallery.css": "text/css; charset=utf-8",
+    "/design/concepts/case.js": "text/javascript; charset=utf-8",
+    "/design/concepts/gallery.js": "text/javascript; charset=utf-8",
+    **{f"/runs/bcc-final/{name}": kind for name, kind in REPORT_FILES.items()},
+}
 LIMITS = {".md": 120_000, ".txt": 120_000, ".pdf": 16_000_000}
 JOB_ID = r"[0-9a-f]{32}"
 PROGRESS = re.compile(r"(?:Сценарии|Блоки [0-9]+–[0-9]+|Весь документ|Повторная проверка) · "
@@ -270,6 +277,10 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
         try:
             route = self.route()
             app = self.server.app
+            if route.path in GALLERY_FILES:
+                artifact = app.root / route.path[1:]
+                self.reply(HTTPStatus.OK, artifact.read_bytes(), GALLERY_FILES[route.path])
+                return
             if route.path == "/":
                 self.reply(HTTPStatus.OK, (app.root / "reviewer" / PAGE.name).read_bytes(),
                            REPORT_FILES["review.html"])
