@@ -94,7 +94,7 @@ def check_audit(audit, witness, lines):
         raise ValueError("В независимой проверке нужны обе исходные строки замечания")
 
 
-def build_one(fid, witness, source, model, checkpoint, digest):
+def build_one(fid, witness, source, model, checkpoint, digest, *, proposal_model=None):
     payload = {"source": source, "witness": witness}
     attempts = []
     reason = ""
@@ -111,7 +111,7 @@ def build_one(fid, witness, source, model, checkpoint, digest):
     for _ in range(2):
         try:
             proposal, events = call_stage("Построение примера " + fid, DESIGN + "\n" + witness_vm.LANGUAGE,
-                                          payload, PROPOSAL, verify_proposal, model, checkpoint, digest)
+                                          payload, PROPOSAL, verify_proposal, proposal_model or model, checkpoint, digest)
             attempts.extend(events)
             if not proposal["programs"]:
                 reason = proposal["reason"]
