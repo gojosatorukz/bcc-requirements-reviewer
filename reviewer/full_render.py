@@ -100,7 +100,7 @@ def render_full(report):
         rid = item["id"]
         cite = item["evidence"]
         backlinks[cite["line"]].append((rid, rid))
-        section = safe(blocks_by_start[item["start"]]["section"])
+        section = safe(blocks_by_start[item["start"]]["section"].removeprefix(title + " / "))
         rows.append(f'''<tr id="{rid}"><td><b>{rid}</b><br>{safe(item['original_id'])}</td>
 <td><small>{safe(item['role'])} · {section}</small><br><b>{safe(item['statement'])}</b>
 <blockquote>{safe(cite['quote'])} {line_link(cite['line'])}</blockquote></td>
@@ -137,10 +137,21 @@ def render_full(report):
 .full .scroll{overflow:auto}.full td:first-child{min-width:4.6em}.full section>h2{border-top:2px solid var(--deep);padding-top:1rem}
 @media(max-width:650px){.full .registry td{display:block;border:0}.full .registry tr{display:block;border-bottom:1px solid var(--line)}.registry thead{display:none}}
 @page{size:A4;margin:15mm 15mm 18mm;@bottom-right{content:counter(page) " / " counter(pages);font:9pt sans-serif;color:#52625b}}
-@media print{header,nav,.skip-link,.backlinks{display:none}body{background:white}.metrics,.gates{grid-template-columns:repeat(2,1fr)}
-.full h1{font-size:26pt}.full .source-row,.full blockquote{break-inside:avoid}.full td{padding:5pt}
-.full .finding p,.full .gates p{orphans:3;widows:3}.full .registry thead{display:table-header-group}
-.full .registry tr{display:table-row}.full .registry td{display:table-cell}.full small{font-size:8pt}main{width:auto;margin:0;padding:0;border:0}.full{font-size:10pt}.full h2,.full h3{break-after:avoid}.full tr{break-inside:avoid}}
+@media print{
+ html{font-size:12px}body,main,.full{font-family:Arial,sans-serif;background:white}
+ header,nav,.skip-link,.backlinks{display:none}
+ main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
+ .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
+ .full h2,.full h3{break-after:avoid}.full section{margin:9pt 0}.full section>h2{padding-top:7pt}
+ .metrics{grid-template-columns:repeat(3,1fr)}.gates{grid-template-columns:repeat(2,1fr)}
+ .full .registry{table-layout:fixed}.full .registry th:first-child{width:10%}.full .registry th:nth-child(2){width:49%}
+ .full .registry thead{display:table-header-group}.full .registry tr{display:table-row}.full .registry td{display:table-cell}
+ .full td,.full th{padding:4pt}.full .registry td:first-child{white-space:nowrap}
+ .full .source-row,.full tr,.full blockquote{break-inside:avoid}.full .source-text{font:8.5pt/1.3 Arial,sans-serif}
+ .full .finding{padding:6pt 0}.full small{font-size:8pt}.full blockquote{margin:2pt 0}
+ .full .facts{display:flex;flex-wrap:wrap;gap:3pt 9pt}.full .facts div{padding:2pt 0}.full .facts dd{margin:1pt 0}
+ .full .attempts li{break-inside:avoid}.full .attempts .facts div{border:0}
+}
 """
     return f'''<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

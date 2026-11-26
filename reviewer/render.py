@@ -129,8 +129,7 @@ def render_attempts(attempts):
         reason = f"<p>{safe(attempt['reason'])}</p>" if "reason" in attempt else ""
         items.append(f"""
         <li>
-          <p><strong>{stage}{safe(ATTEMPT_STATUS.get(status, status))}{restored}</strong></p>
-          {reason}
+          <p><strong>{stage}{safe(ATTEMPT_STATUS.get(status, status))}{restored}</strong></p>{reason}
           {render_usage(attempt['usage'])}
         </li>""")
     return f"""
