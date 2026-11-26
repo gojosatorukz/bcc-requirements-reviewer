@@ -101,6 +101,21 @@ a{color:var(--accent);text-underline-offset:.18em}
 @media(max-width:35rem){.inner,.workspace{width:calc(100% - 1.5rem)}.intro::before{display:none}.masthead nav{gap:.4rem .8rem}.masthead nav a{font-size:.9rem}}
 @media(max-width:29rem){.radio-options{grid-template-columns:minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}#guided-review,#run-log li:last-child,.workspace #run-links:not([hidden]),#status-message[data-running]::before{animation:none}#submit,.workspace a.action,.radio-options label,.drop{transition:none}}
+.recheck-result{margin-top:1.15rem;padding-top:1rem;border-top:1px solid var(--line)}
+.workspace .recheck-result h3{margin-bottom:.4rem}
+.workspace .recheck-result .result-scope{margin-bottom:.85rem;padding:.6rem .75rem;border-left:3px solid #ff7045;background:var(--soft)}
+.workspace .recheck-result .result-files{margin-bottom:.7rem;color:var(--muted)}
+.result-card{padding:.75rem;margin-top:.65rem;border:1px solid var(--line);border-radius:.55rem}
+.result-card h4{margin:0 0 .4rem;overflow-wrap:anywhere}
+.result-badge{display:inline-block;padding:.16rem .55rem;margin-bottom:.45rem;border-radius:1rem;background:#ede7ee;color:#432e4a;font-size:.9rem;font-weight:730}
+.result-badge[data-tone="resolved"]{background:#dcefe3;color:#174c35}
+.result-badge[data-tone="persists"]{background:#ffded6;color:#74281d}
+.result-badge[data-tone="changed"]{background:#ffedb8;color:#5e4100}
+.workspace .result-card .result-evidence-title{margin-top:.7rem;font-weight:690}
+.result-evidence{display:grid;gap:.5rem;margin:.35rem 0 0;padding:0;list-style:none}
+.result-evidence li{padding:.5rem .7rem;background:var(--paper);border-left:2px solid #ec9978;overflow-wrap:anywhere}
+.result-evidence a{display:inline-block;margin-bottom:.15rem;font-weight:690}
+.result-evidence blockquote{white-space:pre-wrap;margin:0}
 </style>
 <link rel="stylesheet" href="/reviewer/guided.css">
 </head>
@@ -161,6 +176,11 @@ a{color:var(--accent);text-underline-offset:.18em}
           <progress id="coverage-meter"></progress>
         </div>
         <ol id="run-log" aria-label="Завершённые этапы" aria-live="polite" hidden></ol>
+        <section class="recheck-result" id="recheck-result" aria-labelledby="recheck-result-title" hidden>
+          <h3 id="recheck-result-title">Результат перепроверки</h3>
+          <p role="status" id="recheck-result-state"></p>
+          <div id="recheck-summary"></div>
+        </section>
         <div class="actions" id="run-links" hidden>
           <a class="action" id="run-html" target="_blank" rel="noopener">Открыть HTML-отчёт</a>
           <a id="run-json">Скачать JSON</a>
@@ -220,6 +240,7 @@ let displayedProgress = '';
 let requestedGuidedId = null;
 let findingBaseline = '';
 let findingLoad = null;
+let recheckLoad = null;
 
 function save() {
   try { sessionStorage.setItem(storageKey, JSON.stringify(session)); } catch { /* Storage can be blocked. */ }
@@ -303,6 +324,7 @@ function refreshBaselines() {
 
 get('finding-options').addEventListener('change', updateFindingSummary);
 get('finding-reset').addEventListener('click', () => {
+  dismissRecheck();
   for (const input of get('finding-options').querySelectorAll('input:checked')) input.checked = false;
   updateFindingSummary();
 });
@@ -372,6 +394,87 @@ function forget(id) {
   refreshBaselines();
 }
 
+function dismissRecheck() {
+  recheckLoad?.abort();
+  recheckLoad = null;
+  get('recheck-result').hidden = true;
+  get('recheck-summary').replaceChildren();
+  if (!busy && session.last?.mode === 'recheck') {
+    session.last = null;
+    save();
+    get('run-status').hidden = true;
+    get('run-links').hidden = true;
+  }
+}
+
+function resultText(tag, text, className) {
+  const element = document.createElement(tag);
+  element.textContent = text;
+  if (className) element.className = className;
+  return element;
+}
+
+function renderRecheck(report, reportUrl) {
+  const content = get('recheck-summary');
+  const files = report.run.previous_input_name + ' → ' + report.run.input_name;
+  content.replaceChildren(resultText('p', report.scope, 'result-scope'), resultText('p', files, 'result-files'));
+  const tones = {'устранено':'resolved', 'сохранилось':'persists', 'изменилось':'changed'};
+  for (const check of report.checks) {
+    const card = document.createElement('article');
+    card.className = 'result-card';
+    const badge = resultText('span', check.status, 'result-badge');
+    badge.dataset.tone = Object.hasOwn(tones, check.status) ? tones[check.status] : 'unknown';
+    card.append(resultText('h4', check.id + ' · ' + check.title), badge, resultText('p', check.reason));
+    card.append(resultText('p', 'Цитаты из новой версии', 'result-evidence-title'));
+    if (check.revised_evidence.length) {
+      const list = document.createElement('ul');
+      list.className = 'result-evidence';
+      for (const {line, quote} of check.revised_evidence) {
+        const item = document.createElement('li');
+        const link = resultText('a', 'Строка ' + line);
+        link.href = reportUrl + '#line-' + line;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        item.append(link, resultText('blockquote', quote));
+        list.append(item);
+      }
+      card.append(list);
+    } else {
+      card.append(resultText('p', 'В отчёте нет цитат из новой версии.', 'muted'));
+    }
+    content.append(card);
+  }
+  if (!report.checks.length) content.append(resultText('p', 'В базовом отчёте нет замечаний для выбранной области.'));
+}
+
+async function loadRecheck(run, reportUrl) {
+  recheckLoad?.abort();
+  const controller = new AbortController();
+  recheckLoad = controller;
+  const panel = get('recheck-result');
+  const status = get('recheck-result-state');
+  panel.hidden = false;
+  status.textContent = 'Загружаем выводы…';
+  try {
+    const report = await request('/reports/' + run.id + '/review.json', {signal: controller.signal});
+    if (recheckLoad !== controller || session.last?.id !== run.id) return;
+    if (report.report_type !== 'recheck' || !Array.isArray(report.checks) || !report.run ||
+        typeof report.scope !== 'string' || (run.findings?.length &&
+          (report.checks.length !== run.findings.length || run.findings.some(id => !report.checks.some(check => check.id === id))))) {
+      throw new Error('Ответ не соответствует прогону.');
+    }
+    renderRecheck(report, reportUrl);
+    status.textContent = (report.selection === 'critical' ? 'Проверено критических замечаний: ' :
+      'Проверено замечаний: ') + report.checks.length + '.';
+  } catch {
+    if (recheckLoad !== controller || session.last?.id !== run.id) return;
+    get('recheck-summary').replaceChildren();
+    status.textContent = 'Не удалось показать выводы на этой странице. Откройте HTML-отчёт.';
+  } finally {
+    if (recheckLoad === controller) recheckLoad = null;
+  }
+}
+
 async function poll(run) {
   try {
     const status = await request('/api/status/' + run.id);
@@ -388,7 +491,9 @@ async function poll(run) {
     if (status.state === 'failed') {
       setStatus(label + ' · ' + (status.error || stateLabels.failed), true);
     } else if (status.state === 'done') {
-      get('run-html').href = '/reports/' + run.id + '/review.html';
+      const reportUrl = '/reports/' + run.id + '/review.html';
+      get('run-html').href = reportUrl;
+      get('run-html').textContent = status.mode === 'recheck' ? 'Открыть повторный отчёт' : 'Открыть HTML-отчёт';
       get('run-json').href = '/reports/' + run.id + '/review.json?download=1';
       get('run-links').hidden = false;
       if (status.mode === 'full') {
@@ -398,6 +503,8 @@ async function poll(run) {
           refreshBaselines();
         }
         loadGuidedFull(run.id);
+      } else if (status.mode === 'recheck') {
+        loadRecheck(run, reportUrl);
       }
     } else {
       setTimeout(() => poll(run), 1500);
@@ -420,6 +527,7 @@ async function poll(run) {
 }
 
 form.addEventListener('change', event => {
+  dismissRecheck();
   if (event.target === fileInput) selectFile(fileInput.files[0]);
   else showError('');
   refreshControls();
@@ -441,6 +549,7 @@ drop.addEventListener('drop', event => {
   if (busy) return;
   const files = event.dataTransfer?.files;
   if (!files?.length) return;
+  dismissRecheck();
   if (files.length !== 1) {
     setBrandState('failed');
     showError('Перетащите один документ.');
@@ -453,6 +562,7 @@ drop.addEventListener('drop', event => {
 form.addEventListener('submit', async event => {
   event.preventDefault();
   if (busy || (mode() === 'recheck' && findingLoad)) return;
+  dismissRecheck();
   if (!file) {
     setBrandState('failed');
     showError('Выберите документ для проверки.');
@@ -470,9 +580,10 @@ form.addEventListener('submit', async event => {
   const selectedMode = mode();
   const selectedBaseline = baseline.value;
   const params = new URLSearchParams({mode:selectedMode});
+  const findings = selectedMode === 'recheck' ? selectedFindings() : [];
   if (selectedMode === 'recheck') {
     params.set('baseline', selectedBaseline);
-    for (const id of selectedFindings()) params.append('finding', id);
+    for (const id of findings) params.append('finding', id);
   }
   const selectedFile = file;
   busy = true;
@@ -488,7 +599,7 @@ form.addEventListener('submit', async event => {
       method:'POST', headers:{'X-File-Name':encodeURIComponent(selectedFile.name)}, body:selectedFile,
     });
     if (!idPattern.test(response.id)) throw new Error('Сервер не вернул номер прогона.');
-    session.last = {id:response.id, name:selectedFile.name, mode:selectedMode};
+    session.last = {id:response.id, name:selectedFile.name, mode:selectedMode, findings};
     save();
     setStatus(modeLabels[selectedMode] + ' · В очереди', false, true);
     poll(session.last);
