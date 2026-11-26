@@ -64,6 +64,28 @@ class FindingDownloadTest(unittest.TestCase):
         self.finding["evidence"] = []
         self.assertIn("Цитаты в отчёте отсутствуют.", finding_markdown(self.finding, self.run, {}))
 
+    def test_cold_official_download_contains_both_replayed_cases_with_source_context(self):
+        path = Path(__file__).resolve().parents[1] / "eval/executable/runs/official.json"
+        report = json.loads(path.read_text(encoding="utf-8"))
+        downloads = Downloads(render_report(report))
+        md = downloads.markdown(0)
+        self.assertIn("## Исполняемый пример", md)
+        self.assertIn("Правило А даёт 0 ₸, правило Б даёт 4\u202f000 ₸", md)
+        self.assertIn("Правило А", md)
+        self.assertIn("строка 38", md)
+        self.assertIn("строка 64", md)
+        self.assertIn("### Контрольный пример", md)
+        self.assertIn("совпали на каждом шаге", md)
+        self.assertIn("предстоит согласовать", md)
+        self.assertIn("## Цитаты из исходника", md)
+
+    def test_an_unsupported_computation_keeps_its_reason_without_a_numeric_claim(self):
+        execution = {"finding_id": "D-02", "status": "unsupported", "reason": "Не хватает <срока>."}
+        md = finding_markdown(self.finding, self.run, {}, execution)
+        self.assertIn("Расчёт не подтверждён", md)
+        self.assertIn(r"Не хватает \<срока\>", md)
+        self.assertNotIn("Контрольный пример", md)
+
     def test_full_render_offers_all_findings_without_javascript(self):
         path = Path(__file__).resolve().parents[1] / "runs" / "bcc-priority" / "review.json"
         report = json.loads(path.read_text(encoding="utf-8"))

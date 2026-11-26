@@ -83,7 +83,43 @@ def markdown_text(text):
     return re.sub(r"^(\d{1,9})?([+.()=\-])", r"\1\\\2", line)
 
 
-def finding_markdown(finding, run, page_by_line):
+def execution_markdown(item):
+    if item["status"] == "unsupported":
+        return "## Расчёт не подтверждён\n\n" + markdown_text(item["reason"])
+
+    program, result = item["program"], item["result"]
+    fields = {f["key"]: f for f in program["states"] + program["inputs"]}
+
+    def value(key, n):
+        unit = fields[key]["unit"]
+        digits = format(n, ",").replace(",", "\u202f").replace("-", "−")
+        return digits if unit == "1" else f"{digits} {markdown_text(unit)}"
+
+    def values(mapping):
+        return ", ".join(f'{markdown_text(fields[k]["label"])} {value(k, n)}' for k, n in mapping.items())
+
+    def scenario(name):
+        trace = result[name]
+        start = {row["key"]: row["value"] for row in program[name]["initial"]}
+        lines = [f"Перед первым событием · {values(start)}"]
+        for step in trace["steps"]:
+            event = f'{step["step"]}. {markdown_text(step["label"])}'
+            lines.append(event + (f' · {values(step["inputs"])}' if step["inputs"] else ""))
+        for side, letter in (("first", "А"), ("second", "Б")):
+            line = program[side]["source"]["line"]
+            lines.append(f"Итог по правилу {letter} (строка {line}) · {values(trace['final'][side])}")
+        return "\n\n".join(lines)
+
+    diff = result["scenario"]["first_difference"]
+    key = diff["field"]
+    divergence = (f'Первое расхождение на шаге {diff["step"]} · {markdown_text(fields[key]["label"])}. '
+                  f'Правило А даёт {value(key, diff["first"])}, правило Б даёт {value(key, diff["second"])}.')
+    return ("## Исполняемый пример\n\n" + divergence + "\n\n" + scenario("scenario")
+            + "\n\n### Контрольный пример\n\nЗначения совпали на каждом шаге.\n\n" + scenario("control")
+            + "\n\nОжидаемый исход для приёмки предстоит согласовать с владельцем ТЗ.")
+
+
+def finding_markdown(finding, run, page_by_line, execution=None):
     def field(key):
         return markdown_text(finding[key])
 
@@ -96,8 +132,10 @@ def finding_markdown(finding, run, page_by_line):
         f"## Основание\n\n{field('reason')}",
         f"## Вопрос владельцу\n\n{field('question')}",
         f"## Предлагаемое действие\n\n{field('action')}",
-        "## Цитаты из исходника",
     ]
+    if execution:
+        sections.append(execution_markdown(execution))
+    sections.append("## Цитаты из исходника")
     for ref in finding["evidence"]:
         line, quote = ref["line"], ref["quote"]
         page = f", страница {page_by_line[line]}" if line in page_by_line else ""
@@ -108,8 +146,8 @@ def finding_markdown(finding, run, page_by_line):
     return "\n\n".join(sections) + "\n"
 
 
-def finding_download(finding, run, page_by_line):
-    payload = b64encode(finding_markdown(finding, run, page_by_line).encode("utf-8")).decode("ascii")
+def finding_download(finding, run, page_by_line, execution=None):
+    payload = b64encode(finding_markdown(finding, run, page_by_line, execution).encode("utf-8")).decode("ascii")
     fid = safe(finding["id"])
     return (f'<a class="finding-export" download="{fid}.md" aria-label="Скачать карточку {fid} в Markdown" '
             f'href="data:text/markdown;charset=utf-8;base64,{payload}">Скачать карточку (.md)</a>')
@@ -184,6 +222,7 @@ def render_full(report):
     decisions = {}
     findings = []
     executions = render_executions(report, lines)
+    execution_items = {item["finding_id"]: item for item in report.get("executables", {}).get("items", [])}
     page_by_line = {n: page["page"] for page in run.get("pages", [])
                     for n in range(page["start"], page["end"] + 1)}
     for f in whole["findings"]:
@@ -210,7 +249,7 @@ def render_full(report):
 {executions.get(fid, '')}
 {evidence(f['evidence'])}<p><b>{safe(f['owner'])}.</b> {safe(f['question'])}</p>
 <p><b>Исправление.</b> {safe(f['action'])}</p><p>{refs}</p>
-{finding_download(f, run, page_by_line)}
+{finding_download(f, run, page_by_line, execution_items.get(fid))}
 {basis}{render_decision_drafts(f, report['conflicts'])}</article>''')
     closed = []
     for i, item in enumerate(whole["reconciled"], 1):
