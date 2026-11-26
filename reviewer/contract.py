@@ -44,6 +44,8 @@ def validate_shape(value, schema, path):
     elif kind == "string":
         if type(value) is not str or not value.strip():
             raise ValueError(f"{path}: требуется непустой текст")
+        if "enum" in schema and value not in schema["enum"]:
+            raise ValueError(f"{path}: недопустимое значение {value}")
     elif kind == "integer" and type(value) is not int:
         raise ValueError(f"{path}: ожидался целый номер строки")
 

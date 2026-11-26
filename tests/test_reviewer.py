@@ -29,7 +29,7 @@ class ReviewTest(unittest.TestCase):
         self.output = Path(temp.name, "report.json")
 
     def invoke(self, replies):
-        with patch("sys.argv", ["reviewer", str(self.doc), str(self.output)]), \
+        with patch("sys.argv", ["reviewer", "--conflicts-only", str(self.doc), str(self.output)]), \
                 patch("reviewer.codex_provider.complete", side_effect=replies) as model, \
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             main()

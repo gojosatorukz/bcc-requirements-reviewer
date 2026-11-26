@@ -68,10 +68,12 @@ def review_document(prompt, model, lines):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Поиск смысловых противоречий в требованиях")
+    parser = argparse.ArgumentParser(description="Полное ревью спецификации требований")
     parser.add_argument("document", type=Path)
     parser.add_argument("report", type=Path, help="Выходной файл JSON или HTML")
     parser.add_argument("--model", default="gpt-6.2-astra")
+    parser.add_argument("--conflicts-only", action="store_true", help="Быстрый поиск поведенческих конфликтов (формат v1)")
+    parser.add_argument("--checkpoint-dir", type=Path, help="Папка для возобновления проверенных стадий полного прогона")
     args = parser.parse_args()
     try:
         if args.document.resolve() == args.report.resolve():
@@ -87,11 +89,15 @@ def main():
         if not blocks:
             raise ValueError("Документ пуст")
         revision = version()
-        digest = engine_digest()
+        digest = engine_digest() if args.conflicts_only else engine_digest("segments.py", "full.py")
         started = datetime.now(timezone.utc).isoformat()
         clock = time.monotonic()
-        prompt = INSTRUCTIONS + "\n\nДокумент:\n" + json.dumps(blocks, ensure_ascii=False)
-        result, attempts = review_document(prompt, args.model, lines)
+        if args.conflicts_only:
+            prompt = INSTRUCTIONS + "\n\nДокумент:\n" + json.dumps(blocks, ensure_ascii=False)
+            result, attempts = review_document(prompt, args.model, lines)
+        else:
+            from .full import analyze
+            result, attempts = analyze(blocks, lines, args.model, args.checkpoint_dir, digest)
         usage = None
         if all(isinstance(attempt["usage"], dict) for attempt in attempts):
             usage = {}
@@ -103,12 +109,13 @@ def main():
                "provider": "codex-cli", "model": args.model, "agent_version": revision, "engine_sha256": digest,
                "input_name": args.document.name, "input_sha256": hashlib.sha256(raw).hexdigest(),
                "input_lines": len(lines), "usage": usage, "attempts": attempts}
-        report = {"schema_version": 1, "scope": "Проверка поведенческих противоречий",
-                  "run": run, "source": blocks, "conflicts": result["conflicts"]}
+        scope = "Проверка поведенческих противоречий" if args.conflicts_only else "Полное ревью требований"
+        report = {"schema_version": 1 if args.conflicts_only else 2, "scope": scope, "run": run,
+                  "source": blocks, **result}
         write_report(args.report, report)
     except (OSError, ValueError) as exc:
         parser.exit(1, f"Прогон не завершён: {exc}\n")
-    print(f"Отчёт сохранён: {args.report}. Конфликтов: {len(result['conflicts'])}")
+    print(f"Отчёт сохранён: {args.report}")
 
 
 if __name__ == "__main__":
