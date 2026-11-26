@@ -1,4 +1,4 @@
-"""Run the four preregistered documents through the product CLI, using fresh model calls."""
+"""Run preregistered documents through the product CLI, using fresh model calls."""
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -16,6 +16,7 @@ CASES = {
     "hotel": (HERE / "card-capture.md", "1fa6bdbf13936a8dca643757c21c59ee59188eaf5190bd46a0ea5ab91f9b1798"),
     "aligned": (HERE / "card-capture-aligned.md", "8f1fd01653c66e1413c1b8e6b55a2dc5e1ca74dfa38a04b545d22845b89d13ef"),
     "ledger": (HERE / "public-ledger/post-pending.md", "d795152a745d3d1674d28ae5ebc7548015c92f4743a17435efbd8d8e9b29def0"),
+    "fee": (HERE / "minor-units/merchant-fee.md", "9e9912ebc20ec9e54a8908be53e005a38cfdc8cec99310cf9a2850a5c38dda29"),
 }
 
 
