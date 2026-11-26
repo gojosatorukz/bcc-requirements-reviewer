@@ -5,70 +5,100 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Разбор ТЗ</title>
 <style>
-:root{color-scheme:light;--paper:#f3f5f2;--panel:#fff;--ink:#19342b;--muted:#506359;--line:#cad6cf;--accent:#185c47;--accent-hover:#104836;--soft:#e8f2ec;--error:#a12e21}
+:root{color-scheme:light;--field:#ff7b50;--paper:#fff7e7;--panel:#fffcf4;--ink:#241927;--muted:#665264;--line:#b19b9d;--accent:#4c3273;--soft:#f5e9d7;--lemon:#ffdf76;--error:#a22e22;--ease:cubic-bezier(.22,1,.36,1)}
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}
-header{background:#12382e;color:white;border-bottom:1px solid #0a2b22}
-.inner,main{width:min(74rem,calc(100% - 3rem));margin-inline:auto}
-header .inner{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:1rem 0;font-weight:700}
-header span{font-size:.875rem;color:#d7e7de;font-weight:500}
-main{padding:clamp(1.4rem,4vw,3.5rem) 0 3rem}
-h1,h2,h3,p{margin:0}
-h1{font-size:clamp(2rem,5vw,3.45rem);line-height:1.08;letter-spacing:-.045em}
-h2{font-size:1.34rem;line-height:1.2;letter-spacing:-.02em}
-h3{font-size:1.08rem;line-height:1.25}
-.lead{max-width:55ch;margin:.65rem 0 1.75rem;color:var(--muted);font-size:1.08rem}
-.workspace{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:1rem;align-items:start}
-.card{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:.85rem;padding:clamp(1rem,3vw,1.6rem)}
-.card>h2{margin-bottom:1rem}
-.card p{overflow-wrap:anywhere}
-form{display:grid;gap:1rem}
-fieldset{border:0;margin:0;padding:0;min-width:0}
-legend,label{font-weight:650}
-legend{padding:0;margin-bottom:.45rem}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.inner,.workspace{width:min(75rem,calc(100% - 3rem));margin-inline:auto}
+.masthead,.intro{background:var(--field)}
+.masthead{border-bottom:2px solid var(--ink)}
+.masthead .inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.35rem 1rem;padding:.8rem 0}
+.brand{display:inline-flex;gap:.6rem;align-items:center;color:var(--ink);font-size:1.2rem;font-weight:850;letter-spacing:-.035em;text-decoration:none}
+.brand-mark{display:grid;width:1.65rem;height:1.65rem;place-items:center;background:var(--ink);border-radius:.45rem;color:var(--lemon);font:800 1rem/1 system-ui;transform:rotate(-7deg)}
+.masthead nav{display:flex;flex-wrap:wrap;gap:.4rem 1.3rem}
+.masthead nav a{padding:.25rem 0;color:var(--ink);font-weight:720}
+.intro{isolation:isolate;position:relative;overflow:hidden;padding:clamp(1.5rem,4vw,3.2rem) 0 clamp(1.65rem,4vw,3.1rem);border-bottom:2px solid var(--ink)}
+.intro::before{content:"";position:absolute;z-index:-1;right:clamp(-10rem,-8vw,-3rem);bottom:-12rem;width:clamp(19rem,42vw,35rem);aspect-ratio:1;border-radius:50%;background:var(--lemon);pointer-events:none}
+.intro::after{content:"";position:absolute;inset:auto 0 0;height:.55rem;background:repeating-linear-gradient(-50deg,var(--ink) 0 2px,transparent 2px 12px);pointer-events:none}
+.intro-copy{max-width:53rem;margin-bottom:1.15rem}
+.intro-copy h1,.workspace h2,.workspace h3,.workspace p{margin:0}
+.intro-copy h1{font-size:clamp(1.65rem,3.3vw,2.8rem);line-height:1;font-weight:850;letter-spacing:-.055em}
+.intro-copy p{max-width:61ch;margin:.52rem 0 0;font-weight:610;font-size:clamp(1rem,1.45vw,1.15rem)}
+#guided-review:not([hidden]){animation:reveal .36s var(--ease) both}
+@keyframes reveal{from{opacity:0;transform:translateY(.45rem)}to{opacity:1;transform:translateY(0)}}
+.workspace{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:1.35rem;align-items:start;padding:clamp(1.6rem,4vw,3rem) 0 3.5rem}
+.workspace article,.workspace section{scroll-margin-top:1rem}
+.workspace .card{min-width:0;background:var(--panel);border:2px solid var(--ink);border-radius:1rem;padding:clamp(1rem,3vw,1.65rem);box-shadow:0 .4rem 0 var(--ink)}
+.workspace .card h2{margin-bottom:1rem;font-size:clamp(1.4rem,2.6vw,2rem);line-height:1.05;letter-spacing:-.045em;font-weight:830}
+.workspace .card h3{font-size:1.14rem;line-height:1.2}
+.workspace .card p{overflow-wrap:anywhere}
+#upload-form{display:grid;gap:1rem}
+#upload-form fieldset{border:0;margin:0;padding:0;min-width:0}
+#upload-form legend,#upload-form label{font-weight:690}
+#upload-form legend{padding:0;margin-bottom:.45rem}
 .radio-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
-.radio-options label{display:flex;align-items:center;gap:.55rem;padding:.6rem .7rem;border:1px solid var(--line);border-radius:.45rem;cursor:pointer}
-.radio-options label:has(:checked){background:var(--soft);border-color:var(--accent)}
-input[type=radio]{margin:0;accent-color:var(--accent);flex:none}
-select,input[type=file]{display:block;width:100%;font:inherit}
-select{padding:.55rem;color:var(--ink);background:white;border:1px solid var(--line);border-radius:.4rem;margin-top:.25rem}
-.drop{border:1px dashed #82998c;border-radius:.55rem;padding:.85rem;background:#fbfcfb}
-.drop.drag{border-color:var(--accent);background:var(--soft)}
+.radio-options label{display:flex;align-items:center;gap:.55rem;min-height:2.75rem;padding:.6rem .7rem;border:1px solid var(--line);border-radius:.55rem;cursor:pointer;transition:background .18s var(--ease),border-color .18s var(--ease)}
+.radio-options label:has(:checked){background:#efdef9;border-color:var(--ink)}
+.radio-options input{margin:0;accent-color:var(--accent);flex:none}
+#baseline,#file{display:block;width:100%;font:inherit}
+#baseline{min-height:2.75rem;padding:.55rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:.5rem;margin:.25rem 0}
+.drop{border:1.5px dashed var(--line);border-radius:.65rem;padding:.9rem;background:var(--paper);transition:border-color .18s var(--ease),background .18s var(--ease)}
+.drop.drag{border-color:var(--ink);background:var(--lemon)}
 .drop input{margin:.4rem 0}
-.drop small,.notice,.muted{color:var(--muted)}
+.drop small,.notice,.workspace .muted{color:var(--muted)}
 .drop small,.notice{font-size:.9rem}
-#file-name{font-weight:650;margin-top:.4rem}
+.workspace #file-name{font-weight:690;margin-top:.4rem}
 .notice{padding-left:.75rem;border-left:3px solid var(--line)}
-.error{color:var(--error)}
-button,a.action,input::file-selector-button{font:inherit;font-weight:650;border-radius:.4rem;padding:.5rem .75rem}
-button{width:max-content;max-width:100%;border:1px solid var(--accent);background:var(--accent);color:white;cursor:pointer}
-button:not(:disabled):hover{background:var(--accent-hover)}
-button:disabled{opacity:.62;cursor:default}
-input::file-selector-button{border:1px solid var(--line);background:white;color:var(--ink);margin-right:.55rem;cursor:pointer}
-:focus-visible{outline:3px solid #87551d;outline-offset:3px}
-.actions{display:flex;flex-wrap:wrap;align-items:center;gap:.55rem 1rem;margin-top:.9rem}
+.workspace .error{color:var(--error)}
+#submit,.workspace a.action,#file::file-selector-button{display:inline-block;min-height:2.75rem;border:1.5px solid var(--ink);background:var(--panel);color:var(--ink);font:inherit;font-weight:720;border-radius:2rem;padding:.48rem .95rem}
+#submit,.workspace a.action{box-shadow:0 3px 0 var(--ink);transition:background .18s var(--ease),transform .18s var(--ease),box-shadow .18s var(--ease)}
+#submit{width:max-content;max-width:100%;background:var(--field);cursor:pointer}
+#submit:not(:disabled):hover,.workspace a.action:hover{background:var(--lemon);transform:translateY(-1px);box-shadow:0 4px 0 var(--ink)}
+#submit:not(:disabled):active,.workspace a.action:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+#submit:disabled{opacity:.63;cursor:default}
+#file::file-selector-button{margin-right:.5rem;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.workspace .actions{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem .95rem;margin-top:.95rem}
 a{color:var(--accent);text-underline-offset:.18em}
-a.action{display:inline-block;border:1px solid var(--accent);text-decoration:none}
-a.action:hover{background:var(--soft)}
-.demo-title{font-weight:650;margin-bottom:.7rem}
+.workspace a.action{text-decoration:none}
+.workspace .demo-title{font-weight:720;margin-bottom:.75rem}
 .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin:0 0 .85rem}
-.metrics div{padding:.6rem;background:var(--soft);border-radius:.4rem}
-.metrics dt{font-size:.875rem;color:var(--muted)}
-.metrics dd{margin:0;font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
-#demo-gates{display:grid;gap:.25rem;font-size:.925rem}
+.metrics div{min-width:0;padding:.6rem .7rem;background:var(--soft);border-radius:.55rem}
+.metrics div:nth-child(2){background:#fbe0cb}
+.metrics dt{font-size:.875rem;color:var(--muted);overflow-wrap:anywhere}
+.metrics dd{margin:.1rem 0 0;font-size:1.75rem;line-height:1;font-weight:820;font-variant-numeric:tabular-nums}
+#demo-gates{display:grid;gap:.25rem;font-size:.96rem}
 .status-box{margin-top:1.1rem;padding-top:1rem;border-top:1px solid var(--line)}
-#status-message{margin-top:.35rem}
+.workspace #status-message{margin-top:.35rem}
+#status-message[data-running]::before{content:"";display:inline-block;width:.55rem;height:.55rem;margin-right:.45rem;border-radius:50%;background:var(--accent);vertical-align:.07em;animation:status-in .42s var(--ease) both}
+@keyframes status-in{from{transform:scale(.35);opacity:.3}to{transform:scale(1);opacity:1}}
 #run-log{margin:.55rem 0 0;padding-left:1.4rem;color:var(--muted);max-height:12rem;overflow:auto}
+#run-log li:last-child,.workspace #run-links:not([hidden]){animation:reveal .28s var(--ease) both}
 @media(max-width:49rem){.workspace{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:29rem){.inner,main{width:calc(100% - 1.5rem)}.radio-options{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:35rem){.inner,.workspace{width:calc(100% - 1.5rem)}.intro::before{display:none}.masthead nav{gap:.4rem .8rem}.masthead nav a{font-size:.9rem}}
+@media(max-width:29rem){.radio-options{grid-template-columns:minmax(0,1fr)}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}#guided-review,#run-log li:last-child,.workspace #run-links:not([hidden]),#status-message[data-running]::before{animation:none}#submit,.workspace a.action,.radio-options label,.drop{transition:none}}
 </style>
+<link rel="stylesheet" href="/reviewer/guided.css">
 </head>
 <body>
-<header><div class="inner"><strong>Разбор ТЗ</strong><span>Локальное приложение</span></div></header>
+<header class="masthead">
+  <div class="inner">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">✓</span>Разбор ТЗ</a>
+    <nav aria-label="Разделы"><a href="#upload-heading">Новая проверка</a><a href="#demo-heading">Демо-отчёт</a></nav>
+  </div>
+</header>
 <main>
-  <h1>Проверка требований</h1>
-  <p class="lead">Загрузите ТЗ для полного ревью или проверьте новую версию по замечаниям из базового отчёта.</p>
+  <div class="intro">
+    <div class="inner">
+      <div class="intro-copy">
+        <h1 id="review-title">Проверка требований</h1>
+        <p id="review-document">Загрузите документ или откройте демо-отчёт.</p>
+      </div>
+      <section id="guided-review" aria-label="Согласование" hidden></section>
+    </div>
+  </div>
   <div class="workspace">
     <section class="card" aria-labelledby="upload-heading">
       <h2 id="upload-heading">Новая проверка</h2>
@@ -120,6 +150,7 @@ a.action:hover{background:var(--soft)}
     </section>
   </div>
 </main>
+<script src="/reviewer/guided.js"></script>
 <script>
 'use strict';
 const get = id => document.getElementById(id);
@@ -150,6 +181,7 @@ let demoReady = false;
 let file = null;
 let busy = false;
 let displayedProgress = '';
+let requestedGuidedId = null;
 
 function save() {
   try { sessionStorage.setItem(storageKey, JSON.stringify(session)); } catch { /* Storage can be blocked. */ }
@@ -191,11 +223,12 @@ function selectFile(selected) {
   showError('');
 }
 
-function setStatus(message, error = false) {
+function setStatus(message, error = false, running = false) {
   get('run-status').hidden = false;
   const target = get('status-message');
   if (target.textContent !== message) target.textContent = message;
   target.classList.toggle('error', error);
+  target.toggleAttribute('data-running', running);
 }
 
 function showProgress(progress) {
@@ -235,17 +268,21 @@ async function poll(run) {
     if (session.last?.id !== run.id) return;
     const label = modeLabels[status.mode] || modeLabels[run.mode];
     showProgress(Array.isArray(status.progress) ? status.progress : []);
-    setStatus(label + ' · ' + (stateLabels[status.state] || 'Ожидаем статус'), status.state === 'failed');
+    setStatus(label + ' · ' + (stateLabels[status.state] || 'Ожидаем статус'), status.state === 'failed',
+      status.state === 'queued' || status.state === 'running');
     if (status.state === 'failed') {
       setStatus(label + ' · ' + (status.error || stateLabels.failed), true);
     } else if (status.state === 'done') {
       get('run-html').href = '/reports/' + run.id + '/review.html';
       get('run-json').href = '/reports/' + run.id + '/review.json?download=1';
       get('run-links').hidden = false;
-      if (status.mode === 'full' && !session.full.some(item => item.id === run.id)) {
-        session.full.unshift({id:run.id, name:run.name});
-        save();
-        refreshBaselines();
+      if (status.mode === 'full') {
+        if (!session.full.some(item => item.id === run.id)) {
+          session.full.unshift({id:run.id, name:run.name});
+          save();
+          refreshBaselines();
+        }
+        loadGuidedFull(run.id);
       }
     } else {
       setTimeout(() => poll(run), 1500);
@@ -321,7 +358,7 @@ form.addEventListener('submit', async event => {
   showError('');
   get('run-links').hidden = true;
   showProgress([]);
-  setStatus('Загружаем документ…');
+  setStatus('Загружаем документ…', false, true);
   try {
     const response = await request('/api/runs?' + params, {
       method:'POST', headers:{'X-File-Name':encodeURIComponent(selectedFile.name)}, body:selectedFile,
@@ -329,7 +366,7 @@ form.addEventListener('submit', async event => {
     if (!idPattern.test(response.id)) throw new Error('Сервер не вернул номер прогона.');
     session.last = {id:response.id, name:selectedFile.name, mode:selectedMode};
     save();
-    setStatus(modeLabels[selectedMode] + ' · В очереди');
+    setStatus(modeLabels[selectedMode] + ' · В очереди', false, true);
     poll(session.last);
   } catch (error) {
     if (error.status === 404 && selectedBaseline && selectedBaseline !== 'demo') forget(selectedBaseline);
@@ -349,9 +386,37 @@ function metric(label, count) {
   return item;
 }
 
+function isFullReport(report) {
+  return report.schema_version === 2 && Array.isArray(report.whole?.findings) &&
+    Array.isArray(report.conflicts) && Array.isArray(report.registry) && Array.isArray(report.source);
+}
+
+function publishReport(report, id) {
+  const reportUrl = '/reports/' + id + '/review.html';
+  const name = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
+  get('review-document').textContent = [id === 'demo' ? 'Демо' : 'Полное ревью', name].filter(Boolean).join(' · ');
+  window.dispatchEvent(new CustomEvent('review:loaded', {detail:{report, reportUrl}}));
+  get('review-title').textContent = get('guided-review').hidden ? 'Проверка требований' : 'Согласование';
+}
+
+async function loadGuidedFull(id) {
+  if (requestedGuidedId === id) return;
+  requestedGuidedId = id;
+  try {
+    const report = await request('/reports/' + id + '/review.json');
+    await demoLoad;
+    if (requestedGuidedId === id && isFullReport(report)) publishReport(report, id);
+  } catch (error) {
+    if (requestedGuidedId !== id) return;
+    requestedGuidedId = null;
+    if (error.status === 404 && !(busy && session.last?.id === id)) forget(id);
+  }
+}
+
 async function loadDemo() {
   try {
     const report = await request('/reports/demo/review.json');
+    if (!isFullReport(report)) throw new Error('Некорректный демо-отчёт.');
     const title = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
     get('demo-title').textContent = title || 'Демо-отчёт';
     const findings = report.whole?.findings || [];
@@ -371,18 +436,20 @@ async function loadDemo() {
     get('demo-summary').hidden = false;
     demoReady = true;
     refreshBaselines();
+    publishReport(report, 'demo');
   } catch {
     get('demo-status').textContent = 'Демо-отчёт сейчас недоступен.';
   }
 }
 
+const demoLoad = loadDemo();
+if (session.full.length) loadGuidedFull(session.full[0].id);
 if (session.last) {
   busy = true;
   setStatus('Восстанавливаем состояние прогона…');
   poll(session.last);
 }
 refreshBaselines();
-loadDemo();
 </script>
 </body>
 </html>

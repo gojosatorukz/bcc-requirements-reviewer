@@ -1,0 +1,58 @@
+#guided-review {
+  --g-ink: #281927;
+  --g-paper: #fffaf0;
+  color: var(--g-ink);
+  min-width: 0;
+  container-type: inline-size;
+}
+#guided-review .guide-bar,
+#guided-review .guide-grid {display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: clamp(16px, 2.8vw, 40px)}
+#guided-review .guide-bar {align-items: end; margin: 0 0 15px}
+#guided-review ol {display: flex; margin: 0; padding: 0; list-style: none; gap: 8px}
+#guided-review li {flex: 1; display: grid; gap: 5px; font-weight: 630; font-size: .8rem; line-height: 1.1}
+#guided-review li::before {content: ""; height: 6px; border-radius: 30px; background: #ffc49e}
+#guided-review li.reached::before {background: var(--g-ink)}
+#guided-review .guide-select {justify-self: end; display: flex; align-items: center; gap: .5rem; font-size: .8rem; font-weight: 700}
+#guided-review select {width: auto; max-width: 100%; margin: 0; color: var(--g-ink); background: var(--g-paper); border: 1.5px solid currentColor; padding: .32rem .5rem; border-radius: 7px; font: inherit}
+#guided-review .guide-sheet {background: var(--g-paper); border: 2px solid var(--g-ink); border-radius: 13px; box-shadow: 0 6px 0 var(--g-ink); padding: clamp(20px, 3vw, 42px); min-width: 0}
+#guided-review h2 {font-size: clamp(1.75rem, 3.4vw, 3.65rem); font-weight: 800; letter-spacing: -.05em; line-height: 1.02; text-wrap: balance; margin: 0 0 .95rem}
+#guided-review h2:focus:not(:focus-visible) {outline: 0}
+#guided-review .guide-scenario,
+#guided-review .guide-context {font-size: clamp(.98rem, 1.35vw, 1.14rem); line-height: 1.45; max-width: 62ch; margin: 0 0 1.3rem; color: #50434b}
+#guided-review .guide-actions {display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin-top: 1.2rem}
+#guided-review .guide-primary {background: var(--g-ink); color: var(--g-paper); font-weight: 670; border: 2px solid var(--g-ink); border-radius: 7px; padding: .65rem .9rem; cursor: pointer}
+#guided-review .guide-primary:enabled:hover {background: #483043}
+#guided-review .guide-primary span {margin-left: .45rem}
+#guided-review .guide-primary:disabled {opacity: .5; cursor: default}
+#guided-review .guide-back {color: var(--g-ink); font: inherit; font-size: .91rem; font-weight: 640; text-decoration: underline; text-underline-offset: .2em; border: 0; background: transparent; box-shadow: none; padding: .4rem .15rem}
+#guided-review .guide-evidence {position: relative; display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; padding: 8px 5px}
+#guided-review figure {margin: 0; background: #fffdf5; color: var(--g-ink); border: 2px solid var(--g-ink); border-radius: 9px; padding: 13px 18px 17px; box-shadow: 3px 4px 0 var(--g-ink); position: relative; transform: rotate(-1.6deg); min-width: 0}
+#guided-review figure + figure {margin-top: 7px; margin-left: 5%; background: #ffe392; transform: rotate(1.5deg)}
+#guided-review figcaption {display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; font: 650 .74rem/1.3 ui-monospace, monospace; padding-bottom: .45rem; border-bottom: 1px dashed #796875}
+#guided-review blockquote {margin: .6rem 0 0; font-size: clamp(.85rem, 1.2vw, 1.02rem); font-weight: 530; line-height: 1.4; overflow-wrap: anywhere}
+#guided-review .guide-table {margin: .55rem 0 0; display: grid; grid-template-columns: minmax(65px, .75fr) minmax(0, 2fr); column-gap: .7rem; row-gap: .3rem; line-height: 1.33; overflow-wrap: anywhere}
+#guided-review .guide-table dt {font-size: .76rem; align-self: baseline; font-weight: 650}
+#guided-review .guide-table dd {font-size: .9rem; font-weight: 530; margin: 0}
+#guided-review .guide-ref {color: var(--g-ink); text-underline-offset: .18em; font-weight: 650; white-space: nowrap}
+#guided-review .guide-options {display: grid; gap: .55rem; border: 0; padding: 0; margin: 0}
+#guided-review .guide-options legend {font-size: .8rem; font-weight: 650; padding: 0 0 .55rem}
+#guided-review .guide-options label {display: flex; align-items: flex-start; gap: .65rem; padding: .64rem .8rem; font-weight: 560; line-height: 1.32; border: 1.5px solid #afa098; border-radius: 7px; cursor: pointer}
+#guided-review .guide-options label:has(input:checked) {border-color: var(--g-ink); background: #ffe392; box-shadow: 2px 2px 0 var(--g-ink)}
+#guided-review .guide-options input {margin-top: .18rem; accent-color: var(--g-ink)}
+#guided-review .guide-draft {margin: .35rem 0 1rem; border-left: 4px solid #f29164; padding-left: .9rem}
+#guided-review .guide-draft dt {margin: .6rem 0 .12rem; font-weight: 750; font-size: .81rem}
+#guided-review .guide-draft dd {margin: 0; line-height: 1.4}
+#guided-review .guide-copy-status {font-size: .87rem}
+#guided-review .guide-copy-status:not(:empty) {margin-top: .6rem}
+#guided-review textarea {display: block; width: 100%; min-height: 5rem}
+@media (prefers-reduced-motion: no-preference) {
+  #guided-review .guide-sheet {animation: guide-appear .26s cubic-bezier(.2,.76,.25,1) both}
+  @keyframes guide-appear {from {opacity: .15; transform: translateY(7px)} to {opacity: 1; transform: translateY(0)}}
+}
+@container (max-width: 660px) {
+  #guided-review .guide-grid {grid-template-columns: 1fr; gap: 15px}
+  #guided-review .guide-bar {grid-template-columns: 1fr; gap: 11px}
+  #guided-review .guide-select {justify-self: start}
+  #guided-review .guide-evidence {padding: 2px 4px}
+  #guided-review figure, #guided-review figure + figure {transform: none; margin-left: 0}
+}

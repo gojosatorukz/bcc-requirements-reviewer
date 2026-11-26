@@ -20,7 +20,9 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parent.parent
 PAGE = ROOT / "reviewer" / "workbench.html"
 REPORT_FILES = {"review.html": "text/html; charset=utf-8", "review.json": "application/json; charset=utf-8"}
-GALLERY_FILES = {
+STATIC_FILES = {
+    "/reviewer/guided.css": "text/css; charset=utf-8",
+    "/reviewer/guided.js": "text/javascript; charset=utf-8",
     "/design/concepts/index.html": "text/html; charset=utf-8",
     "/design/concepts/gallery.css": "text/css; charset=utf-8",
     "/design/concepts/case.js": "text/javascript; charset=utf-8",
@@ -277,9 +279,9 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
         try:
             route = self.route()
             app = self.server.app
-            if route.path in GALLERY_FILES:
+            if route.path in STATIC_FILES:
                 artifact = app.root / route.path[1:]
-                self.reply(HTTPStatus.OK, artifact.read_bytes(), GALLERY_FILES[route.path])
+                self.reply(HTTPStatus.OK, artifact.read_bytes(), STATIC_FILES[route.path])
                 return
             if route.path == "/":
                 self.reply(HTTPStatus.OK, (app.root / "reviewer" / PAGE.name).read_bytes(),
