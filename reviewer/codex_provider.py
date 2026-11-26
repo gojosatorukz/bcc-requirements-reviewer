@@ -9,12 +9,12 @@ import tempfile
 from .contract import REVIEW
 
 
-def complete(prompt, model):
+def complete(prompt, model, output_schema=REVIEW):
     with tempfile.TemporaryDirectory(prefix="reqreview-") as work:
         directory = Path(work)
         schema = directory / "schema.json"
         result = directory / "answer.json"
-        schema.write_text(json.dumps(REVIEW), encoding="utf-8")
+        schema.write_text(json.dumps(output_schema), encoding="utf-8")
         command = [
             "codex", "-a", "never", "exec", "--ephemeral", "--ignore-user-config",
             "--skip-git-repo-check", "--sandbox", "read-only", "--color", "never",

@@ -7,10 +7,9 @@ import json
 from pathlib import Path
 import tempfile
 
-from .contract import REVIEW, TEXT, record, validate_shape
+from .contract import REVIEW, source_lines, validate_shape
 
 
-SOURCE = record(line={"type": "integer"}, text=TEXT)
 RUN_FIELDS = {
     "input_name": "Документ",
     "input_lines": "Строк в документе",
@@ -33,21 +32,6 @@ ATTEMPT_STATUS = {"accepted": "Принята", "rejected": "Отклонена"
 
 def safe(value):
     return escape(str(value))
-
-
-def source_lines(report):
-    validate_shape(report["source"], {"type": "array", "items": SOURCE}, "source")
-    line_count = report["run"]["input_lines"]
-    if type(line_count) is not int or line_count < 1:
-        raise ValueError("run.input_lines: ожидалось положительное число строк")
-
-    lines = {}
-    for row in report["source"]:
-        number = row["line"]
-        if number in lines or not 1 <= number <= line_count:
-            raise ValueError(f"source: неверный или повторный номер строки {number}")
-        lines[number] = row["text"]
-    return lines
 
 
 def render_outcome(outcome, conflict_number, side_number, lines, backlinks):
