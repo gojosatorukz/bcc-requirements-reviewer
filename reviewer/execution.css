@@ -141,6 +141,7 @@
 .lab-result .lab-origin {font-size: .75rem; color: var(--proof-muted); font-weight: 680}
 .lab-result h3 {margin: .25rem 0; font-size: 1.08rem}
 .lab-result p {font-size: .88rem}
+.lab-result p.lab-scope {margin: .65rem 0 .45rem; font-size: .84rem; line-height: 1.4}
 .lab-dialog .execution-table caption {font-size: .78rem}
 .lab-fields {display: grid; gap: .75rem}
 .lab-fields fieldset {
@@ -155,6 +156,9 @@
   gap: .55rem .95rem;
 }
 .lab-fields legend {padding: 0; font-weight: 720; font-size: .88rem}
+.lab-fields details.lab-event {grid-column: 1 / -1; margin: 0; border: 0}
+.lab-fields .lab-event summary {padding: .12rem 0; color: var(--proof-muted); font-size: .8rem}
+.lab-fields .lab-event p {font-size: .84rem}
 .lab-fields label {display: grid; gap: .2rem; font-size: .84rem; color: var(--proof-muted)}
 .lab-fields input {
   width: 100%;

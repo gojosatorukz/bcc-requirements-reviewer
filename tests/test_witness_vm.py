@@ -157,6 +157,19 @@ class ExecutableWitnessTests(unittest.TestCase):
         self.assertEqual(blocked["reads"], {"count": 1})
         self.assertEqual(blocked["updates"][0]["reads"], {})
 
+    def test_selected_guard_can_explain_an_agreeing_case_at_the_original_split(self):
+        p = threshold_program()
+        why = explain_step(p, LINES, WITNESS, case=p["control"], step=2, field="count")
+        self.assertEqual((why["step"], why["field"]), (2, "count"))
+        for side in ("first", "second"):
+            rule, = why[side]
+            self.assertTrue(rule["matched"])
+            self.assertEqual(rule["updates"][0]["before"], 0)
+            self.assertEqual(rule["updates"][0]["after"], 1)
+        for step, field in ((0, "count"), (True, "count"), (3, "count"), (1, "missing"), (None, "count")):
+            with self.assertRaises(ValueError):
+                explain_step(p, LINES, step=step, field=field)
+
     def test_an_intermediate_difference_is_reported_even_after_reconvergence(self):
         program = ledgers()
         for side in ("first", "second"):

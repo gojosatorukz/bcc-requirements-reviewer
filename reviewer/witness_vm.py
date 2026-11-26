@@ -326,7 +326,7 @@ def _explain_field(state, inputs, rules, field):
     return reasons
 
 
-def _run(case, sides, observe, explanation=None):
+def _run(case, sides, observe, explanation=None, point=None):
     initial, events = case
     states = {name: initial.copy() for name in sides}
     start = {field: initial[field] for field in observe}
@@ -339,19 +339,22 @@ def _run(case, sides, observe, explanation=None):
             states[name] = _advance(before[name], inputs, rules.get(kind, ()))
             snapshot[name] = {field: states[name][field] for field in observe}
         fields = [key for key in observe if snapshot["first"][key] != snapshot["second"][key]]
+        show = point[1] if point and point[0] == index else None
         if fields and first_difference is None:
             key = fields[0]
             first_difference = {"step": index, "field": key, "first": snapshot["first"][key],
                                 "second": snapshot["second"][key]}
-            if explanation is not None:
-                explanation.update(step=index, field=key, kind=kind, label=label)
-                for name, rules in sides.items():
-                    explanation[name] = _explain_field(before[name], inputs, rules.get(kind, ()), key)
+            if point is None:
+                show = key
+        if explanation is not None and show is not None:
+            explanation.update(step=index, field=show, kind=kind, label=label)
+            for name, rules in sides.items():
+                explanation[name] = _explain_field(before[name], inputs, rules.get(kind, ()), show)
         trace.append({"step": index, "kind": kind, "label": label, "inputs": inputs, **snapshot, "different": fields})
     return {"initial": start, "steps": trace, "first_difference": first_difference, "final": snapshot}
 
 
-def _evaluate(program, lines, witness, sample, explanation=None):
+def _evaluate(program, lines, witness, sample, explanation=None, point=None):
     validate_shape(program, PROGRAM, "Исполняемый пример")
     states = _fields(program["states"], "Состояния", 1)
     inputs = _fields(program["inputs"], "Входы", 0)
@@ -363,6 +366,9 @@ def _evaluate(program, lines, witness, sample, explanation=None):
     event_fields = {}
     scenario = _case(program["scenario"], states, inputs, event_fields)
     control = _case(program["control"], states, inputs, event_fields)
+    if point is not None and (type(point[0]) is not int or not 1 <= point[0] <= len(scenario[1])
+                              or point[1] not in observe):
+        raise ValueError("Для пояснения нужны существующий шаг и наблюдаемый показатель")
     if [event[0] for event in scenario[1]] != [event[0] for event in control[1]]:
         raise ValueError("В контроле нужны те же виды событий в том же порядке")
     if scenario[0] == control[0] and [e[2] for e in scenario[1]] == [e[2] for e in control[1]]:
@@ -380,7 +386,7 @@ def _evaluate(program, lines, witness, sample, explanation=None):
         sides[name] = _compile(side, event_fields, states, inputs)
     if program["first"]["source"] == program["second"]["source"]:
         raise ValueError("Обе стороны ссылаются на одну и ту же цитату")
-    replay = {"version": VERSION, "scenario": _run(scenario, sides, observe, explanation if sample is None else None),
+    replay = {"version": VERSION, "scenario": _run(scenario, sides, observe, explanation if sample is None else None, point),
               "control": _run(control, sides, observe)}
     if replay["scenario"]["first_difference"] is None:
         raise ValueError("В общем сценарии наблюдаемые результаты совпадают на всех шагах")
@@ -389,7 +395,7 @@ def _evaluate(program, lines, witness, sample, explanation=None):
     if sample is not None:
         if [event["kind"] for event in sample["events"]] != [event[0] for event in scenario[1]]:
             raise ValueError("При повторном исполнении нужны прежние виды событий в том же порядке")
-        return _run(_case(sample, states, inputs, event_fields), sides, observe, explanation)
+        return _run(_case(sample, states, inputs, event_fields), sides, observe, explanation, point)
     return replay
 
 
@@ -404,10 +410,11 @@ def simulate(program, lines, case, witness=None):
     return _evaluate(program, lines, witness, case)
 
 
-def explain_step(program, lines, witness=None, *, case=None):
-    """Explain the first differing field using evaluated operands. Equal exploratory traces return None."""
+def explain_step(program, lines, witness=None, *, case=None, step=None, field=None):
+    """Explain a selected step and field, or the first divergence when neither is specified."""
     if case is not None:
         validate_shape(case, CASE, "Тестовые входы")
     explanation = {}
-    _evaluate(program, lines, witness, case, explanation)
+    point = None if step is None and field is None else (step, field)
+    _evaluate(program, lines, witness, case, explanation, point)
     return explanation or None

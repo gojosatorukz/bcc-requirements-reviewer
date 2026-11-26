@@ -60,7 +60,7 @@ def trace(program, name, outcome, states, inputs):
     return initial + "".join(rows)
 
 
-def render_explanation(explanation, program, definitions):
+def render_explanation(explanation, program, definitions, *, diverged=True):
     if not explanation:
         return ""
     bodies = []
@@ -83,8 +83,25 @@ def render_explanation(explanation, program, definitions):
                     rows.append(f'<p>Обновление пропущено. Осталось {quantity(update["before"], unit)}.</p>')
         bodies.append(f'<div><h5>Правило {letter} · <a href="#source-line-{line}">строка {line}</a></h5>'
                       + ("".join(rows) if rows else '<p>На этом событии правило сохраняет прежнее значение.</p>') + '</div>')
-    return (f'<details class="execution-logic"><summary>Почему разошлись на шаге {explanation["step"]}</summary>'
+    title = (f'Почему разошлись на шаге {explanation["step"]}' if diverged
+             else f'Как рассчитан шаг {explanation["step"]} · {safe(definitions[explanation["field"]]["label"])}')
+    return (f'<details class="execution-logic"><summary>{title}</summary>'
             + "".join(bodies) + '</details>')
+
+
+def explain_simulation(report, finding_id, case, trace):
+    """Render the evaluated rules for a custom trace of an already validated report."""
+    from .contract import source_lines
+    from .witness_vm import explain_step
+
+    item = next(row for row in report["executables"]["items"] if row["finding_id"] == finding_id)
+    program = item["program"]
+    diff = trace["first_difference"]
+    # For agreeing inputs, inspect exactly the field and moment of the saved disagreement.
+    point = diff or item["result"]["scenario"]["first_difference"]
+    why = explain_step(program, source_lines(report), case=case, step=point["step"], field=point["field"])
+    fields = {row["key"]: row for row in program["states"] + program["inputs"]}
+    return render_explanation(why, program, fields, diverged=diff is not None)
 
 
 def render_execution(item, explanation=None):

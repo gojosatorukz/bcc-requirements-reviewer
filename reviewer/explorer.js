@@ -47,7 +47,26 @@
     return result;
   }
 
-  function openExplorer(item, endpoint, trigger) {
+  function scopeDetails(item, reportUrl) {
+    const box = element('details', undefined, 'execution-sources');
+    box.append(element('summary', 'Где применимы правила из отчёта'));
+    for (const [side, letter] of [['first','А'],['second','Б']]) {
+      const source = item.program[side].source;
+      const quote = element('blockquote');
+      const label = element('span', 'Правило ' + letter + ' · ');
+      const link = element('a', 'строка ' + source.line + ' ↗');
+      link.href = reportUrl + '#source-line-' + source.line;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      label.append(link);
+      quote.append(label, document.createTextNode(source.quote));
+      box.append(quote);
+      if (item.audit?.[side + '_rule']) box.append(element('p', item.audit[side + '_rule'], 'execution-reading'));
+    }
+    return box;
+  }
+
+  function openExplorer(item, endpoint, reportUrl, trigger) {
     if (opened) opened.close();
     const program = item.program;
     const states = new Map(program.states.map(field => [field.key, field]));
@@ -85,9 +104,14 @@
       submit.disabled = false;
       output.removeAttribute('aria-busy');
     }
-    function showFields(title, values, definitions) {
+    function showFields(title, values, definitions, sourceEvent) {
       const fieldset = element('fieldset');
       fieldset.append(element('legend', title));
+      if (sourceEvent) {
+        const source = element('details', undefined, 'lab-event');
+        source.append(element('summary', 'Событие в сохранённом примере'), element('p', sourceEvent));
+        fieldset.append(source);
+      }
       for (const entry of values) {
         const field = definitions.get(entry.key);
         const label = element('label', field.label + (field.unit === '1' ? '' : ' · ' + field.unit));
@@ -115,7 +139,7 @@
       fields.replaceChildren();
       showFields('До первого события', draft.initial, states);
       draft.events.forEach((event, i) => {
-        if (event.values.length) showFields('Шаг ' + (i + 1) + ' · ' + event.kind, event.values, inputs);
+        if (event.values.length) showFields('Входные данные шага ' + (i + 1), event.values, inputs, event.label);
       });
       for (const [key, control] of presetButtons) control.setAttribute('aria-pressed', String(key === name));
       output.replaceChildren(resultCard(item.result[name], program, states,
@@ -150,7 +174,23 @@
         const body = await res.json();
         if (pending !== request) return;
         if (!res.ok) throw new Error(body.error || 'Пересчитайте значения ещё раз.');
-        output.replaceChildren(resultCard(body.trace, program, states, 'Расчёт для введённых значений'));
+        const card = resultCard(body.trace, program, states, 'Расчёт для введённых значений');
+        const note = body.trace.first_difference ? 'Обе модели посчитали эти входы по сохранённым формулам.'
+          : 'Совпадение относится только к введённым значениям и сохранённым формулам.';
+        card.append(element('p', note + ' Правило приёмки для изменённых условий подтверждает владелец ТЗ.', 'lab-scope'));
+        if (body.explanation_html) {
+          const template = document.createElement('template');
+          // The same-origin route renders escaped data after replaying the validated report.
+          template.innerHTML = body.explanation_html;
+          for (const link of template.content.querySelectorAll('a[href^="#source-line-"]')) {
+            link.setAttribute('href', reportUrl + link.getAttribute('href'));
+            link.target = '_blank';
+            link.rel = 'noopener';
+          }
+          card.append(template.content);
+        }
+        card.append(scopeDetails(item, reportUrl));
+        output.replaceChildren(card);
         output.scrollIntoView({block:'nearest'});
       } catch (error) {
         if (pending === request) output.textContent = 'Расчёт недоступен. ' + error.message;
@@ -179,11 +219,11 @@
 
   window.addEventListener('review:loaded', () => opened?.close());
   window.addEventListener('review:execution-panel', ({detail}) => {
-    const {panel, item, endpoint} = detail;
+    const {panel, item, endpoint, reportUrl} = detail;
     if (item.status !== 'executed') return;
     const edit = button('Изменить входные данные');
     edit.className = 'execution-edit';
-    edit.addEventListener('click', () => openExplorer(item, endpoint, edit));
+    edit.addEventListener('click', () => openExplorer(item, endpoint, reportUrl, edit));
     panel.insertBefore(edit, panel.querySelector('details'));
   });
 })();

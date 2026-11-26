@@ -520,6 +520,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             simulation = re.fullmatch(rf"/api/simulate/(demo|{JOB_ID})/([0-9a-f]{{64}})/({FINDING_ID})", route.path)
             if simulation:
                 from .executable import simulate
+                from .execution_view import explain_simulation
                 if route.query or self.headers.get_content_type() != "application/json":
                     raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Нужен JSON с входными значениями примера.")
                 baseline, digest, fid = simulation.groups()
@@ -530,10 +531,12 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                     data = json.loads(self.rfile.read(self.body_size(64_000)))
                     if type(data) is not dict or set(data) != {"case"}:
                         raise ValueError("Укажите только начальные значения и события в поле case")
-                    trace = simulate(json.loads(raw), fid, data["case"])
+                    report = json.loads(raw)
+                    trace = simulate(report, fid, data["case"])
+                    why = explain_simulation(report, fid, data["case"], trace)
                 except (ValueError, KeyError, TypeError, RecursionError) as exc:
                     raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, f"Не удалось рассчитать пример. {str(exc)[:240]}") from exc
-                self.json(HTTPStatus.OK, {"trace": trace})
+                self.json(HTTPStatus.OK, {"trace": trace, "explanation_html": why})
                 return
             dialogue = re.fullmatch(DIALOGUE_ROUTE, route.path)
             if dialogue:

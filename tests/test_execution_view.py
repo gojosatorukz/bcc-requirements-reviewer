@@ -6,7 +6,8 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from xml.etree import ElementTree
 
-from reviewer.execution_view import render_execution, render_explanation
+from reviewer.executable import simulate
+from reviewer.execution_view import explain_simulation, render_execution, render_explanation
 from reviewer.serve import Workbench, WorkbenchError
 
 
@@ -14,6 +15,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExecutionViewTests(TestCase):
+    def test_amount_outside_the_table_case_shows_the_actually_skipped_guard(self):
+        report = json.loads((ROOT / "eval/executable/runs/official.json").read_bytes())
+        item = report["executables"]["items"][0]
+        edited = deepcopy(item["program"]["scenario"])
+        amount = next(row for row in edited["events"][0]["values"] if row["value"] == 4000)
+        amount["value"] = 4100
+        trace = simulate(report, item["finding_id"], edited)
+        html = explain_simulation(report, item["finding_id"], edited, trace)
+        self.assertIsNone(trace["first_difference"])
+        self.assertIn("Как рассчитан шаг 1", html)
+        self.assertIn('href="#source-line-64"', html)
+        self.assertIn("Осталось 0 ₸", html)
+        self.assertIn("4\u202f100 ₸", html)
+        self.assertNotIn("Почему разошлись", html)
+
     def test_explanation_displays_actual_guard_reads_and_preserved_value(self):
         row = {"when": "amount < 10", "matched": False, "reads": {"amount": 12},
                "updates": [{"target": "total", "before": 1, "after": 1, "applied": False,
