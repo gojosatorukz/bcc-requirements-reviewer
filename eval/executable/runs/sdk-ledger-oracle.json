@@ -1,0 +1,87 @@
+{
+  "engine": "TigerBeetle version 0.17.2+c9b910a",
+  "cases": {
+    "sdk-original": {
+      "source_flag": "0",
+      "events": [
+        {
+          "request": "create_transfers id=6 debit_account_id=101 credit_account_id=102 amount=10 ledger=1 code=1",
+          "status": "created",
+          "balances": {
+            "101": {
+              "debits_pending": 0,
+              "debits_posted": 10,
+              "credits_pending": 0,
+              "credits_posted": 0
+            },
+            "102": {
+              "debits_pending": 0,
+              "debits_posted": 0,
+              "credits_pending": 0,
+              "credits_posted": 10
+            }
+          }
+        },
+        {
+          "request": "create_transfers id=7 amount=340282366920938463463374607431768211455 pending_id=6 flags=post_pending_transfer",
+          "status": "pending_transfer_not_pending",
+          "balances": {
+            "101": {
+              "debits_pending": 0,
+              "debits_posted": 10,
+              "credits_pending": 0,
+              "credits_posted": 0
+            },
+            "102": {
+              "debits_pending": 0,
+              "debits_posted": 0,
+              "credits_pending": 0,
+              "credits_posted": 10
+            }
+          }
+        }
+      ]
+    },
+    "sdk-fixed": {
+      "source_flag": "TransferFlags{Pending: true}.ToUint16()",
+      "events": [
+        {
+          "request": "create_transfers id=6 debit_account_id=101 credit_account_id=102 amount=10 ledger=1 code=1 flags=pending",
+          "status": "created",
+          "balances": {
+            "101": {
+              "debits_pending": 10,
+              "debits_posted": 0,
+              "credits_pending": 0,
+              "credits_posted": 0
+            },
+            "102": {
+              "debits_pending": 0,
+              "debits_posted": 0,
+              "credits_pending": 10,
+              "credits_posted": 0
+            }
+          }
+        },
+        {
+          "request": "create_transfers id=7 amount=340282366920938463463374607431768211455 pending_id=6 flags=post_pending_transfer",
+          "status": "created",
+          "balances": {
+            "101": {
+              "debits_pending": 0,
+              "debits_posted": 10,
+              "credits_pending": 0,
+              "credits_posted": 0
+            },
+            "102": {
+              "debits_pending": 0,
+              "debits_posted": 0,
+              "credits_pending": 0,
+              "credits_posted": 10
+            }
+          }
+        }
+      ]
+    }
+  }
+}
