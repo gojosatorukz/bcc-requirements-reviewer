@@ -68,6 +68,9 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 .drop small,.notice,.workspace .muted{color:var(--muted)}
 .drop small,.notice{font-size:.9rem}
 .workspace #file-name{font-weight:690;margin-top:.4rem}
+.reuse-report{padding:.7rem .85rem;border-left:4px solid #ff7045;background:var(--soft);overflow-wrap:anywhere}
+.reuse-report a{display:inline-block;margin:.3rem 0;font-weight:750}
+.reuse-report p:last-child{color:var(--muted);font-size:.9rem}
 .notice{padding-left:.75rem;border-left:3px solid var(--line)}
 .workspace .error{color:var(--error)}
 #submit,.workspace a.action,#file::file-selector-button{display:inline-block;min-height:2.75rem;border:1.5px solid var(--ink);background:var(--panel);color:var(--ink);font:inherit;font-weight:720;border-radius:2rem;padding:.48rem .95rem}
@@ -164,6 +167,11 @@ a{color:var(--accent);text-underline-offset:.18em}
           <small id="file-help">Выберите или перетащите один файл MD, TXT или PDF. Для PDF нужен текстовый слой.</small>
           <p id="file-name" aria-live="polite" hidden></p>
         </div>
+        <div class="reuse-report" id="reuse-report" hidden>
+          <p id="reuse-report-match" role="status"></p>
+          <a id="reuse-report-link">Открыть сохранённый отчёт</a>
+          <p id="reuse-report-meta"></p>
+        </div>
         <p class="notice">При запуске текст документа отправляется модели, настроенной в локальном приложении.</p>
         <p id="upload-error" class="error" role="alert" hidden></p>
         <button id="submit" type="submit">Запустить проверку</button>
@@ -241,6 +249,8 @@ let requestedGuidedId = null;
 let findingBaseline = '';
 let findingLoad = null;
 let recheckLoad = null;
+let reuseCheck = null;
+let reuseOffer = null;
 
 function save() {
   try { sessionStorage.setItem(storageKey, JSON.stringify(session)); } catch { /* Storage can be blocked. */ }
@@ -342,7 +352,72 @@ function selectFile(selected) {
   fileName.textContent = file ? 'Выбран файл · ' + file.name : '';
   fileName.hidden = !file;
   showError('');
+  checkReportReuse();
 }
+
+function clearReportReuse() {
+  reuseCheck?.abort();
+  reuseCheck = null;
+  reuseOffer = null;
+  get('reuse-report').hidden = true;
+  get('reuse-report-link').removeAttribute('href');
+}
+
+async function readReusableReport(id, hash, signal) {
+  try {
+    const report = await request('/reports/' + id + '/review.json', {signal});
+    return isFullReport(report) && report.run?.input_sha256 === hash ? report.run : null;
+  } catch {
+    return null;
+  }
+}
+
+async function checkReportReuse() {
+  clearReportReuse();
+  if (busy || mode() !== 'full' || !file || !globalThis.crypto?.subtle) return;
+  const suffix = file.name.match(/\.(md|txt|pdf)$/i)?.[1]?.toLowerCase();
+  if (!suffix || !file.size || file.size > (suffix === 'pdf' ? 16_000_000 : 120_000)) return;
+  const controller = new AbortController();
+  reuseCheck = controller;
+  try {
+    const buffer = await file.arrayBuffer();
+    if (controller.signal.aborted) return;
+    const digest = await crypto.subtle.digest('SHA-256', buffer);
+    const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    for (const id of [...session.full.map(item => item.id), 'demo']) {
+      if (controller.signal.aborted) return;
+      const run = await readReusableReport(id, hash, controller.signal);
+      if (controller.signal.aborted) return;
+      if (!run) continue;
+      reuseOffer = {id, hash};
+      const date = new Date(run.started_utc);
+      const when = Number.isNaN(date.getTime()) ? 'дата не указана' :
+        new Intl.DateTimeFormat('ru', {dateStyle:'medium', timeStyle:'short', timeZone:'UTC'}).format(date) + ' UTC';
+      get('reuse-report-meta').textContent = [when, run.agent_version && 'версия агента ' + run.agent_version,
+        run.input_name].filter(Boolean).join(' · ');
+      get('reuse-report-match').textContent = id === 'demo' ? 'Файл совпадает с исходником демо-отчёта.' :
+        'Этот файл уже проверяли в этой вкладке.';
+      const anchor = get('reuse-report-link');
+      anchor.textContent = id === 'demo' ? 'Открыть сохранённый демо-отчёт' : 'Открыть сохранённый отчёт';
+      anchor.href = '/reports/' + id + '/review.html';
+      get('reuse-report').hidden = false;
+      return;
+    }
+  } catch {
+    // A file that cannot be hashed can still be submitted for a fresh review.
+  }
+}
+
+get('reuse-report-link').addEventListener('click', async event => {
+  if (!reuseOffer || !reuseCheck) return;
+  event.preventDefault();
+  const offer = reuseOffer;
+  const controller = reuseCheck;
+  const run = await readReusableReport(offer.id, offer.hash, controller.signal);
+  if (controller.signal.aborted || offer !== reuseOffer) return;
+  if (run) location.assign('/reports/' + offer.id + '/review.html');
+  else clearReportReuse();
+});
 
 function setStatus(message, error = false, running = false) {
   get('run-status').hidden = false;
@@ -524,12 +599,16 @@ async function poll(run) {
   }
   busy = false;
   refreshControls();
+  checkReportReuse();
 }
 
 form.addEventListener('change', event => {
   dismissRecheck();
   if (event.target === fileInput) selectFile(fileInput.files[0]);
-  else showError('');
+  else {
+    showError('');
+    if (event.target.name === 'mode') checkReportReuse();
+  }
   refreshControls();
 });
 
@@ -551,6 +630,8 @@ drop.addEventListener('drop', event => {
   if (!files?.length) return;
   dismissRecheck();
   if (files.length !== 1) {
+    selectFile(null);
+    fileInput.value = '';
     setBrandState('failed');
     showError('Перетащите один документ.');
     return;
@@ -587,6 +668,7 @@ form.addEventListener('submit', async event => {
   }
   const selectedFile = file;
   busy = true;
+  clearReportReuse();
   setBrandState('working');
   refreshControls();
   showError('');
@@ -609,6 +691,7 @@ form.addEventListener('submit', async event => {
     setStatus(error.message || 'Не удалось отправить документ.', true);
     busy = false;
     refreshControls();
+    checkReportReuse();
   }
 });
 
@@ -687,6 +770,7 @@ if (session.last) {
   poll(session.last);
 }
 refreshBaselines();
+if (fileInput.files[0]) selectFile(fileInput.files[0]);
 </script>
 </body>
 </html>

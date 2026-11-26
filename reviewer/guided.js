@@ -8,6 +8,8 @@
   let cases = [], index = 0, reportUrl, reportIdentity;
   let positions = [];
   let tableHeaders = new Map(), sourceLines = new Map();
+  let markupLines = new Set();
+  let pages = [];
 
   function readCases(report) {
     const result = [];
@@ -24,8 +26,13 @@
     return result;
   }
 
-  function sourceLink(ref) {
-    return `<a class="guide-ref" href="${escape(reportUrl)}#source-line-${Number(ref.line)}" target="_blank" rel="noopener">Строка ${Number(ref.line)} ↗</a>`;
+  function sourcePage(line) {
+    return pages.find(page => page.start <= line && line <= page.end);
+  }
+
+  function sourceLink(ref, page = sourcePage(ref.line)) {
+    const location = page ? ` · с. ${Number(page.page)}` : "";
+    return `<a class="guide-ref" href="${escape(reportUrl)}#source-line-${Number(ref.line)}" target="_blank" rel="noopener">Строка ${Number(ref.line)}${location} ↗</a>`;
   }
 
   function quotation(ref) {
@@ -42,9 +49,24 @@
     return `<blockquote>${escape(ref.quote)}</blockquote>`;
   }
 
+  function sourceContext(ref, page) {
+    if (!page) return "";
+    const nearby = [];
+    for (let line = Math.max(page.start, ref.line - 2); line <= Math.min(page.end, ref.line + 2); line++) {
+      if (line === ref.line || markupLines.has(line) || !sourceLines.get(line)?.trim()) continue;
+      nearby.push({line, quote: sourceLines.get(line)});
+    }
+    if (!nearby.length) return "";
+    return `<details class="guide-source-context"><summary>Соседние строки на с. ${Number(page.page)}</summary>${
+      nearby.map(row => `<div class="guide-context-row">${sourceLink(row, page)}${quotation(row)}</div>`).join("")
+    }</details>`;
+  }
+
   function evidence(witness) {
-    return `<aside class="guide-evidence" aria-label="Два основания в ТЗ">${[witness.first, witness.second].map(side =>
-      `<figure><figcaption><span class="guide-origin">${tableHeaders.has(side.source.line) ? "Из таблицы" : "Из документа"}</span><span class="guide-chosen">Основание выбора</span> ${sourceLink(side.source)}</figcaption>${quotation(side.source)}</figure>`).join("")}</aside>`;
+    return `<aside class="guide-evidence" aria-label="Два основания в ТЗ">${[witness.first, witness.second].map(({source}) => {
+      const page = sourcePage(source.line);
+      return `<figure><figcaption><span class="guide-origin">${tableHeaders.has(source.line) ? "Из таблицы" : "Из документа"}</span><span class="guide-chosen">Основание выбора</span> ${sourceLink(source, page)}</figcaption>${quotation(source)}${sourceContext(source, page)}</figure>`;
+    }).join("")}</aside>`;
   }
 
   function render(focus = false) {
@@ -109,9 +131,12 @@
     if (identity === reportIdentity) return;
     reportIdentity = identity;
     reportUrl = url;
+    pages = report.run?.pages ?? [];
     sourceLines = new Map((report.source ?? []).map(line => [line.line, line.text]));
     tableHeaders = new Map((report.segments ?? []).filter(segment => segment.kind === "строка таблицы")
       .map(segment => [segment.start, segment.header]));
+    markupLines = new Set((report.segments ?? []).filter(segment => segment.kind === "разметка")
+      .map(segment => segment.start));
     cases = readCases(report);
     positions = cases.map(() => ({stage:0, side:null}));
     index = 0;
