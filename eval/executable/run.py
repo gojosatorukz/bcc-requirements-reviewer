@@ -17,6 +17,8 @@ CASES = {
     "aligned": (HERE / "card-capture-aligned.md", "8f1fd01653c66e1413c1b8e6b55a2dc5e1ca74dfa38a04b545d22845b89d13ef"),
     "ledger": (HERE / "public-ledger/post-pending.md", "d795152a745d3d1674d28ae5ebc7548015c92f4743a17435efbd8d8e9b29def0"),
     "fee": (HERE / "minor-units/merchant-fee.md", "9e9912ebc20ec9e54a8908be53e005a38cfdc8cec99310cf9a2850a5c38dda29"),
+    "sdk-original": (HERE / "public-ledger/sdk-original.md", "9656e8a15c00c8a02baa5208463bc4ec039797471f934cc6d703a62a53f42cd9"),
+    "sdk-fixed": (HERE / "public-ledger/sdk-fixed.md", "0b21941de1b1a761178e7b4510e321f47efa45cb7ad8061e8d37e8f3f1603198"),
 }
 
 
