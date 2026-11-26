@@ -11,6 +11,7 @@
   border-radius: .95rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
+  container-type: inline-size;
 }
 .execution p, .execution dl, .execution dd, .execution h4 {margin: 0}
 .execution p.execution-caption {
@@ -122,6 +123,7 @@
 .execution-edit:enabled:hover, .lab-dialog button:enabled:hover {box-shadow: 0 2px 0 currentColor}
 .execution.lab-dialog {
   width: min(41rem, calc(100% - 1rem));
+  max-width: calc(100vw - 1rem);
   max-height: min(90dvh, 57rem);
   margin: auto;
   padding: clamp(1rem, 3vw, 1.75rem);
@@ -129,13 +131,13 @@
   overscroll-behavior: contain;
 }
 .lab-dialog::backdrop {background: #251d269e}
-.lab-head {display: flex; align-items: start; justify-content: space-between; gap: .4rem}
+.lab-head {position: sticky; top: 0; z-index: 1; display: flex; align-items: start; justify-content: space-between; gap: .4rem; padding: .35rem 0; background: var(--proof-paper)}
 .lab-dialog h2 {margin: 0; font-size: clamp(1.3rem, 3vw, 1.82rem); line-height: 1.1}
 .lab-dialog .lab-head + p {margin: .65rem 0; font-size: .92rem; color: var(--proof-muted)}
-.lab-dialog .lab-close {border-color: transparent; text-decoration: underline}
+.lab-dialog .lab-close {flex: none; white-space: nowrap; border-color: transparent; text-decoration: underline}
 .lab-presets {display: flex; flex-wrap: wrap; gap: .4rem}
 .lab-presets [aria-pressed="true"] {background: #251d26; color: #fffaf0}
-.lab-output {margin: .9rem 0; color: var(--proof-ink)}
+.lab-output {margin: .9rem 0; color: var(--proof-ink); scroll-margin-top: 4rem}
 .lab-result {
   padding: .65rem .8rem;
   background: #f6ead4;
@@ -179,6 +181,19 @@
 .lab-value-source {display: inline-block; margin-top: .18rem; font-size: .76rem}
 .lab-dialog .lab-submit {margin-top: .9rem; background: var(--proof-ink); color: #fffaf0}
 .lab-dialog .lab-submit:disabled {opacity: .65; cursor: wait}
+@container (max-width: 27rem) {
+  .execution-table[data-values="enum"], .execution-table[data-values="enum"] caption,
+  .execution-table[data-values="enum"] tbody {display: block}
+  .execution-table[data-values="enum"] thead {position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap}
+  .execution-table[data-values="enum"] tbody tr {display: grid; gap: .13rem; padding: .35rem 0; border-top: 1px solid var(--proof-line)}
+  .execution .execution-table[data-values="enum"] tbody th {width: auto; border: 0; font-weight: 690}
+  .execution .execution-table[data-values="enum"] td {display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); gap: .35rem; border: 0}
+  .execution-table[data-values="enum"] td::before {content: attr(data-rule); content: attr(data-rule) / ""; color: var(--proof-muted); font: 560 .76rem/1.35 system-ui, sans-serif}
+}
+@container (max-width: 20rem) {
+  .execution .execution-table[data-values="enum"] td {display: block; padding-bottom: .4rem}
+  .execution-table[data-values="enum"] td::before {display: block; margin-bottom: .1rem}
+}
 @media (prefers-reduced-motion: no-preference) {
   .lab-dialog[open] {animation: lab-enter .18s ease-out both}
   @keyframes lab-enter {from {opacity: .3; transform: translateY(.45rem)} to {opacity: 1; transform: none}}

@@ -27,6 +27,7 @@
         + ' по правилу А и ' + units(diff.second, field.unit) + ' по правилу Б.'));
     }
     const table = element('table', undefined, 'execution-table');
+    table.dataset.values = program.observe.some(key => states.get(key).unit.startsWith('enum:')) ? 'enum' : 'number';
     table.append(element('caption', 'Итог после последнего события'));
     const headings = table.createTHead().insertRow();
     for (const label of ['Показатель', 'Правило А', 'Правило Б']) {
@@ -41,7 +42,11 @@
       const header = element('th', state.label);
       header.scope = 'row';
       row.append(header);
-      for (const side of ['first','second']) row.insertCell().textContent = units(trace.final[side][key], state.unit);
+      for (const [side, label] of [['first','Правило А'],['second','Правило Б']]) {
+        const cell = row.insertCell();
+        cell.dataset.rule = label;
+        cell.textContent = units(trace.final[side][key], state.unit);
+      }
     }
     result.append(table);
     return result;

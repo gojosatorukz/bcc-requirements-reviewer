@@ -148,7 +148,9 @@
       : `<span class="guide-select">Конфликт ${escape(finding.id)}</span>`;
     let body;
     if (stage === 0) {
-      body = `<h2 tabindex="-1">${escape(finding.question)}</h2><p class="guide-scenario">${escape(witness.scenario)}</p>
+      const scenario = escape(witness.scenario);
+      body = `<h2 tabindex="-1">${escape(finding.question)}</h2><p class="guide-scenario${calculated ? ' has-fold' : ''}">${scenario}</p>
+      ${calculated ? `<details class="guide-scenario-fold"><summary>Общий сценарий</summary><p class="guide-scenario">${scenario}</p></details>` : ''}
       <button type="button" data-act="next" class="guide-primary">${calculated ? 'Выбрать исход' : 'Сравнить исходы'} <span aria-hidden="true">→</span></button>`;
     } else if (stage === 1) {
       body = `<h2 tabindex="-1">Какой исход принять?</h2><p class="guide-context">${escape(finding.question)}</p>
@@ -259,7 +261,9 @@
 
   window.addEventListener("review:dialogue", ({detail}) => {
     if (detail.key !== decisionKey || !cases.length) return;
+    const current = cases[index].finding.id;
+    const hadDialogue = conversationIds.has(current);
     conversationIds = new Set(detail.ids);
-    render();
+    if (conversationIds.has(current) !== hadDialogue) render();
   });
 })();

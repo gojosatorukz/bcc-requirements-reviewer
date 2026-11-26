@@ -31,12 +31,13 @@ def values_list(values, definitions, *, keys=False):
 
 
 def results_table(fields, states, first, second, caption):
+    value_type = "enum" if any(states[k]["unit"].startswith("enum:") for k in fields) else "number"
     rows = "".join(
         f'<tr><th scope="row">{safe(states[key]["label"])}</th>'
-        f'<td>{quantity(first[key], states[key]["unit"])}</td>'
-        f'<td>{quantity(second[key], states[key]["unit"])}</td></tr>'
+        f'<td data-rule="Правило А">{quantity(first[key], states[key]["unit"])}</td>'
+        f'<td data-rule="Правило Б">{quantity(second[key], states[key]["unit"])}</td></tr>'
         for key in fields)
-    return (f'<table class="execution-table"><caption>{caption}</caption><thead><tr>'
+    return (f'<table class="execution-table" data-values="{value_type}"><caption>{caption}</caption><thead><tr>'
             '<th scope="col">Показатель</th><th scope="col">Правило А</th>'
             f'<th scope="col">Правило Б</th></tr></thead><tbody>{rows}</tbody></table>')
 
