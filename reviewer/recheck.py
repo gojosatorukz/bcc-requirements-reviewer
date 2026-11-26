@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 import time
 
-from .__main__ import engine_digest, version, write_report
+from .__main__ import engine_digest, run_usage, version, write_report
 from .contract import EVIDENCE, TEXT, record, source_lines, validate_shape
 from .full import array, call_stage, choice, citations
 from .full_render import validate_report
@@ -225,17 +225,6 @@ def check_decisions(result, findings, old, new, diff):
             raise ValueError(f"{fid}: указанный блок изменений не связан с новой цитатой")
 
 
-def aggregate_usage(attempts):
-    if any(not isinstance(attempt["usage"], dict) for attempt in attempts):
-        return None
-    totals = {}
-    for attempt in attempts:
-        for key, value in attempt["usage"].items():
-            if type(value) is int:
-                totals[key] = totals.get(key, 0) + value
-    return totals
-
-
 def recheck(previous_path, revised_path, model, selected=()):
     started = datetime.now(timezone.utc).isoformat()
     clock = time.monotonic()
@@ -296,7 +285,7 @@ def recheck(previous_path, revised_path, model, selected=()):
         "provider": "codex-cli" if attempts else None, "model": model if attempts else None,
         "started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
         "agent_version": revision, "engine_sha256": digest,
-        "usage": aggregate_usage(attempts), "attempts": attempts,
+        **run_usage(attempts), "attempts": attempts,
     }
     return {
         "schema_version": 1, "report_type": "recheck", "scope": SCOPE, "run": run,

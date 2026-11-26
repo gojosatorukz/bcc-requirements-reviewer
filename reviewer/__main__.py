@@ -73,6 +73,23 @@ def review_document(prompt, model, lines):
             return result, attempts
 
 
+def aggregate_usage(attempts):
+    totals = {}
+    for attempt in attempts:
+        if not isinstance(attempt["usage"], dict):
+            return None
+        for key, value in attempt["usage"].items():
+            if type(value) is int:
+                totals[key] = totals.get(key, 0) + value
+    return totals
+
+
+def run_usage(attempts):
+    fresh = [attempt for attempt in attempts if not attempt.get("restored")]
+    return {"usage": aggregate_usage(attempts), "current_usage": aggregate_usage(fresh),
+            "fresh_calls": len(fresh), "restored_attempts": len(attempts) - len(fresh)}
+
+
 def main():
     parser = argparse.ArgumentParser(description="Полное ревью спецификации требований")
     parser.add_argument("document", type=Path)
@@ -103,17 +120,10 @@ def main():
         else:
             from .full import analyze
             result, attempts = analyze(blocks, lines, args.model, args.checkpoint_dir, digest, args.workers)
-        usage = None
-        if all(isinstance(attempt["usage"], dict) for attempt in attempts):
-            usage = {}
-            for attempt in attempts:
-                for key, value in attempt["usage"].items():
-                    if type(value) is int:
-                        usage[key] = usage.get(key, 0) + value
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
                "provider": "codex-cli", "model": args.model, "agent_version": revision, "engine_sha256": digest,
                "input_name": args.document.name, "input_sha256": input_hash, **input_metadata,
-               "input_lines": len(lines), "usage": usage, "attempts": attempts}
+               "input_lines": len(lines), **run_usage(attempts), "attempts": attempts}
         if not args.conflicts_only:
             run["max_workers"] = args.workers
         scope = "Проверка поведенческих противоречий" if args.conflicts_only else "Полное ревью требований"

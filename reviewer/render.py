@@ -102,12 +102,18 @@ def render_passport(run, schema_version):
     if "engine_sha256" in run:
         fields.append(("SHA-256 проверяющего кода", run["engine_sha256"]))
     fields.append(("Версия формата JSON", schema_version))
+    usage = render_usage(run['usage'])
+    if "fresh_calls" in run:
+        fields.extend([("Новых обращений к модели", run["fresh_calls"]),
+                       ("Попыток из контрольных точек", run["restored_attempts"])])
+        usage = (render_usage(run["current_usage"]) if run["fresh_calls"]
+                 else "<p>Новых обращений к модели не было.</p>")
     return f"""
     <section class="report-section" aria-labelledby="passport">
       <h2 id="passport" tabindex="-1">Паспорт прогона</h2>
       {render_fields(fields)}
-      <h3 class="tokens-heading">Токены</h3>
-      {render_usage(run['usage'])}
+      <h3 class="tokens-heading">{"Токены этого запуска" if "current_usage" in run else "Токены"}</h3>
+      {usage}
 {render_attempts(run.get('attempts'))}
     </section>"""
 

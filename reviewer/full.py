@@ -189,12 +189,21 @@ def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, d
     key = sha256(packed([model, digest, prompt, schema]).encode()).hexdigest()
     file = checkpoint / (key + ".json") if checkpoint else None
     if file and file.is_file():
-        previous = json.loads(file.read_text(encoding="utf-8"))
-        validate_shape(previous["result"], schema, stage)
-        verify(previous["result"])
-        sys.stderr.write(f"{stage} · проверена сохранённая стадия\n")
-        sys.stderr.flush()
-        return previous["result"], [dict(a, restored=True) for a in previous["attempts"]]
+        try:
+            previous = json.loads(file.read_text(encoding="utf-8"))
+            validate_shape(previous["result"], schema, stage)
+            verify(previous["result"])
+            entries = previous["attempts"]
+            if not isinstance(entries, list) or not entries or entries[-1]["status"] != "accepted":
+                raise ValueError("Неполный паспорт стадии")
+            for entry in entries:
+                if entry["stage"] != stage or entry["status"] not in {"accepted", "rejected"} or "usage" not in entry:
+                    raise ValueError("Повреждён паспорт стадии")
+        except (ValueError, KeyError, TypeError):
+            print(f"{stage} · контрольная точка повреждена, повторяем стадию", file=sys.stderr, flush=True)
+        else:
+            print(f"{stage} · проверена сохранённая стадия", file=sys.stderr, flush=True)
+            return previous["result"], [dict(a, restored=True) for a in entries]
 
     attempts = []
     message = prompt
