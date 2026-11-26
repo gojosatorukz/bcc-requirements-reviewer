@@ -1,0 +1,350 @@
+"""Replay two source-linked interpretations on shared inputs using bounded integer expressions."""
+
+import ast
+from dataclasses import dataclass
+import operator
+import re
+
+from .contract import EVIDENCE, TEXT, record, validate_shape
+
+
+def _list(items):
+    return {"type": "array", "items": items}
+
+
+FIELD = record(key=TEXT, label=TEXT, unit=TEXT)
+VALUE = record(key=TEXT, value={"type": "integer"})
+EVENT = record(kind=TEXT, label=TEXT, values=_list(VALUE))
+CASE = record(initial=_list(VALUE), events=_list(EVENT))
+UPDATE = record(target=TEXT, expr=TEXT)
+RULE = record(event=TEXT, when=TEXT, updates=_list(UPDATE))
+SIDE = record(source=EVIDENCE, rules=_list(RULE))
+PROGRAM = record(states=_list(FIELD), inputs=_list(FIELD), observe=_list(TEXT), first=SIDE, second=SIDE,
+                 scenario=CASE, control=CASE)
+VERSION = "witness-v1"
+
+LANGUAGE = """Составь общую исполняемую модель двух прочтений. Все обозначения и поля нужны для
+данного бизнес-сценария. В states и inputs задай уникальный короткий ASCII key в snake_case,
+понятную русскую подпись label и unit, например «₸», «push», «месяц» или «1» для множителя.
+Все значения — точные целые числа; для дробных денег выбери меньшую общую единицу. Сначала
+определи подтверждённое цитатой правило каждой стороны, затем запиши его вычисление.
+Обе программы получают одни и те же initial (все состояния), затем общие события. Каждое
+событие имеет kind (ASCII key), содержательный label и только входы этого события в values.
+Правила для совпадающего event читают состояние ДО шага и входы текущего события. Присваивания
+обновляют объявленные states одновременно; не обновлённое поле сохраняется. В одной трактовке
+нельзя дважды записать в поле на одном шаге. Не указывай вычисленный ответ во входе.
+when — логическая формула или True. expr — арифметическая целая формула: имена полей без
+префиксов, целые литералы, +, -, *, // (целая часть вниз), %, скобки, min(a,b), max(a,b),
+abs(a), x if условие else y. Сравнения == != < <= > >=, условия and/or/not. Никаких
+вызовов функций, кроме min, max, abs. Корректно учитывай единицы. Например при when
+«spent < limit and spent + amount >= limit» обновление «count + 1» считает пересечение.
+Денежные результаты должны вычисляться из суммы во входе; не вшивай конкретный итог.
+Укажи observe — одинаковые для обеих сторон измеримые поля состояния. scenario приводит к
+расхождению, control — соседний пример, в котором расхождения нет НИ НА ОДНОМ шаге.
+Используй те же виды событий в том же порядке и тот же набор входов в каждом событии
+обеих последовательностей. Измени только необходимые числовые входы либо начальные значения.
+Делай сравнимый контроль, сохраняя смысл и допустимость событий. Не добавляй фиктивный флаг
+«версия», «трактовка», «контроль», заранее выбранный ответ или заведомо искусственное условие.
+В first.source и second.source скопируй соответствующие исходные цитаты свидетельства.
+Если правила или предпосылки невозможно честно воспроизвести в этом языке, откажись от модели."""
+
+_KEY = re.compile(r"[a-z][a-z0-9_]{0,39}\Z", re.ASCII)
+_MAX_INT = 2**53 - 1  # JSON numbers also round-trip exactly through browser clients.
+_BOOL = object()
+_LITERAL = object()
+_SCALAR = "1"
+_ARITHMETIC = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
+               ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod}
+_COMPARISONS = {ast.Eq: operator.eq, ast.NotEq: operator.ne, ast.Lt: operator.lt,
+                ast.LtE: operator.le, ast.Gt: operator.gt, ast.GtE: operator.ge}
+_FUNCTIONS = {"min": min, "max": max, "abs": abs}
+
+
+def _bounded(value, name="Значение"):
+    if type(value) is not int or abs(value) > _MAX_INT:
+        raise ValueError(f"{name}: нужно целое число в диапазоне ±{_MAX_INT}")
+    return value
+
+
+def _count(items, lo, hi, name):
+    if not lo <= len(items) <= hi:
+        raise ValueError(f"{name}: допустимо от {lo} до {hi} элементов")
+
+
+def _short_text(text, maximum, name):
+    if len(text) > maximum or text != text.strip() or any(ord(c) < 32 for c in text):
+        raise ValueError(f"{name}: некорректное обозначение")
+
+
+def _key(text):
+    if not _KEY.fullmatch(text) or text in {*_FUNCTIONS, "if", "else", "and", "or", "not"}:
+        raise ValueError(f"Недопустимое имя: {text[:40]}")
+    return text
+
+
+def _fields(rows, name, minimum):
+    _count(rows, minimum, 24, name)
+    fields = {}
+    for row in rows:
+        key = _key(row["key"])
+        if key in fields:
+            raise ValueError(f"{name}: повтор поля {key}")
+        _short_text(row["label"], 120, key)
+        _short_text(row["unit"], 32, key)
+        fields[key] = row["unit"]
+    return fields
+
+
+def _values(rows, allowed, name, *, all_required=False):
+    _count(rows, 0, len(allowed), name)
+    values = {}
+    for row in rows:
+        key = row["key"]
+        if key not in allowed or key in values:
+            raise ValueError(f"{name}: неизвестное или повторное поле {key}")
+        values[key] = _bounded(row["value"], key)
+    if all_required and values.keys() != allowed.keys():
+        raise ValueError(f"{name}: указаны не все начальные значения")
+    return values
+
+
+def _numeric(unit):
+    if unit is _BOOL:
+        raise ValueError("Нельзя использовать логическое значение как число")
+    return unit
+
+
+def _same_unit(left, right):
+    if left == right:
+        return left
+    if left is _LITERAL:
+        return _numeric(right)
+    if right is _LITERAL:
+        return _numeric(left)
+    raise ValueError("Несовместимые единицы измерения в выражении")
+
+
+def _number_unit(op, left, right):
+    _numeric(left)
+    _numeric(right)
+    if op in (ast.Add, ast.Sub, ast.Mod):
+        return _same_unit(left, right)
+    if op is ast.Mult:
+        if left in (_LITERAL, _SCALAR):
+            return right if right is not _LITERAL else left
+        if right in (_LITERAL, _SCALAR):
+            return left
+        raise ValueError("У множителя должна быть единица 1")
+    if right in (_SCALAR, _LITERAL):
+        return left
+    if left == right:
+        return _SCALAR
+    raise ValueError("Несовместимые единицы при делении")
+
+
+def _boolean(unit):
+    if unit is not _BOOL:
+        raise ValueError("В условии требуется сравнение либо True/False")
+    return unit
+
+
+def _unit(node, fields):
+    if isinstance(node, ast.Name):
+        if node.id not in fields:
+            raise ValueError(f"Нет такого состояния или входа в этом событии: {node.id}")
+        return fields[node.id]
+    if isinstance(node, ast.Constant):
+        if type(node.value) is bool:
+            return _BOOL
+        _bounded(node.value, "Литерал")
+        return _LITERAL
+    if isinstance(node, ast.BinOp) and type(node.op) in _ARITHMETIC:
+        return _number_unit(type(node.op), _unit(node.left, fields), _unit(node.right, fields))
+    if isinstance(node, ast.Compare) and all(type(op) in _COMPARISONS for op in node.ops):
+        previous = _unit(node.left, fields)
+        for op, other in zip(node.ops, node.comparators):
+            current = _unit(other, fields)
+            unit = _same_unit(previous, current)
+            if unit is _BOOL and not isinstance(op, (ast.Eq, ast.NotEq)):
+                raise ValueError("Логические значения можно сравнивать только на равенство")
+            previous = current
+        return _BOOL
+    if isinstance(node, ast.UnaryOp):
+        unit = _unit(node.operand, fields)
+        if isinstance(node.op, ast.Not):
+            return _boolean(unit)
+        if isinstance(node.op, (ast.UAdd, ast.USub)):
+            return _numeric(unit)
+    if isinstance(node, ast.BoolOp) and isinstance(node.op, (ast.And, ast.Or)):
+        for item in node.values:
+            _boolean(_unit(item, fields))
+        return _BOOL
+    if isinstance(node, ast.IfExp):
+        _boolean(_unit(node.test, fields))
+        return _same_unit(_unit(node.body, fields), _unit(node.orelse, fields))
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in _FUNCTIONS
+            and not node.keywords and len(node.args) == (1 if node.func.id == "abs" else 2)):
+        units = [_numeric(_unit(arg, fields)) for arg in node.args]
+        return units[0] if len(units) == 1 else _same_unit(*units)
+    raise ValueError("Операция не поддерживается языком исполняемого примера")
+
+
+def _read(node, values):
+    if isinstance(node, ast.Name):
+        return values[node.id]
+    if isinstance(node, ast.Constant):
+        return node.value
+    if isinstance(node, ast.BinOp):
+        left, right = _read(node.left, values), _read(node.right, values)
+        if isinstance(node.op, (ast.FloorDiv, ast.Mod)) and not right:
+            raise ValueError("Деление на ноль в исполняемом примере")
+        return _bounded(_ARITHMETIC[type(node.op)](left, right), "Промежуточный результат")
+    if isinstance(node, ast.Compare):
+        left = _read(node.left, values)
+        for op, comparator in zip(node.ops, node.comparators):
+            right = _read(comparator, values)
+            if not _COMPARISONS[type(op)](left, right):
+                return False
+            left = right
+        return True
+    if isinstance(node, ast.UnaryOp):
+        value = _read(node.operand, values)
+        if isinstance(node.op, ast.Not):
+            return not value
+        return -value if isinstance(node.op, ast.USub) else value
+    if isinstance(node, ast.BoolOp):
+        terms = (_read(child, values) for child in node.values)
+        return all(terms) if isinstance(node.op, ast.And) else any(terms)
+    if isinstance(node, ast.IfExp):
+        return _read(node.body if _read(node.test, values) else node.orelse, values)
+    return _FUNCTIONS[node.func.id](*(_read(arg, values) for arg in node.args))
+
+
+def _parse(text, fields, expected):
+    _short_text(text, 320, "Формула")
+    try:
+        node = ast.parse(text, mode="eval").body
+    except (SyntaxError, RecursionError, ValueError) as exc:
+        raise ValueError(f"Неверная формула: {text[:80]}") from exc
+    if sum(1 for _ in ast.walk(node)) > 85:
+        raise ValueError("Слишком сложная формула")
+    _same_unit(_unit(node, fields), expected)
+    return node
+
+
+@dataclass(frozen=True)
+class _Rule:
+    condition: ast.AST
+    updates: list
+
+
+def _compile(side, event_fields, states, inputs):
+    rules = {}
+    _count(side["rules"], 1, 48, "Правила")
+    for rule in side["rules"]:
+        kind = rule["event"]
+        if kind not in event_fields:
+            raise ValueError(f"Отсутствует событие для правила {kind}")
+        fields = {**states, **{key: inputs[key] for key in event_fields[kind]}}
+        condition = _parse(rule["when"], fields, _BOOL)
+        updates = []
+        targets = set()
+        _count(rule["updates"], 1, len(states), f"Обновления {kind}")
+        for assignment in rule["updates"]:
+            target = assignment["target"]
+            if target not in states or target in targets:
+                raise ValueError(f"Некорректное или повторное назначение {target}")
+            targets.add(target)
+            expression = _parse(assignment["expr"], fields, states[target])
+            if not any(isinstance(n, ast.Name) and n.id in fields
+                       for subtree in (condition, expression) for n in ast.walk(subtree)):
+                raise ValueError(f"{target}: безусловный готовый ответ нельзя выдать за вычисление")
+            updates.append((target, expression))
+        rules.setdefault(kind, []).append(_Rule(condition, updates))
+    return rules
+
+
+def _case(case, states, inputs, event_fields):
+    initial = _values(case["initial"], states, "Исходное состояние", all_required=True)
+    _count(case["events"], 1, 24, "События")
+    events = []
+    for event in case["events"]:
+        kind = _key(event["kind"])
+        _short_text(event["label"], 240, kind)
+        values = _values(event["values"], inputs, kind)
+        signature = frozenset(values)
+        if event_fields.setdefault(kind, signature) != signature:
+            raise ValueError(f"События {kind} должны принимать одинаковые входные поля")
+        events.append((kind, event["label"], values))
+    return initial, events
+
+
+def _advance(state, inputs, rules):
+    before = {**state, **inputs}
+    updates = {}
+    for rule in rules:
+        if not _read(rule.condition, before):
+            continue
+        for target, expression in rule.updates:
+            if target in updates:
+                raise ValueError(f"Два сработавших правила обновляют поле {target} на одном шаге")
+            updates[target] = _read(expression, before)
+    return {**state, **updates}
+
+
+def _run(case, sides, observe):
+    initial, events = case
+    states = {name: initial.copy() for name in sides}
+    start = {field: initial[field] for field in observe}
+    trace = []
+    first_difference = None
+    for index, (kind, label, inputs) in enumerate(events, 1):
+        snapshot = {}
+        for name, rules in sides.items():
+            states[name] = _advance(states[name], inputs, rules.get(kind, ()))
+            snapshot[name] = {field: states[name][field] for field in observe}
+        fields = [key for key in observe if snapshot["first"][key] != snapshot["second"][key]]
+        if fields and first_difference is None:
+            key = fields[0]
+            first_difference = {"step": index, "field": key, "first": snapshot["first"][key],
+                                "second": snapshot["second"][key]}
+        trace.append({"step": index, "kind": kind, "label": label, "inputs": inputs, **snapshot, "different": fields})
+    return {"initial": start, "steps": trace, "first_difference": first_difference, "final": snapshot}
+
+
+def execute(program, lines, witness=None):
+    """Compute both traces or raise ValueError when this is not a supported witness."""
+    validate_shape(program, PROGRAM, "Исполняемый пример")
+    states = _fields(program["states"], "Состояния", 1)
+    inputs = _fields(program["inputs"], "Входы", 0)
+    if states.keys() & inputs.keys():
+        raise ValueError("Имена состояний и входов должны различаться")
+    observe = program["observe"]
+    if not observe or len(set(observe)) != len(observe) or set(observe) - states.keys():
+        raise ValueError("Нужен непустой список уникальных наблюдаемых состояний")
+    event_fields = {}
+    scenario = _case(program["scenario"], states, inputs, event_fields)
+    control = _case(program["control"], states, inputs, event_fields)
+    if [event[0] for event in scenario[1]] != [event[0] for event in control[1]]:
+        raise ValueError("В контроле нужны те же виды событий в том же порядке")
+    if scenario[0] == control[0] and [e[2] for e in scenario[1]] == [e[2] for e in control[1]]:
+        raise ValueError("В контрольном примере нужно изменить исходное условие или вход события")
+    if set(inputs) != set().union(*event_fields.values()):
+        raise ValueError("Заявлен вход, которого нет ни в одном событии")
+    sides = {}
+    for name in ("first", "second"):
+        side = program[name]
+        ref = side["source"]
+        if ref["line"] < 1 or ref["quote"] not in lines.get(ref["line"], ""):
+            raise ValueError(f"{name}: цитата правила не подтверждается в указанной строке")
+        if witness is not None and ref != witness[name]["source"]:
+            raise ValueError(f"{name}: требуется исходная цитата соответствующей стороны свидетельства")
+        sides[name] = _compile(side, event_fields, states, inputs)
+    if program["first"]["source"] == program["second"]["source"]:
+        raise ValueError("Обе стороны ссылаются на одну и ту же цитату")
+    replay = {"version": VERSION, "scenario": _run(scenario, sides, observe), "control": _run(control, sides, observe)}
+    if replay["scenario"]["first_difference"] is None:
+        raise ValueError("В общем сценарии наблюдаемые результаты совпадают на всех шагах")
+    if replay["control"]["first_difference"] is not None:
+        raise ValueError("На контрольном примере наблюдаемые результаты тоже расходятся")
+    return replay
