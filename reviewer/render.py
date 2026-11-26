@@ -150,6 +150,9 @@ def render_fields(fields):
 
 def render_report(report):
     version = report.get("schema_version") if isinstance(report, dict) else None
+    if type(version) is int and version == 1 and report.get("report_type") == "recheck":
+        from .recheck import render_html
+        return render_html(report)
     if type(version) is int and version == 2:
         from .full_render import render_full
         return render_full(report)
