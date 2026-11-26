@@ -115,6 +115,7 @@
           link.setAttribute('href', reportUrl + link.getAttribute('href'));
           link.target = '_blank';
           link.rel = 'noopener';
+          link.setAttribute('aria-label', link.textContent + ' · открыть полный отчёт в новой вкладке');
         }
         window.dispatchEvent(new CustomEvent('review:execution-panel', {detail:{panel, item,
           endpoint:'/api/simulate/' + match[1] + '/' + match[2] + '/' + fid}}));
@@ -134,17 +135,19 @@
     const {stage, side} = state;
     const outcomes = [witness.first, witness.second];
     const source = outcomes[side]?.source;
+    const execution = executions.get(finding.id);
+    const calculated = execution?.status === 'executed';
     const hasDialogue = conversationIds.has(finding.id);
     const saved = hasDialogue ? null : decisions[finding.id];
     const current = side === 0 ? "first" : "second";
     const draft = source ? `Сценарий: ${witness.scenario}\nОжидаемый результат: ${outcomes[side].outcome}\nОснование: строка ${source.line} ТЗ.\nВопрос: ${finding.question}` : "";
     const selector = cases.length > 1
-      ? `<label class="guide-select">Конфликт <select aria-label="Выбрать конфликт">${cases.map(({finding: f}, i) => `<option value="${i}" ${i === index ? "selected" : ""}>${escape(f.id)} · ${i+1} из ${cases.length}</option>`).join("")}</select></label>`
+      ? `<label class="guide-select">Конфликт <select aria-label="Выбрать конфликт">${cases.map(({finding: f}, i) => `<option value="${i}" ${i === index ? "selected" : ""}>${escape(f.id)} · ${escape(f.title ?? ((i+1) + ' из ' + cases.length))}</option>`).join("")}</select></label>`
       : `<span class="guide-select">Конфликт ${escape(finding.id)}</span>`;
     let body;
     if (stage === 0) {
       body = `<h2 tabindex="-1">${escape(finding.question)}</h2><p class="guide-scenario">${escape(witness.scenario)}</p>
-      <button type="button" data-act="next" class="guide-primary">Сравнить исходы <span aria-hidden="true">→</span></button>`;
+      <button type="button" data-act="next" class="guide-primary">${calculated ? 'Выбрать исход' : 'Сравнить исходы'} <span aria-hidden="true">→</span></button>`;
     } else if (stage === 1) {
       body = `<h2 tabindex="-1">Какой исход принять?</h2><p class="guide-context">${escape(finding.question)}</p>
       <fieldset class="guide-options"><legend>Ожидаемый результат</legend>${outcomes.map((outcome,i) =>
@@ -162,14 +165,13 @@
     if (decisionKey) {
       body += `<button type="button" class="guide-back" data-act="answer">${hasDialogue ? "Открыть переписку с владельцем" : "Ответить своими словами"}</button>`;
     }
-    const execution = executions.has(finding.id);
-    if (execution && stage > 0) {
+    if (calculated && stage > 0) {
       body += `<a class="guide-back" href="${escape(reportUrl)}#execution-${escape(finding.id)}" target="_blank" rel="noopener">Открыть расчёт</a>`;
     }
     root.innerHTML = `<div class="guide-wrap"><div class="guide-bar"><ol aria-label="Шаги согласования">${stages.map((label,i) =>
       `<li ${i === stage ? 'aria-current="step"' : ""} class="${i <= stage ? "reached" : ""}"><span>${label}</span></li>`).join("")}</ol>${selector}</div>
       <div class="guide-grid${execution && stage === 0 ? ' with-calculation' : ''}"><article class="guide-sheet" data-stage="${stage}">${body}</article>${
-        execution && stage === 0 ? '<div class="guide-calculation" aria-busy="true">Проверяем сохранённый расчёт…</div>' : evidence(witness)
+        execution && stage === 0 ? `<div><div class="guide-calculation" aria-busy="true">Проверяем сохранённый расчёт…</div>${calculated ? '' : evidence(witness)}</div>` : evidence(witness)
       }</div></div>`;
     displayPanel();
     function highlightSource() {

@@ -11,11 +11,11 @@
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 .inner,.workspace{width:min(75rem,calc(100% - 3rem));margin-inline:auto}
-.masthead,.intro{background:#ff7045}
+.masthead,.intro{background:#ff6c42}
 .masthead{border-bottom:2px solid var(--ink)}
 .masthead .inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.35rem 1rem;padding:.8rem 0}
-.brand{display:inline-flex;gap:.6rem;align-items:center;color:var(--ink);font-size:1.2rem;font-weight:850;letter-spacing:-.035em;text-decoration:none}
-.brand-mark{position:relative;display:grid;width:1.75rem;height:1.75rem;flex:none;place-items:center;background:var(--ink);border-radius:50%;transform:rotate(-7deg)}
+.brand{display:inline-flex;gap:.6rem;align-items:center;color:var(--ink);font-size:clamp(1.2rem,1.8vw,1.45rem);font-weight:850;letter-spacing:-.05em;text-decoration:none}
+.brand-mark{position:relative;display:grid;width:1.9rem;height:1.9rem;flex:none;place-items:center;background:var(--ink);border-radius:48% 52% 50% 46%;transform:rotate(-7deg)}
 .brand-eyes{position:absolute;top:.5rem;display:flex;gap:.14rem;animation:brand-blink 5.2s ease-in-out infinite}
 .brand-eyes::before,.brand-eyes::after{content:"";width:.34rem;height:.42rem;border-radius:50%;background:radial-gradient(circle at 58% 56%,var(--ink) 0 26%,var(--panel) 30%)}
 .brand-mouth{position:absolute;top:.99rem;width:.38rem;height:.23rem;border:1.5px solid var(--lemon);border-top:0;border-radius:0 0 1rem 1rem}
@@ -28,15 +28,18 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 @keyframes brand-think{from{transform:translateX(-.1rem)}to{transform:translateX(.1rem)}}
 @keyframes brand-bob{50%{transform:translateY(-.2rem) rotate(6deg)}}
 @media(prefers-reduced-motion:reduce){.brand-mark[data-state],.brand-mark[data-state] .brand-eyes{animation:none}}
-.masthead nav{display:flex;flex-wrap:wrap;gap:.4rem 1.3rem}
-.masthead nav a{padding:.25rem 0;color:var(--ink);font-weight:720}
-.intro{isolation:isolate;position:relative;overflow:hidden;padding:clamp(1.5rem,4vw,3.2rem) 0 clamp(1.65rem,4vw,3.1rem);border-bottom:2px solid var(--ink)}
-.intro::before{content:"";position:absolute;z-index:-1;right:clamp(-10rem,-8vw,-3rem);bottom:-12rem;width:clamp(19rem,42vw,35rem);aspect-ratio:1;border-radius:50%;background:var(--lemon);pointer-events:none}
-.intro::after{content:"";position:absolute;inset:auto 0 0;height:.55rem;background:repeating-linear-gradient(-50deg,var(--ink) 0 2px,transparent 2px 12px);pointer-events:none}
-.intro-copy{max-width:53rem;margin-bottom:1.15rem}
+.masthead nav{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem .95rem}
+.masthead nav a{padding:.35rem 0;color:var(--ink);font-weight:710;text-decoration:none}
+.masthead nav a:hover{text-decoration:underline}
+.masthead nav .nav-start{padding:.42rem .83rem;color:var(--panel);background:var(--ink);border:1.5px solid var(--ink);border-radius:2rem}
+.masthead .skip-work{position:absolute;left:1rem;top:-8rem;padding:.55rem;background:var(--panel);color:var(--ink);z-index:5}
+.masthead .skip-work:focus{top:.4rem}
+.intro{isolation:isolate;position:relative;overflow:hidden;padding:clamp(1.2rem,3.2vw,2.5rem) 0 clamp(1.85rem,3.8vw,3.3rem);border-bottom:2px solid var(--ink)}
+.intro::before{content:"";position:absolute;z-index:-1;right:clamp(-15rem,-12vw,-6rem);bottom:-16rem;width:clamp(25rem,49vw,44rem);aspect-ratio:1;border-radius:50%;background:var(--lemon);pointer-events:none}
+.intro-copy{display:flex;align-items:baseline;flex-wrap:wrap;gap:.3rem .85rem;margin-bottom:1.15rem}
 .intro-copy h1,.workspace h2,.workspace h3,.workspace p{margin:0}
-.intro-copy h1{font-size:clamp(1.65rem,3.3vw,2.8rem);line-height:1;font-weight:850;letter-spacing:-.055em}
-.intro-copy p{max-width:61ch;margin:.52rem 0 0;font-weight:610;font-size:clamp(1rem,1.45vw,1.15rem)}
+.intro-copy h1{font-size:clamp(1.3rem,2.1vw,1.9rem);line-height:1.1;font-weight:830;letter-spacing:-.045em}
+.intro-copy p{max-width:61ch;margin:0;padding-inline-start:.85rem;border-left:1px solid var(--ink);font-weight:560;font-size:clamp(.85rem,1.2vw,1rem)}
 #guided-review:not([hidden]){animation:reveal .36s var(--ease) both}
 @keyframes reveal{from{opacity:0;transform:translateY(.45rem)}to{opacity:1;transform:translateY(0)}}
 .workspace{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:1.35rem;align-items:start;padding:clamp(1.6rem,4vw,3rem) 0 3.5rem}
@@ -117,7 +120,7 @@ a{color:var(--accent);text-underline-offset:.18em}
 #run-log{margin:.55rem 0 0;padding-left:1.4rem;color:var(--muted);max-height:12rem;overflow:auto}
 #run-log li:last-child,.workspace #run-links:not([hidden]){animation:reveal .28s var(--ease) both}
 @media(max-width:49rem){.workspace{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:35rem){.inner,.workspace{width:calc(100% - 1.5rem)}.intro::before{display:none}.masthead nav{gap:.4rem .8rem}.masthead nav a{font-size:.9rem}}
+@media(max-width:35rem){.inner,.workspace{width:calc(100% - 1.5rem)}.intro::before{right:-18rem;bottom:-14rem}.masthead nav{gap:.35rem .65rem}.masthead nav a{font-size:.85rem}.intro-copy{display:grid;gap:.25rem}.intro-copy p{border:0;padding:0}}
 @media(max-width:29rem){.radio-options{grid-template-columns:minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}#guided-review,#run-log li:last-child,.workspace #run-links:not([hidden]),#status-message[data-running]::before{animation:none}#submit,.workspace a.action,.radio-options label,.drop{transition:none}}
 .recheck-result{margin-top:1.15rem;padding-top:1rem;border-top:1px solid var(--line)}
@@ -141,9 +144,10 @@ a{color:var(--accent);text-underline-offset:.18em}
 </head>
 <body>
 <header class="masthead">
+  <a class="skip-work" href="#workspace">Перейти к работе с документом</a>
   <div class="inner">
     <a class="brand" href="/"><span class="brand-mark" id="brand-face" data-state="idle" aria-hidden="true"><span class="brand-eyes"></span><span class="brand-mouth"></span></span>Разбор ТЗ</a>
-    <nav aria-label="Разделы"><a href="#upload-heading">Новая проверка</a><a href="#demo-heading">Демо-отчёт</a></nav>
+    <nav aria-label="Разделы"><a id="active-report-link" href="#demo-heading">Отчёт</a><a class="nav-start" href="#upload-heading">Проверить ТЗ</a></nav>
   </div>
 </header>
 <main>
@@ -156,7 +160,7 @@ a{color:var(--accent);text-underline-offset:.18em}
       <section id="guided-review" aria-label="Согласование" hidden></section>
     </div>
   </div>
-  <div class="workspace">
+  <div class="workspace" id="workspace" tabindex="-1">
     <section class="card" aria-labelledby="upload-heading">
       <h2 id="upload-heading">Новая проверка</h2>
       <form id="upload-form">
@@ -184,8 +188,8 @@ a{color:var(--accent);text-underline-offset:.18em}
         </div>
         <div class="drop" id="drop">
           <label for="file">Документ</label>
-          <input id="file" type="file" accept=".md,.txt,.pdf" aria-describedby="file-help file-name">
-          <small id="file-help">Выберите или перетащите один файл MD, TXT или PDF. Для PDF нужен текстовый слой.</small>
+          <input id="file" type="file" accept=".md,.txt,.pdf,.docx" aria-describedby="file-help file-name">
+          <small id="file-help">Выберите или перетащите один файл MD, TXT, DOCX или PDF. Для PDF нужен текстовый слой.</small>
           <p id="file-name" aria-live="polite" hidden></p>
         </div>
         <div class="reuse-report" id="reuse-report" hidden>
@@ -485,8 +489,8 @@ async function fetchReportFingerprint(id, signal) {
 async function checkReportReuse() {
   clearReportReuse();
   if (busy || mode() !== 'full' || !file || !globalThis.crypto?.subtle) return;
-  const suffix = file.name.match(/\.(md|txt|pdf)$/i)?.[1]?.toLowerCase();
-  if (!suffix || !file.size || file.size > (suffix === 'pdf' ? 16_000_000 : 120_000)) return;
+  const suffix = file.name.match(/\.(md|txt|pdf|docx)$/i)?.[1]?.toLowerCase();
+  if (!suffix || !file.size || file.size > (['pdf','docx'].includes(suffix) ? 16_000_000 : 120_000)) return;
   const controller = new AbortController();
   reuseCheck = controller;
   try {
@@ -961,10 +965,10 @@ form.addEventListener('submit', async event => {
     fileInput.focus();
     return;
   }
-  const suffix = file.name.match(/\.(md|txt|pdf)$/i)?.[1]?.toLowerCase();
-  if (!suffix || !file.size || file.size > (suffix === 'pdf' ? 16_000_000 : 120_000)) {
+  const suffix = file.name.match(/\.(md|txt|pdf|docx)$/i)?.[1]?.toLowerCase();
+  if (!suffix || !file.size || file.size > (['pdf','docx'].includes(suffix) ? 16_000_000 : 120_000)) {
     setBrandState('failed');
-    showError(!suffix ? 'Поддерживаются файлы MD, TXT и PDF.' :
+    showError(!suffix ? 'Поддерживаются файлы MD, TXT, DOCX и PDF.' :
       !file.size ? 'Выберите непустой документ.' : 'Файл превышает допустимый размер.');
     fileInput.focus();
     return;
@@ -1049,6 +1053,11 @@ function publishReport(report, id, sha) {
   renderDecisionPreflight();
   rememberReportFingerprint(id, report);
   const reportUrl = '/reports/' + id + '/review.html';
+  const activeLink = get('active-report-link');
+  activeLink.href = reportUrl;
+  activeLink.target = '_blank';
+  activeLink.rel = 'noopener';
+  activeLink.setAttribute('aria-label', 'Открыть ' + (id === 'demo' ? 'демо-отчёт' : 'текущий отчёт') + ' в новой вкладке');
   const name = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
   get('review-document').textContent = [id === 'demo' ? 'Демо' : 'Полное ревью', name].filter(Boolean).join(' · ');
   window.dispatchEvent(new CustomEvent('review:loaded', {detail:{report, reportUrl, key, decisions:ownerDecisions[key] || {}}}));

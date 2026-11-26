@@ -12,15 +12,15 @@
 #guided-review li {flex: 1; display: grid; gap: 5px; font-weight: 630; font-size: .8rem; line-height: 1.1}
 #guided-review li::before {content: ""; height: 6px; border-radius: 30px; background: #ffc49e}
 #guided-review li.reached::before {background: var(--g-ink)}
-#guided-review .guide-select {justify-self: end; display: flex; align-items: center; gap: .5rem; font-size: .8rem; font-weight: 700}
-#guided-review select {width: auto; max-width: 100%; margin: 0; color: var(--g-ink); background: var(--g-paper); border: 1.5px solid currentColor; padding: .32rem .5rem; border-radius: 7px; font: inherit}
+#guided-review .guide-select {justify-self: end; display: flex; min-width: 0; max-width: 100%; align-items: center; gap: .5rem; font-size: .8rem; font-weight: 700}
+#guided-review select {width: auto; min-width: 0; max-width: 100%; text-overflow: ellipsis; margin: 0; color: var(--g-ink); background: var(--g-paper); border: 1.5px solid currentColor; padding: .4rem .55rem; border-radius: 7px; font: inherit}
 #guided-review .guide-sheet {background: var(--g-paper); border: 2px solid var(--g-ink); border-radius: 13px; box-shadow: 0 6px 0 var(--g-ink); padding: clamp(20px, 3vw, 42px); min-width: 0}
 #guided-review h2 {font-size: clamp(1.75rem, 3.4vw, 3.65rem); font-weight: 800; letter-spacing: -.05em; line-height: 1.02; text-wrap: balance; margin: 0 0 .95rem}
 #guided-review h2:focus:not(:focus-visible) {outline: 0}
 #guided-review .guide-scenario,
 #guided-review .guide-context {font-size: clamp(.98rem, 1.35vw, 1.14rem); line-height: 1.45; max-width: 62ch; margin: 0 0 1.3rem; color: #50434b}
 #guided-review .guide-actions {display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin-top: 1.2rem}
-#guided-review .guide-primary {background: var(--g-ink); color: var(--g-paper); font-weight: 670; border: 2px solid var(--g-ink); border-radius: 7px; padding: .65rem .9rem; cursor: pointer}
+#guided-review .guide-primary {background: var(--g-ink); color: var(--g-paper); font: 680 1rem/1.3 system-ui,sans-serif; border: 2px solid var(--g-ink); border-radius: 2rem; padding: .65rem 1rem; cursor: pointer}
 #guided-review .guide-primary:enabled:hover {background: #483043}
 #guided-review .guide-primary span {margin-left: .45rem}
 #guided-review .guide-primary:disabled {opacity: .5; cursor: default}
@@ -69,8 +69,27 @@
 #guided-review .guide-record p{margin:0 0 .45rem}
 #guided-review .guide-record button{margin:.25rem .55rem .25rem 0}
 #guided-review .guide-grid.with-calculation {
-  grid-template-columns: minmax(0, .98fr) minmax(0, 1.02fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
+}
+#guided-review .with-calculation .guide-sheet {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  padding: clamp(1rem, 2.8vw, 2.25rem) .35rem 1rem 0;
+}
+#guided-review .with-calculation .guide-sheet h2 {
+  margin-bottom: 1.15rem;
+  font-size: clamp(2rem, 4.1vw, 4.15rem);
+  line-height: 1.015;
+  letter-spacing: -.06em;
+  overflow-wrap: anywhere;
+}
+#guided-review .with-calculation .guide-scenario {
+  max-width: 45ch;
+  margin-bottom: 1.1rem;
+  color: var(--g-ink);
+  font-weight: 540;
 }
 #guided-review .guide-calculation {min-width: 0}
 #guided-review .guide-calculation > .execution {box-shadow: 0 5px 0 var(--g-ink)}
@@ -80,6 +99,19 @@
   padding: 1.2rem;
 }
 #guided-review .guide-sheet > .guide-back {margin: .6rem .65rem 0 0; display: inline-block}
+#guided-review .with-calculation .guide-sheet > .guide-back {margin-inline-start: .7rem}
+@media (prefers-reduced-motion: no-preference) {
+  #guided-review .guide-primary {transition: transform .16s ease, box-shadow .16s ease}
+  #guided-review .guide-primary:enabled:hover {transform: translateY(-2px); box-shadow: 0 3px 0 #8d3d30}
+  #guided-review .guide-primary:enabled:active {transform: translateY(1px); box-shadow: none}
+}
 @container (max-width: 720px) {
   #guided-review .guide-grid.with-calculation {grid-template-columns: minmax(0, 1fr)}
+  #guided-review .with-calculation .guide-sheet {padding: .35rem 0 .3rem}
+  #guided-review .with-calculation .guide-sheet h2 {font-size: clamp(1.9rem, 6.5vw, 3.15rem); margin-bottom: .6rem}
+  #guided-review .with-calculation .guide-scenario {margin-bottom: .55rem; font-size: .94rem}
+  #guided-review .with-calculation .execution-shared {display: none}
+}
+@container (max-width: 420px) {
+  #guided-review .with-calculation .guide-sheet > .guide-back {margin-left: .5rem; margin-right: 0}
 }
