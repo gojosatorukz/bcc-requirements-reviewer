@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Разбор ТЗ</title>
+<style>
+:root{color-scheme:light;--paper:#f3f5f2;--panel:#fff;--ink:#19342b;--muted:#506359;--line:#cad6cf;--accent:#185c47;--accent-hover:#104836;--soft:#e8f2ec;--error:#a12e21}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}
+header{background:#12382e;color:white;border-bottom:1px solid #0a2b22}
+.inner,main{width:min(74rem,calc(100% - 3rem));margin-inline:auto}
+header .inner{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:1rem 0;font-weight:700}
+header span{font-size:.875rem;color:#d7e7de;font-weight:500}
+main{padding:clamp(1.4rem,4vw,3.5rem) 0 3rem}
+h1,h2,h3,p{margin:0}
+h1{font-size:clamp(2rem,5vw,3.45rem);line-height:1.08;letter-spacing:-.045em}
+h2{font-size:1.34rem;line-height:1.2;letter-spacing:-.02em}
+h3{font-size:1.08rem;line-height:1.25}
+.lead{max-width:55ch;margin:.65rem 0 1.75rem;color:var(--muted);font-size:1.08rem}
+.workspace{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:1rem;align-items:start}
+.card{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:.85rem;padding:clamp(1rem,3vw,1.6rem)}
+.card>h2{margin-bottom:1rem}
+.card p{overflow-wrap:anywhere}
+form{display:grid;gap:1rem}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend,label{font-weight:650}
+legend{padding:0;margin-bottom:.45rem}
+.radio-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
+.radio-options label{display:flex;align-items:center;gap:.55rem;padding:.6rem .7rem;border:1px solid var(--line);border-radius:.45rem;cursor:pointer}
+.radio-options label:has(:checked){background:var(--soft);border-color:var(--accent)}
+input[type=radio]{margin:0;accent-color:var(--accent);flex:none}
+select,input[type=file]{display:block;width:100%;font:inherit}
+select{padding:.55rem;color:var(--ink);background:white;border:1px solid var(--line);border-radius:.4rem;margin-top:.25rem}
+.drop{border:1px dashed #82998c;border-radius:.55rem;padding:.85rem;background:#fbfcfb}
+.drop.drag{border-color:var(--accent);background:var(--soft)}
+.drop input{margin:.4rem 0}
+.drop small,.notice,.muted{color:var(--muted)}
+.drop small,.notice{font-size:.9rem}
+#file-name{font-weight:650;margin-top:.4rem}
+.notice{padding-left:.75rem;border-left:3px solid var(--line)}
+.error{color:var(--error)}
+button,a.action,input::file-selector-button{font:inherit;font-weight:650;border-radius:.4rem;padding:.5rem .75rem}
+button{width:max-content;max-width:100%;border:1px solid var(--accent);background:var(--accent);color:white;cursor:pointer}
+button:not(:disabled):hover{background:var(--accent-hover)}
+button:disabled{opacity:.62;cursor:default}
+input::file-selector-button{border:1px solid var(--line);background:white;color:var(--ink);margin-right:.55rem;cursor:pointer}
+:focus-visible{outline:3px solid #87551d;outline-offset:3px}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:.55rem 1rem;margin-top:.9rem}
+a{color:var(--accent);text-underline-offset:.18em}
+a.action{display:inline-block;border:1px solid var(--accent);text-decoration:none}
+a.action:hover{background:var(--soft)}
+.demo-title{font-weight:650;margin-bottom:.7rem}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin:0 0 .85rem}
+.metrics div{padding:.6rem;background:var(--soft);border-radius:.4rem}
+.metrics dt{font-size:.875rem;color:var(--muted)}
+.metrics dd{margin:0;font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+#demo-gates{display:grid;gap:.25rem;font-size:.925rem}
+.status-box{margin-top:1.1rem;padding-top:1rem;border-top:1px solid var(--line)}
+#status-message{margin-top:.35rem}
+#run-log{margin:.55rem 0 0;padding-left:1.4rem;color:var(--muted);max-height:12rem;overflow:auto}
+@media(max-width:49rem){.workspace{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:29rem){.inner,main{width:calc(100% - 1.5rem)}.radio-options{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<header><div class="inner"><strong>Разбор ТЗ</strong><span>Локальное приложение</span></div></header>
+<main>
+  <h1>Проверка требований</h1>
+  <p class="lead">Загрузите ТЗ для полного ревью или проверьте новую версию по замечаниям из базового отчёта.</p>
+  <div class="workspace">
+    <section class="card" aria-labelledby="upload-heading">
+      <h2 id="upload-heading">Новая проверка</h2>
+      <form id="upload-form">
+        <fieldset id="modes">
+          <legend>Режим проверки</legend>
+          <div class="radio-options">
+            <label><input type="radio" name="mode" value="full" checked> Полное ревью</label>
+            <label><input type="radio" name="mode" value="recheck"> Проверка новой версии</label>
+          </div>
+        </fieldset>
+        <div id="baseline-field" hidden>
+          <label for="baseline">Базовый отчёт</label>
+          <select id="baseline" aria-describedby="baseline-hint"></select>
+          <p class="muted" id="baseline-hint">Подходит демо-отчёт или завершённое полное ревью из этой вкладки.</p>
+        </div>
+        <div class="drop" id="drop">
+          <label for="file">Документ</label>
+          <input id="file" type="file" accept=".md,.txt,.pdf" aria-describedby="file-help file-name">
+          <small id="file-help">Выберите или перетащите один файл MD, TXT или PDF. Для PDF нужен текстовый слой.</small>
+          <p id="file-name" aria-live="polite" hidden></p>
+        </div>
+        <p class="notice">При запуске текст документа отправляется модели, настроенной в локальном приложении.</p>
+        <p id="upload-error" class="error" role="alert" hidden></p>
+        <button id="submit" type="submit">Запустить проверку</button>
+      </form>
+      <div id="run-status" class="status-box" hidden>
+        <h3>Статус проверки</h3>
+        <p id="status-message" role="status" aria-atomic="true"></p>
+        <ol id="run-log" aria-label="Завершённые этапы" aria-live="polite" hidden></ol>
+        <div class="actions" id="run-links" hidden>
+          <a class="action" id="run-html" target="_blank" rel="noopener">Открыть HTML-отчёт</a>
+          <a id="run-json">Скачать JSON</a>
+        </div>
+      </div>
+    </section>
+    <section class="card" aria-labelledby="demo-heading">
+      <h2 id="demo-heading">Пример полного ревью</h2>
+      <p id="demo-status" class="muted" role="status">Загружаем сводку демо-отчёта…</p>
+      <div id="demo-summary" hidden>
+        <p class="demo-title" id="demo-title"></p>
+        <dl class="metrics" id="demo-metrics"></dl>
+        <div id="demo-gates"></div>
+        <div class="actions">
+          <a class="action" href="/reports/demo/review.html" target="_blank" rel="noopener">Открыть демо-отчёт</a>
+          <a href="/reports/demo/review.json?download=1">Скачать JSON</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+'use strict';
+const get = id => document.getElementById(id);
+const form = get('upload-form');
+const baseline = get('baseline');
+const fileInput = get('file');
+const drop = get('drop');
+const idPattern = /^[0-9a-f]{32}$/;
+const stateLabels = {queued:'В очереди', running:'Проверка идёт', done:'Отчёт готов', failed:'Ошибка проверки'};
+const modeLabels = {full:'Полное ревью', recheck:'Проверка новой версии'};
+const storageKey = 'reviewer.workbench.v1';
+
+function restore() {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(storageKey));
+    const last = value?.last;
+    return {
+      last: idPattern.test(last?.id) && Object.hasOwn(modeLabels, last.mode) ? last : null,
+      full: Array.isArray(value?.full) ? value.full.filter(item => idPattern.test(item?.id)) : [],
+    };
+  } catch {
+    return {last:null, full:[]};
+  }
+}
+
+const session = restore();
+let demoReady = false;
+let file = null;
+let busy = false;
+let displayedProgress = '';
+
+function save() {
+  try { sessionStorage.setItem(storageKey, JSON.stringify(session)); } catch { /* Storage can be blocked. */ }
+}
+
+function mode() { return form.elements.mode.value; }
+
+function refreshControls() {
+  const recheck = mode() === 'recheck';
+  get('baseline-field').hidden = !recheck;
+  get('modes').disabled = busy;
+  fileInput.disabled = busy;
+  baseline.disabled = busy || !baseline.value;
+  get('submit').disabled = busy || (recheck && !baseline.value);
+}
+
+function refreshBaselines() {
+  const selected = baseline.value;
+  const options = [
+    ...(demoReady ? [new Option('Демо-отчёт', 'demo')] : []),
+    ...session.full.map(item => new Option((item.name || 'Полный отчёт') + ' · ' + item.id.slice(0, 8), item.id)),
+  ];
+  baseline.replaceChildren(...(options.length ? options : [new Option('Нет доступных базовых отчётов', '')]));
+  if (options.some(option => option.value === selected)) baseline.value = selected;
+  refreshControls();
+}
+
+function showError(message) {
+  const error = get('upload-error');
+  error.textContent = message;
+  error.hidden = !message;
+}
+
+function selectFile(selected) {
+  file = selected || null;
+  const fileName = get('file-name');
+  fileName.textContent = file ? 'Выбран файл · ' + file.name : '';
+  fileName.hidden = !file;
+  showError('');
+}
+
+function setStatus(message, error = false) {
+  get('run-status').hidden = false;
+  const target = get('status-message');
+  if (target.textContent !== message) target.textContent = message;
+  target.classList.toggle('error', error);
+}
+
+function showProgress(progress) {
+  const log = get('run-log');
+  const signature = JSON.stringify(progress);
+  if (signature === displayedProgress) return;
+  displayedProgress = signature;
+  log.replaceChildren(...progress.map(line => {
+    const item = document.createElement('li');
+    item.textContent = line;
+    return item;
+  }));
+  log.hidden = !progress.length;
+}
+
+async function request(path, options) {
+  const response = await fetch(path, {cache:'no-store', ...options});
+  const value = await response.json().catch(() => null);
+  if (!response.ok || !value) {
+    const error = new Error(value?.error || 'Сервер не вернул ожидаемый ответ.');
+    error.status = response.status;
+    throw error;
+  }
+  return value;
+}
+
+function forget(id) {
+  session.full = session.full.filter(item => item.id !== id);
+  if (session.last?.id === id) session.last = null;
+  save();
+  refreshBaselines();
+}
+
+async function poll(run) {
+  try {
+    const status = await request('/api/status/' + run.id);
+    if (session.last?.id !== run.id) return;
+    const label = modeLabels[status.mode] || modeLabels[run.mode];
+    showProgress(Array.isArray(status.progress) ? status.progress : []);
+    setStatus(label + ' · ' + (stateLabels[status.state] || 'Ожидаем статус'), status.state === 'failed');
+    if (status.state === 'failed') {
+      setStatus(label + ' · ' + (status.error || stateLabels.failed), true);
+    } else if (status.state === 'done') {
+      get('run-html').href = '/reports/' + run.id + '/review.html';
+      get('run-json').href = '/reports/' + run.id + '/review.json?download=1';
+      get('run-links').hidden = false;
+      if (status.mode === 'full' && !session.full.some(item => item.id === run.id)) {
+        session.full.unshift({id:run.id, name:run.name});
+        save();
+        refreshBaselines();
+      }
+    } else {
+      setTimeout(() => poll(run), 1500);
+      return;
+    }
+  } catch (error) {
+    if (session.last?.id !== run.id) return;
+    if (error.status === 404) {
+      forget(run.id);
+      setStatus('Прогон недоступен. Запустите проверку снова.', true);
+    } else {
+      setStatus('Связь с локальным сервером прервалась. Проверяем статус повторно…', true);
+      setTimeout(() => poll(run), 3000);
+      return;
+    }
+  }
+  busy = false;
+  refreshControls();
+}
+
+form.addEventListener('change', event => {
+  if (event.target === fileInput) selectFile(fileInput.files[0]);
+  else showError('');
+  refreshControls();
+});
+
+for (const eventName of ['dragover', 'drop']) {
+  window.addEventListener(eventName, event => {
+    if (event.dataTransfer?.types.includes('Files')) event.preventDefault();
+  });
+}
+drop.addEventListener('dragover', event => {
+  if (!busy && event.dataTransfer?.types.includes('Files')) drop.classList.add('drag');
+});
+drop.addEventListener('dragleave', event => {
+  if (!drop.contains(event.relatedTarget)) drop.classList.remove('drag');
+});
+drop.addEventListener('drop', event => {
+  drop.classList.remove('drag');
+  if (busy) return;
+  const files = event.dataTransfer?.files;
+  if (!files?.length) return;
+  if (files.length !== 1) {
+    showError('Перетащите один документ.');
+    return;
+  }
+  try { fileInput.files = files; } catch { fileInput.value = ''; }
+  selectFile(files[0]);
+});
+
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (busy) return;
+  if (!file) {
+    showError('Выберите документ для проверки.');
+    fileInput.focus();
+    return;
+  }
+  const suffix = file.name.match(/\.(md|txt|pdf)$/i)?.[1]?.toLowerCase();
+  if (!suffix || !file.size || file.size > (suffix === 'pdf' ? 16_000_000 : 120_000)) {
+    showError(!suffix ? 'Поддерживаются файлы MD, TXT и PDF.' :
+      !file.size ? 'Выберите непустой документ.' : 'Файл превышает допустимый размер.');
+    fileInput.focus();
+    return;
+  }
+  const selectedMode = mode();
+  const selectedBaseline = baseline.value;
+  const params = new URLSearchParams({mode:selectedMode});
+  if (selectedMode === 'recheck') params.set('baseline', selectedBaseline);
+  const selectedFile = file;
+  busy = true;
+  refreshControls();
+  showError('');
+  get('run-links').hidden = true;
+  showProgress([]);
+  setStatus('Загружаем документ…');
+  try {
+    const response = await request('/api/runs?' + params, {
+      method:'POST', headers:{'X-File-Name':encodeURIComponent(selectedFile.name)}, body:selectedFile,
+    });
+    if (!idPattern.test(response.id)) throw new Error('Сервер не вернул номер прогона.');
+    session.last = {id:response.id, name:selectedFile.name, mode:selectedMode};
+    save();
+    setStatus(modeLabels[selectedMode] + ' · В очереди');
+    poll(session.last);
+  } catch (error) {
+    if (error.status === 404 && selectedBaseline && selectedBaseline !== 'demo') forget(selectedBaseline);
+    setStatus(error.message || 'Не удалось отправить документ.', true);
+    busy = false;
+    refreshControls();
+  }
+});
+
+function metric(label, count) {
+  const item = document.createElement('div');
+  const name = document.createElement('dt');
+  const value = document.createElement('dd');
+  name.textContent = label;
+  value.textContent = count;
+  item.append(name, value);
+  return item;
+}
+
+async function loadDemo() {
+  try {
+    const report = await request('/reports/demo/review.json');
+    const title = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
+    get('demo-title').textContent = title || 'Демо-отчёт';
+    const findings = report.whole?.findings || [];
+    const metrics = get('demo-metrics');
+    if (Array.isArray(report.registry)) metrics.append(metric('Пункты в реестре', report.registry.length));
+    metrics.append(metric('Критические замечания', findings.filter(item => item.priority === 'критический').length));
+    for (const [key, label] of [['development','Разработка'], ['testing','Тестирование']]) {
+      const status = report.whole?.[key]?.status;
+      if (!status) continue;
+      const row = document.createElement('p');
+      const heading = document.createElement('strong');
+      heading.textContent = label;
+      row.append(heading, ' · ' + status);
+      get('demo-gates').append(row);
+    }
+    get('demo-status').hidden = true;
+    get('demo-summary').hidden = false;
+    demoReady = true;
+    refreshBaselines();
+  } catch {
+    get('demo-status').textContent = 'Демо-отчёт сейчас недоступен.';
+  }
+}
+
+if (session.last) {
+  busy = true;
+  setStatus('Восстанавливаем состояние прогона…');
+  poll(session.last);
+}
+refreshBaselines();
+loadDemo();
+</script>
+</body>
+</html>
