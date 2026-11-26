@@ -16,7 +16,7 @@ from .contract import EVIDENCE, TEXT, record, source_lines, validate_shape
 from .full import array, call_stage, choice, citations
 from .full_render import validate_report
 from .input import load_document
-from . import owner_decision
+from . import clarification_check, owner_decision
 
 
 RESOLVED, PERSISTS, CHANGED, UNKNOWN = "устранено", "сохранилось", "изменилось", "недостаточно данных"
@@ -228,14 +228,17 @@ def check_decisions(result, findings, old, new, diff):
             raise ValueError(f"{fid}: указанный блок изменений не связан с новой цитатой")
 
 
-def recheck(previous_path, revised_path, model, selected=(), *, decisions=(), baseline_sha256=None):
+def recheck(previous_path, revised_path, model, selected=(), *, decisions=(), baseline_sha256=None, clarifications=()):
     started = datetime.now(timezone.utc).isoformat()
     clock = time.monotonic()
     raw = previous_path.read_bytes()
     previous = json.loads(raw)
     old, issues = select_findings(previous, selected)
     report_sha = sha256(raw).hexdigest()
-    choices = owner_decision.bind_choices(issues, decisions, report_sha, baseline_sha256)
+    choices = owner_decision.bind_choices(issues, decisions, report_sha,
+                                          None if clarifications and not decisions else baseline_sha256)
+    dialogues = (clarification_check.bind(clarifications, issues, report_sha, baseline_sha256, choices, old)
+                 if clarifications else {})
     revised, revised_hash, input_metadata = load_document(revised_path)
     new = {i: text for i, text in enumerate(revised, 1) if text.strip()}
     if not new:
@@ -244,7 +247,8 @@ def recheck(previous_path, revised_path, model, selected=(), *, decisions=(), ba
     old_run = previous["run"]
     revision = version()
     digest = engine_digest("recheck.py", "full.py", "full_render.py", "input.py", "segments.py",
-                           "json_examples.py", "priority.py", "owner_decision.py")
+                           "json_examples.py", "priority.py", "owner_decision.py", "clarification_check.py",
+                           *(["clarify.py"] if dialogues else []))
     diff = make_diff(old, new)
     matches = revised_hash == old_run["input_sha256"]
     same_lines = old == new and old_run["input_lines"] == len(revised)
@@ -297,6 +301,8 @@ def recheck(previous_path, revised_path, model, selected=(), *, decisions=(), ba
               for finding in findings]
     if choices:
         owner_decision.attach_observations(checks, result["observations"], choices)
+    if dialogues:
+        attempts.extend(clarification_check.assess(dialogues, checks, new, diff, model, revised_hash))
     run = {
         "previous_report_name": previous_path.name, "previous_report_sha256": report_sha,
         "previous_input_name": old_run["input_name"], "previous_input_sha256": old_run["input_sha256"],
@@ -322,6 +328,8 @@ def render_html(report):
         validate_shape(row["revised_evidence"], array(EVIDENCE), "revised_evidence")
         if row["revised_evidence"]:
             citations(row["revised_evidence"], lines)
+        if "clarification" in row:
+            clarification_check.validate_display(row["clarification"], row, report["run"], report["diff"], lines)
 
     def refs(evidence, linked=False):
         items = []
@@ -344,6 +352,26 @@ def render_html(report):
     for row in report["checks"]:
         changes = ", ".join(f'<a href="#{escape(hunk)}">{escape(hunk)}</a>' for hunk in row["diff_hunks"])
         owner_html = ""
+        headline = f'<strong class="status {badges[row["status"]]}">{escape(row["status"])}</strong>'
+        if "clarification" in row:
+            details = row["clarification"]
+            workflow = row["workflow_status"]
+            tone = "resolved" if workflow == clarification_check.CLOSED else "changed"
+            headline = (f'<strong class="status {tone}">Замечание {escape(workflow)}</strong>'
+                        f'<p>Исходная проблема в тексте · {escape(row["status"])}</p>')
+            terms = "".join(
+                f'<li><b>{escape(term["text"])}</b> · {escape(term["status"])}'
+                f'<p>{escape(term["reason"])}</p>{refs(term["evidence"], linked=True) if term["evidence"] else ""}</li>'
+                for term in details["conditions"])
+            dialogue = "".join(f'<li><b>{escape(turn["question"])}</b><p>{escape(turn["answer"])}</p></li>'
+                               for turn in details["transcript"]["turns"])
+            owner_totals[details["status"]] += 1
+            next_step = (f'<p><b>Вопрос владельцу</b> · {escape(details["follow_up"])}</p>' if details["follow_up"]
+                         else f'<p>{escape(details["rule"])}</p>')
+            owner_html = (f'<section><h3>Уточнение владельца</h3>{next_step}'
+                          f'<p>Исполнение решения · {escape(details["status"])}</p>'
+                          + (f'<ol>{terms}</ol>' if terms else "")
+                          + f'<details><summary>Переписка с владельцем</summary><ol>{dialogue}</ol></details></section>')
         if "owner_decision" in row:
             decision = row["owner_decision"]
             validate_shape(decision, owner_decision.RECORDED, "owner_decision")
@@ -361,7 +389,7 @@ def render_html(report):
             )
         checks.append(
             f'<article><h2>{escape(row["id"])} · {escape(row["title"])}</h2>'
-            f'<strong class="status {badges[row["status"]]}">{escape(row["status"])}</strong><p>{escape(row["reason"])}</p>'
+            f'{headline}<p>{escape(row["reason"])}</p>'
             f'{owner_html}<h3>Прежний вывод</h3><p>{escape(row["prior_reason"])}</p>{refs(row["prior_evidence"])}'
             f'<h3>Цитаты из новой версии</h3>{refs(row["revised_evidence"], linked=True)}'
             + (f'<p>Изменения {changes}</p>' if changes else "") + '</article>'
@@ -401,7 +429,7 @@ summary {{cursor: pointer}}
 </style></head><body><main>
 <h1>Повторная проверка замечаний</h1><p>{escape(report["scope"])}</p>
 <p>{escape(run["previous_input_name"])} → {escape(run["input_name"])} · Проверено {len(checks)}</p>
-<p><b>Замечания</b> {summary}</p>{owner_summary}
+<p><b>Исходные проблемы в тексте</b> {summary}</p>{owner_summary}
 {"".join(checks) if checks else "<p>Замечаний для выбранной проверки нет.</p>"}
 <h2>Изменения в документе</h2>{"".join(diff) if diff else "<p>Нет изменений строк.</p>"}
 <details><summary>Текст новой версии</summary><ol>{source}</ol></details>
@@ -429,6 +457,8 @@ def main():
                         help="Проверить указанный ID; можно повторить для нескольких замечаний")
     parser.add_argument("--decision", action="append", default=[], metavar="D-ID=first|second",
                         help="Исход, зафиксированный владельцем в базовом отчёте; можно повторить")
+    parser.add_argument("--clarification", action="append", type=Path, default=[], metavar="TURN.json",
+                        help="Сохранённый диалог владельца по одному замечанию; можно повторить")
     parser.add_argument("--baseline-sha256", help="SHA-256 файла базового JSON, в котором выбирали исход")
     args = parser.parse_args()
     try:
@@ -436,10 +466,11 @@ def main():
                 or args.revised_document.suffix.lower() not in {".md", ".txt", ".pdf"}
                 or args.output.suffix.lower() not in {".json", ".html"}):
             raise ValueError("Ожидаются JSON полного ревью, новая версия .md/.txt/.pdf и выходной .json/.html")
-        if args.output.resolve() in {args.previous_report.resolve(), args.revised_document.resolve()}:
+        if args.output.resolve() in {p.resolve() for p in [args.previous_report, args.revised_document, *args.clarification]}:
             raise ValueError("Выходной файл должен отличаться от входных")
         report = recheck(args.previous_report, args.revised_document, args.model, args.finding,
-                         decisions=args.decision, baseline_sha256=args.baseline_sha256)
+                         decisions=args.decision, baseline_sha256=args.baseline_sha256,
+                         clarifications=[json.loads(p.read_bytes()) for p in args.clarification])
         write_report(args.output, report)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         parser.exit(1, f"Повторная проверка не завершена: {exc}\n")
