@@ -297,7 +297,7 @@ def render_full(report):
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'">
 <title>{safe(title)} · Ревью требований</title><style>{styles}</style></head>
 <body><a class="skip-link" href="#report">К результатам</a><header class="masthead"><div class="masthead-inner"><strong>Разбор ТЗ</strong><span>Отчёт полного прогона</span></div></header>
-<main class="full" id="report"><small>{safe(run['input_name'])} · {safe(run['started_utc'][:10])} · {safe(run['model'])}</small>
+<main class="full" id="report"><small>{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {safe(run['model'])}</small>
 <h1>{safe(title)}</h1><nav>{nav}</nav>
 <div class="metrics"><div><strong>{len(registry)}</strong>пунктов в реестре</div><div><strong>{len(defects)}</strong>нарушений, включая {len(critical)} критических</div><div><strong>{questions}</strong>открытых вопросов</div></div>
 <p>{summary}.</p><div class="gates">{''.join(verdicts)}</div>

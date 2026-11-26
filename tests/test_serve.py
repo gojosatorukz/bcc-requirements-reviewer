@@ -96,6 +96,12 @@ class WorkbenchTest(unittest.TestCase):
         self.assertIn(b"Benchmark", self.request("GET", "/reports/demo/review.html")[1])
         (latest / "review.html").write_text("<title>Impact</title>")
         self.assertIn(b"Impact", self.request("GET", "/reports/demo/review.html")[1])
+        submitted = self.demo.with_name("bcc-submission")
+        submitted.mkdir()
+        (submitted / "review.json").write_text('{"current":true}')
+        self.assertIn(b"Impact", self.request("GET", "/reports/demo/review.html")[1])
+        (submitted / "review.html").write_text("<title>Submitted run</title>")
+        self.assertIn(b"Submitted run", self.request("GET", "/reports/demo/review.html")[1])
         self.assertEqual(self.request("GET", "/reports/demo/../review.json")[0], 404)
         self.assertEqual(self.calls, [])
 

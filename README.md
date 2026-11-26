@@ -2,7 +2,7 @@
 
 Агент читает банковскую спецификацию, составляет реестр требований, проверяет каждое правило и сопоставляет правила с контрактом API и приёмочными примерами. Итог включает нарушения, открытые вопросы, критические дефекты, очередность исправлений и отдельные решения о готовности к разработке и к тестированию.
 
-[Отчёт для жюри · PDF](eval/blind-clearing/runs/full-official.pdf) · [Автономный HTML](eval/blind-clearing/runs/full-official.html) · [Исходный JSON прогона](eval/blind-clearing/runs/full-official.json) · [Оригинал задания BCC](https://github.com/BCC-HUB/ai-requirements-validator-task/blob/928c1aa364265426105b69ba7a3444eac11b22db/docs/requirements.md)
+[Отчёт для жюри · PDF](runs/bcc-submission/review.pdf) · [Автономный HTML](runs/bcc-submission/review.html) · [Исходный JSON прогона](runs/bcc-submission/review.json) · [Оригинал задания BCC](https://github.com/BCC-HUB/ai-requirements-validator-task/blob/928c1aa364265426105b69ba7a3444eac11b22db/docs/requirements.md)
 
 [Посмотреть демо · 32 с](presentation/bcc-demo.mp4) · [Презентация](presentation/bcc-pitch.pptx) · [Сценарий живой демонстрации](presentation/live-demo.md)
 
