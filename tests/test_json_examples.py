@@ -23,9 +23,13 @@ class JsonExampleTests(unittest.TestCase):
         self.assertEqual((b["status"], b["line"], b["column"]), ("invalid", 12, 9))
         self.assertEqual((c["end"], c["status"]), (15, "valid"))
         self.assertEqual(inspect(["~~~json", "~~~"])["examples"][0]["status"], "invalid")
-        html = render_json_checks({"examples": [a, b, c]})
+        html = render_json_checks({"examples": [a, b, c]}, dict(enumerate(lines, 1)))
         self.assertIn('#source-line-6', html)
         self.assertIn("Корректный JSON", html)
+        blank_eof = inspect(["~~~json", "{", "", ""])
+        html = render_json_checks(blank_eof, {1: "~~~json", 2: "{"})
+        self.assertIn("позиция парсера, строка 4", html)
+        self.assertNotIn("#source-line-4", html)
 
     def test_generated_values_and_trailing_comma_mutations(self):
         for n in range(80):

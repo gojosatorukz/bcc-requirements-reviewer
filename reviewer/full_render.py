@@ -1,5 +1,7 @@
 """Self-contained Russian report for full-document review results (schema 2)."""
 
+import re
+from base64 import b64encode
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -71,7 +73,46 @@ def evidence(refs):
     return "".join(f'<blockquote>{safe(r["quote"])} {line_link(r["line"])}</blockquote>' for r in refs)
 
 
-def render_json_checks(checks):
+def markdown_text(text):
+    # Keep model-supplied text on one line so it cannot introduce Markdown blocks.
+    line = " ".join(str(text).splitlines()).strip()
+    line = re.sub(r"([\\`*_~\[\]<>|&:@#])", r"\\\1", line)
+    return re.sub(r"^(\d{1,9})?([+.()=\-])", r"\1\\\2", line)
+
+
+def finding_markdown(finding, run, page_by_line):
+    def field(key):
+        return markdown_text(finding[key])
+
+    sections = [
+        f"# {field('id')} · {field('title')}",
+        (f"**Тип:** {field('category')}  \n**Приоритет:** {field('priority')}  \n"
+         f"**Адресат:** {field('owner')}  \n**Статус карточки:** черновик для согласования"),
+        (f"**Документ:** {markdown_text(run['input_name'])}  \n"
+         f"**SHA-256 исходника:** {markdown_text(run['input_sha256'])}"),
+        f"## Основание\n\n{field('reason')}",
+        f"## Вопрос владельцу\n\n{field('question')}",
+        f"## Предлагаемое действие\n\n{field('action')}",
+        "## Цитаты из исходника",
+    ]
+    for ref in finding["evidence"]:
+        line, quote = ref["line"], ref["quote"]
+        page = f", страница {page_by_line[line]}" if line in page_by_line else ""
+        fence = "`" * max(3, 1 + max((len(ticks) for ticks in re.findall(r"`+", quote)), default=0))
+        sections.append(f"Строка {line}{page}\n\n{fence}text\n{quote}\n{fence}")
+    if not finding["evidence"]:
+        sections.append("Цитаты в отчёте отсутствуют.")
+    return "\n\n".join(sections) + "\n"
+
+
+def finding_download(finding, run, page_by_line):
+    payload = b64encode(finding_markdown(finding, run, page_by_line).encode("utf-8")).decode("ascii")
+    fid = safe(finding["id"])
+    return (f'<a class="finding-export" download="{fid}.md" aria-label="Скачать карточку {fid} в Markdown" '
+            f'href="data:text/markdown;charset=utf-8;base64,{payload}">Скачать карточку (.md)</a>')
+
+
+def render_json_checks(checks, lines):
     examples = checks.get("examples", [])
     if not examples:
         return ""
@@ -81,7 +122,9 @@ def render_json_checks(checks):
                   "unchecked": "Проверка не завершена"}[item["status"]]
         detail = ""
         if item["status"] != "valid":
-            detail = f' · {safe(item["diagnostic"])} · {line_link(item["line"])}'
+            n = item["line"]
+            position = line_link(n) if n in lines else f'позиция парсера, строка {n}'
+            detail = f' · {safe(item["diagnostic"])} · {position}'
         rows.append(f'<li>{line_link(item["start"])} · <strong>{status}</strong>{detail}</li>')
     return ('<section id="json-syntax"><h2>Синтаксис JSON-примеров</h2>'
             '<p>Парсер проверяет каждый блок с меткой JSON. Поля, типы и поведение API оцениваются в реестре требований.</p>'
@@ -137,6 +180,8 @@ def render_full(report):
     related = defaultdict(list)
     decisions = {}
     findings = []
+    page_by_line = {n: page["page"] for page in run.get("pages", [])
+                    for n in range(page["start"], page["end"] + 1)}
     for f in whole["findings"]:
         fid = f["id"]
         for rid in f["requirements"]:
@@ -160,6 +205,7 @@ def render_full(report):
 <h3>{safe(f['title'])}</h3><p>{safe(f['criterion'])}. {safe(f['reason'])}</p><p><b>Последствие.</b> {safe(f['impact'])}</p>
 {evidence(f['evidence'])}<p><b>{safe(f['owner'])}.</b> {safe(f['question'])}</p>
 <p><b>Исправление.</b> {safe(f['action'])}</p><p>{refs}</p>
+{finding_download(f, run, page_by_line)}
 {basis}{render_decision_drafts(f, report['conflicts'])}</article>''')
     closed = []
     for i, item in enumerate(whole["reconciled"], 1):
@@ -211,6 +257,8 @@ def render_full(report):
 .metrics strong{font-size:1.65rem;display:block}.full h3{font-size:1.05rem;margin:.35rem 0}
 .full section{margin:1.6rem 0}.finding{border-top:1px solid var(--line);padding:1rem 0}
 .finding p+p{margin-top:.45rem}.full small{color:var(--muted)}.full blockquote{margin:.45rem 0}
+.finding-export{display:inline-block;margin:.45rem 0;padding:.25rem .5rem;border:1px solid var(--line);border-radius:3px;font-size:.9rem}
+.finding-export:hover{background:var(--green)}
 .full table{width:100%;border-collapse:collapse}.full td,.full th{padding:.55rem;vertical-align:top;border-bottom:1px solid var(--line);text-align:left}
 .full th{background:var(--green)}.full summary{cursor:pointer}.full tr:target,.finding:target{background:var(--warm)}
 .full .scroll{overflow:auto}.full td:first-child{min-width:4.6em}.full section>h2{border-top:2px solid var(--deep);padding-top:1rem}
@@ -231,7 +279,7 @@ def render_full(report):
 @page{size:A4;margin:15mm 15mm 18mm;@bottom-right{content:counter(page) " / " counter(pages);font:9pt sans-serif;color:#52625b}}
 @media print{
  html{font-size:12px}body,main,.full{font-family:Arial,sans-serif;background:white}
- header,nav,.skip-link,.backlinks,.decision-draft{display:none}
+ header,nav,.skip-link,.backlinks,.decision-draft,.finding-export{display:none}
  main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
  .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
  .full h2,.full h3{break-after:avoid}.full section{margin:9pt 0}.full section>h2{padding-top:7pt}
@@ -258,7 +306,7 @@ def render_full(report):
 <section id="actions"><h2>Что исправить в первую очередь</h2><p>Замечания в порядке приоритета. У каждого есть адресат, основание и предлагаемое изменение.</p>
 {''.join(findings) or '<p>Замечаний не выявлено.</p>'}</section>
 <section id="quality"><h2>Качество набора требований</h2>{axes}</section>
-{render_json_checks(report.get("json_checks", {}))}
+{render_json_checks(report.get("json_checks", {}), lines)}
 <section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
 <table class="registry"><thead><tr><th>ID отчёта / исходника</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
 <section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: {len(scenario_parts)}. У каждого указано решение итогового ревью.</p>
