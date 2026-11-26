@@ -42,6 +42,18 @@ class ExecutableStageTests(TestCase):
         with patch("reviewer.full.codex_provider.complete", side_effect=responses):
             return executable.build(BASE, LINES, "test", None, "digest", 1)
 
+    def test_material_contract_conflict_needs_two_cited_sides_and_adjudication(self):
+        finding = {"id": "D-02", "priority": "существенный", "category": "нарушение",
+                   "candidates": [1], "triage": {"witness": []}, "evidence": REFS}
+        report = {"whole": {"findings": [finding]}, "conflicts": [WITNESS]}
+        self.assertEqual(executable.targets(report), {"D-02": WITNESS})
+        self.assertEqual(executable.targets(report, "witness-v1"), {})
+        for edit in ({"category": "открытый вопрос"}, {"evidence": REFS[:1]}, {"candidates": [1, 2]}):
+            check = dict(report, whole={"findings": [dict(finding, **edit)]})
+            self.assertEqual(executable.targets(check), {})
+        old = dict(report, executables={"version": "witness-v1", "items": []})
+        executable.validate_saved(old, LINES)
+
     def test_replay_recomputes_numbers_and_checks_grounding(self):
         section, attempts = self.run_stage([(PROPOSAL, {}), (AUDIT, {})])
         report = {**BASE, "executables": section}

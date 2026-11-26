@@ -14,7 +14,8 @@ from .contract import EVIDENCE, TEXT, record, validate_shape
 from .full import InvalidStageResult, StageProviderError, array, call_stage, choice, citations
 
 
-VERSION = "witness-v1"
+LEGACY_VERSION = "witness-v1"
+VERSION = "witness-v2"
 PROPOSAL = record(programs=array(witness_vm.PROGRAM), reason=TEXT)
 AUDIT = record(verdict=choice("accepted", "rejected"), first_rule=TEXT, second_rule=TEXT,
                scenario=TEXT, control=TEXT, evidence=array(EVIDENCE))
@@ -53,15 +54,26 @@ AUDITOR = """Независимо проверь соответствие исп
 в evidence процитируй обе стороны дословно с номерами строк."""
 
 
-def targets(report):
+def targets(report, version=None):
+    # Old reports were built for critical findings only. Replay their exact policy.
+    if version is None:
+        version = report.get("executables", {}).get("version", VERSION)
     found = {}
     for finding in report["whole"]["findings"]:
-        if finding["category"] != "нарушение" or finding["priority"] != "критический":
+        if finding["category"] != "нарушение":
             continue
-        if "triage" in finding:
-            witnesses = finding["triage"]["witness"]
+        triage = finding.get("triage")
+        if finding["priority"] == "критический":
+            witnesses = (triage["witness"] if triage is not None else
+                         [report["conflicts"][n - 1] for n in finding["candidates"]])
+        elif (version == VERSION and finding["priority"] == "существенный"
+              and len(finding.get("candidates", [])) == 1):
+            candidate = report["conflicts"][finding["candidates"][0] - 1]
+            sources = {candidate[side]["source"]["line"] for side in ("first", "second")}
+            cited = {ref["line"] for ref in finding["evidence"]}
+            witnesses = [candidate] if len(sources) == 2 and sources <= cited else []
         else:
-            witnesses = [report["conflicts"][n - 1] for n in finding["candidates"]]
+            continue
         if len(witnesses) == 1:
             found[finding["id"]] = witnesses[0]
     return found
@@ -120,7 +132,7 @@ def build_one(fid, witness, source, model, checkpoint, digest):
 
 
 def build(report, lines, model, checkpoint, digest, workers):
-    witnesses = targets(report)
+    witnesses = targets(report, VERSION)
     items, attempts = [], []
 
     def construct(item):
@@ -137,7 +149,7 @@ def build(report, lines, model, checkpoint, digest, workers):
 
 def validate_saved(report, lines):
     section = report["executables"]
-    if (type(section) is not dict or set(section) != {"version", "items"} or section["version"] != VERSION
+    if (type(section) is not dict or set(section) != {"version", "items"} or section["version"] not in (LEGACY_VERSION, VERSION)
             or type(section["items"]) is not list):
         raise ValueError("Неизвестный формат исполняемых примеров")
     expected = targets(report)
