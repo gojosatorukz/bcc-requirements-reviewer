@@ -159,6 +159,18 @@ def validate_saved(report, lines):
             raise ValueError(f"{fid}: согласованность расчёта с документом не подтверждена")
 
 
+def simulate(report, finding_id, case):
+    """Recalculate a new input on an existing verified model, without changing the review."""
+    from .full_render import validate_report
+
+    lines = validate_report(report)
+    item = next((row for row in report.get("executables", {}).get("items", [])
+                 if row["finding_id"] == finding_id and row["status"] == "executed"), None)
+    if item is None:
+        raise ValueError("У выбранного замечания нет подтверждённой исполняемой модели")
+    return witness_vm.simulate(item["program"], lines, case, targets(report)[finding_id])
+
+
 def main():
     from .__main__ import engine_digest, run_usage, version, write_report
     from .full_render import validate_report
@@ -167,6 +179,10 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     replay = commands.add_parser("replay", help="Проверить и повторить расчёты из JSON без модели")
     replay.add_argument("report", type=Path)
+    explore = commands.add_parser("simulate", help="Посчитать результаты на других входных значениях")
+    explore.add_argument("report", type=Path)
+    explore.add_argument("--finding", required=True, metavar="D-ID")
+    explore.add_argument("--case", type=Path, required=True, help="JSON с initial и events")
     enrich = commands.add_parser("build", help="Построить исполняемые примеры к ранее сохранённому полному ревью")
     enrich.add_argument("report", type=Path)
     enrich.add_argument("output", type=Path)
@@ -177,6 +193,11 @@ def main():
     try:
         raw = args.report.read_bytes()
         report = json.loads(raw)
+        if args.command == "simulate":
+            case = json.loads(args.case.read_bytes())
+            trace = simulate(report, args.finding, case)
+            print(json.dumps(trace, ensure_ascii=False, indent=2))
+            return
         lines = validate_report(report)
         if args.command == "build":
             if args.output.resolve() == args.report.resolve() or args.output.suffix.lower() != ".json":
