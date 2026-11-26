@@ -1,0 +1,330 @@
+{
+  "executables": {
+    "version": "witness-v2",
+    "items": [
+      {
+        "finding_id": "D-01",
+        "status": "executed",
+        "program": {
+          "domains": [
+            {
+              "key": "statement_status",
+              "options": [
+                {
+                  "value": "QUEUED",
+                  "source": {
+                    "line": 8,
+                    "quote": "Сразу после регистрации status равен QUEUED."
+                  }
+                },
+                {
+                  "value": "AWAITING_SIGNATURE",
+                  "source": {
+                    "line": 13,
+                    "quote": "Если первая попытка завершилась результатом «сервис временно недоступен», GET возвращает status=AWAITING_SIGNATURE до следующей попытки."
+                  }
+                },
+                {
+                  "value": "MANUAL_REVIEW",
+                  "source": {
+                    "line": 22,
+                    "quote": "| Заказ зарегистрирован | сервис временно недоступен | MANUAL_REVIEW |"
+                  }
+                },
+                {
+                  "value": "READY",
+                  "source": {
+                    "line": 14,
+                    "quote": "При подписании GET возвращает status=READY."
+                  }
+                },
+                {
+                  "value": "REJECTED",
+                  "source": {
+                    "line": 14,
+                    "quote": "При отклонении сертификата GET возвращает status=REJECTED."
+                  }
+                }
+              ]
+            },
+            {
+              "key": "signing_result",
+              "options": [
+                {
+                  "value": "подписано",
+                  "source": {
+                    "line": 20,
+                    "quote": "| Заказ зарегистрирован | подписано | READY |"
+                  }
+                },
+                {
+                  "value": "сертификат отклонён",
+                  "source": {
+                    "line": 21,
+                    "quote": "| Заказ зарегистрирован | сертификат отклонён | REJECTED |"
+                  }
+                },
+                {
+                  "value": "сервис временно недоступен",
+                  "source": {
+                    "line": 22,
+                    "quote": "| Заказ зарегистрирован | сервис временно недоступен | MANUAL_REVIEW |"
+                  }
+                }
+              ]
+            }
+          ],
+          "states": [
+            {
+              "key": "status",
+              "label": "Статус подписания выписки, который получает приложение",
+              "unit": "enum:statement_status"
+            }
+          ],
+          "inputs": [
+            {
+              "key": "result",
+              "label": "Результат первой попытки подписания",
+              "unit": "enum:signing_result"
+            }
+          ],
+          "observe": [
+            "status"
+          ],
+          "first": {
+            "source": {
+              "line": 13,
+              "quote": "Если первая попытка завершилась результатом «сервис временно недоступен», GET возвращает status=AWAITING_SIGNATURE до следующей попытки."
+            },
+            "rules": [
+              {
+                "event": "first_get_after_signing_attempt",
+                "when": "True",
+                "updates": [
+                  {
+                    "target": "status",
+                    "expr": "\"AWAITING_SIGNATURE\" if result == \"сервис временно недоступен\" else (\"READY\" if result == \"подписано\" else \"REJECTED\")"
+                  }
+                ]
+              }
+            ]
+          },
+          "second": {
+            "source": {
+              "line": 22,
+              "quote": "| Заказ зарегистрирован | сервис временно недоступен | MANUAL_REVIEW |"
+            },
+            "rules": [
+              {
+                "event": "first_get_after_signing_attempt",
+                "when": "True",
+                "updates": [
+                  {
+                    "target": "status",
+                    "expr": "\"MANUAL_REVIEW\" if result == \"сервис временно недоступен\" else (\"READY\" if result == \"подписано\" else \"REJECTED\")"
+                  }
+                ]
+              }
+            ]
+          },
+          "scenario": {
+            "initial": [
+              {
+                "key": "status",
+                "value": "QUEUED"
+              }
+            ],
+            "events": [
+              {
+                "kind": "first_get_after_signing_attempt",
+                "label": "После завершения первой попытки подписания приложение впервые запрашивает статус зарегистрированного заказа. Следующая попытка ещё не началась.",
+                "values": [
+                  {
+                    "key": "result",
+                    "value": "сервис временно недоступен"
+                  }
+                ]
+              }
+            ]
+          },
+          "control": {
+            "initial": [
+              {
+                "key": "status",
+                "value": "QUEUED"
+              }
+            ],
+            "events": [
+              {
+                "kind": "first_get_after_signing_attempt",
+                "label": "После завершения первой попытки подписания приложение впервые запрашивает статус зарегистрированного заказа. Следующая попытка ещё не началась.",
+                "values": [
+                  {
+                    "key": "result",
+                    "value": "подписано"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "result": {
+          "version": "witness-enum-v1",
+          "scenario": {
+            "initial": {
+              "status": "QUEUED"
+            },
+            "steps": [
+              {
+                "step": 1,
+                "kind": "first_get_after_signing_attempt",
+                "label": "После завершения первой попытки подписания приложение впервые запрашивает статус зарегистрированного заказа. Следующая попытка ещё не началась.",
+                "inputs": {
+                  "result": "сервис временно недоступен"
+                },
+                "first": {
+                  "status": "AWAITING_SIGNATURE"
+                },
+                "second": {
+                  "status": "MANUAL_REVIEW"
+                },
+                "different": [
+                  "status"
+                ]
+              }
+            ],
+            "first_difference": {
+              "step": 1,
+              "field": "status",
+              "first": "AWAITING_SIGNATURE",
+              "second": "MANUAL_REVIEW"
+            },
+            "final": {
+              "first": {
+                "status": "AWAITING_SIGNATURE"
+              },
+              "second": {
+                "status": "MANUAL_REVIEW"
+              }
+            }
+          },
+          "control": {
+            "initial": {
+              "status": "QUEUED"
+            },
+            "steps": [
+              {
+                "step": 1,
+                "kind": "first_get_after_signing_attempt",
+                "label": "После завершения первой попытки подписания приложение впервые запрашивает статус зарегистрированного заказа. Следующая попытка ещё не началась.",
+                "inputs": {
+                  "result": "подписано"
+                },
+                "first": {
+                  "status": "READY"
+                },
+                "second": {
+                  "status": "READY"
+                },
+                "different": []
+              }
+            ],
+            "first_difference": null,
+            "final": {
+              "first": {
+                "status": "READY"
+              },
+              "second": {
+                "status": "READY"
+              }
+            }
+          }
+        },
+        "audit": {
+          "verdict": "accepted",
+          "first_rule": "Строка 13 задаёт значение AWAITING_SIGNATURE для GET после временной недоступности сервиса подписи и до следующей попытки. Первый последующий GET попадает в этот интервал. Две другие ветви соответствуют строке 14: при подписании клиент получает READY, при отклонении сертификата — REJECTED.",
+          "second_rule": "Строка 22 задаёт MANUAL_REVIEW именно для первого последующего GET зарегистрированного заказа при том же результате первой попытки. Правило воспроизводит эту строку в пределах указанного события. При смене входа на «подписано» или «сертификат отклонён» доступны соответственно READY и REJECTED по строкам 20 и 21.",
+          "scenario": "После регистрации обе модели начинают с QUEUED. К моменту GET первая попытка уже завершилась, её результат передан на вход, а следующая попытка ещё не началась. Заказ существует, поэтому клиент получает HTTP 200 и видит расхождение в строковом поле status уже при первом чтении после попытки. Все пять значений status и все три результата попытки принадлежат своим справочникам. Выбор ветви определяется результатом попытки. Арифметика, числовые коды и порядок статусов не используются.",
+          "control": "Контроль сохраняет начальное состояние и момент чтения. Меняется только результат первой попытки на «подписано». Обе модели выбирают ветвь READY, поскольку это значение прямо указано и в правиле публикации, и в строке приёмки.",
+          "evidence": [
+            {
+              "line": 13,
+              "quote": "Если первая попытка завершилась результатом «сервис временно недоступен», GET возвращает status=AWAITING_SIGNATURE до следующей попытки."
+            },
+            {
+              "line": 22,
+              "quote": "| Заказ зарегистрирован | сервис временно недоступен | MANUAL_REVIEW |"
+            },
+            {
+              "line": 18,
+              "quote": "| Начало | Результат первой попытки | Статус в первом последующем GET |"
+            },
+            {
+              "line": 14,
+              "quote": "При подписании GET возвращает status=READY. При отклонении сертификата GET возвращает status=REJECTED. Следующая попытка в рассматриваемом сценарии ещё не запускалась."
+            },
+            {
+              "line": 20,
+              "quote": "| Заказ зарегистрирован | подписано | READY |"
+            },
+            {
+              "line": 21,
+              "quote": "| Заказ зарегистрирован | сертификат отклонён | REJECTED |"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "execution_run": {
+    "started_utc": "2026-11-26T20:21:13.104623+00:00",
+    "elapsed_seconds": 43.79,
+    "base_report_sha256": "957d360959b0c77e458f215202ce19a1e62ad14f8e5b3343a5391a5924129201",
+    "agent_version": "d96338ef291a",
+    "engine_sha256": "33623656c038c8a58d0f090723b5a5a5b031d34516690284f06994221c439850",
+    "model": "gpt-6.2-astra",
+    "provider": "codex-cli",
+    "usage": {
+      "input_tokens": 28940,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1633,
+      "reasoning_output_tokens": 0
+    },
+    "current_usage": {
+      "input_tokens": 28940,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1633,
+      "reasoning_output_tokens": 0
+    },
+    "fresh_calls": 2,
+    "restored_attempts": 0,
+    "attempts": [
+      {
+        "stage": "Построение примера D-01",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 14811,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1028,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 26.95
+      },
+      {
+        "stage": "Проверка смысла D-01",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 14129,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 605,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 16.84
+      }
+    ]
+  }
+}

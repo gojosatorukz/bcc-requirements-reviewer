@@ -78,6 +78,10 @@ def check_protocol(name, report, pairs):
         if items and items[0]["status"] == "unsupported":
             require(all(x in items[0]["reason"] for x in ("AWAITING_SIGNATURE", "MANUAL_REVIEW")),
                     "named-state: при отказе потеряны исходные значения поля")
+        elif items:
+            split = items[0]["result"]["scenario"]["first_difference"]
+            require({split["first"], split["second"]} == {"AWAITING_SIGNATURE", "MANUAL_REVIEW"},
+                    "named-state: неверные значения поля GET после временной недоступности")
     if name in ("sdk-original", "sdk-fixed"):
         target = []
         for finding in report["whole"]["findings"]:
@@ -98,6 +102,18 @@ def check_protocol(name, report, pairs):
                         "sdk-original: причина отказа от исполнения отсутствует")
 
 
+def replay_upgrade(original, patch_path):
+    patch = json.loads(patch_path.read_bytes())
+    require(set(patch) == {"execution_run", "executables"}, "Лишние поля в дополнении")
+    execution = patch["execution_run"]
+    require(execution["base_report_sha256"] == sha256(original.read_bytes()).hexdigest()
+            and execution["fresh_calls"] > 0 and execution["restored_attempts"] == 0,
+            "Дополнение не связано с исходным холодным прогоном")
+    updated = {**json.loads(original.read_bytes()), **patch}
+    validate_saved(updated, validate_report(updated))
+    return updated
+
+
 def compare_sdk(runs):
     original = runs / "before-sdk-original.json"
     source = documents(ROOT, ("sdk-original", "sdk-fixed"))
@@ -105,17 +121,10 @@ def compare_sdk(runs):
     check_protocol("sdk-original", before, pairs)
     fixed, pairs, _ = verify("sdk-fixed", runs / "before-sdk-fixed.json", source["sdk-fixed"])
     check_protocol("sdk-fixed", fixed, pairs)
-    patch = json.loads((runs / "sdk-upgrade.json").read_bytes())
-    require(set(patch) == {"execution_run", "executables"}, "sdk-upgrade: лишние поля в дополнении")
-    execution = patch["execution_run"]
-    require(execution["base_report_sha256"] == sha256(original.read_bytes()).hexdigest()
-            and execution["fresh_calls"] > 0 and execution["restored_attempts"] == 0,
-            "sdk-upgrade: дополнение не связано с исходным холодным прогоном")
-    updated = {**before, **patch}
-    validate_saved(updated, validate_report(updated))
+    updated = replay_upgrade(original, runs / "sdk-upgrade.json")
     cases = json.loads((runs / "sdk-ledger-oracle.json").read_bytes())["cases"]
     verify_ledger(cases)
-    item, = patch["executables"]["items"]
+    item, = updated["executables"]["items"]
     split = item["result"]["scenario"]["first_difference"]
     field = split["field"]
     observed = [case["events"][0]["balances"]["101"]["debits_pending"] for case in cases.values()]
