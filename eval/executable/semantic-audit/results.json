@@ -1,0 +1,1544 @@
+{
+  "model": "gpt-6.2-astra",
+  "report_sha256": "9938b9c13e4bdde61157a049b5ac69985fbbfe328474c41ffbbd96003fb53706",
+  "cases": [
+    {
+      "case": "valid_month",
+      "finding_id": "D-01",
+      "program": {
+        "states": [
+          {
+            "key": "jan",
+            "label": "Январский итог карты",
+            "unit": "₸"
+          },
+          {
+            "key": "feb",
+            "label": "Февральский итог карты",
+            "unit": "₸"
+          }
+        ],
+        "inputs": [
+          {
+            "key": "amount",
+            "label": "Сумма проведённой покупки",
+            "unit": "₸"
+          },
+          {
+            "key": "bought",
+            "label": "Месяц покупки в Алматы",
+            "unit": "месяц"
+          },
+          {
+            "key": "posted",
+            "label": "Месяц проведения в Алматы",
+            "unit": "месяц"
+          }
+        ],
+        "observe": [
+          "jan",
+          "feb"
+        ],
+        "scenario": {
+          "initial": [
+            {
+              "key": "jan",
+              "value": 0
+            },
+            {
+              "key": "feb",
+              "value": 0
+            }
+          ],
+          "events": [
+            {
+              "kind": "posted",
+              "label": "Покупка одной карты проведена по времени Алматы",
+              "values": [
+                {
+                  "key": "amount",
+                  "value": 4000
+                },
+                {
+                  "key": "bought",
+                  "value": 1
+                },
+                {
+                  "key": "posted",
+                  "value": 2
+                }
+              ]
+            }
+          ]
+        },
+        "control": {
+          "initial": [
+            {
+              "key": "jan",
+              "value": 0
+            },
+            {
+              "key": "feb",
+              "value": 0
+            }
+          ],
+          "events": [
+            {
+              "kind": "posted",
+              "label": "Покупка одной карты проведена по времени Алматы",
+              "values": [
+                {
+                  "key": "amount",
+                  "value": 4000
+                },
+                {
+                  "key": "bought",
+                  "value": 2
+                },
+                {
+                  "key": "posted",
+                  "value": 2
+                }
+              ]
+            }
+          ]
+        },
+        "first": {
+          "source": {
+            "line": 38,
+            "quote": "Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки."
+          },
+          "rules": [
+            {
+              "event": "posted",
+              "when": "bought == 1",
+              "updates": [
+                {
+                  "target": "jan",
+                  "expr": "jan + amount"
+                }
+              ]
+            },
+            {
+              "event": "posted",
+              "when": "bought == 2",
+              "updates": [
+                {
+                  "target": "feb",
+                  "expr": "feb + amount"
+                }
+              ]
+            }
+          ]
+        },
+        "second": {
+          "source": {
+            "line": 64,
+            "quote": "| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ |"
+          },
+          "rules": [
+            {
+              "event": "posted",
+              "when": "posted == 1",
+              "updates": [
+                {
+                  "target": "jan",
+                  "expr": "jan + amount"
+                }
+              ]
+            },
+            {
+              "event": "posted",
+              "when": "posted == 2",
+              "updates": [
+                {
+                  "target": "feb",
+                  "expr": "feb + amount"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "result": {
+        "version": "witness-v1",
+        "scenario": {
+          "initial": {
+            "jan": 0,
+            "feb": 0
+          },
+          "steps": [
+            {
+              "step": 1,
+              "kind": "posted",
+              "label": "Покупка одной карты проведена по времени Алматы",
+              "inputs": {
+                "amount": 4000,
+                "bought": 1,
+                "posted": 2
+              },
+              "first": {
+                "jan": 4000,
+                "feb": 0
+              },
+              "second": {
+                "jan": 0,
+                "feb": 4000
+              },
+              "different": [
+                "jan",
+                "feb"
+              ]
+            }
+          ],
+          "first_difference": {
+            "step": 1,
+            "field": "jan",
+            "first": 4000,
+            "second": 0
+          },
+          "final": {
+            "first": {
+              "jan": 4000,
+              "feb": 0
+            },
+            "second": {
+              "jan": 0,
+              "feb": 4000
+            }
+          }
+        },
+        "control": {
+          "initial": {
+            "jan": 0,
+            "feb": 0
+          },
+          "steps": [
+            {
+              "step": 1,
+              "kind": "posted",
+              "label": "Покупка одной карты проведена по времени Алматы",
+              "inputs": {
+                "amount": 4000,
+                "bought": 2,
+                "posted": 2
+              },
+              "first": {
+                "jan": 0,
+                "feb": 4000
+              },
+              "second": {
+                "jan": 0,
+                "feb": 4000
+              },
+              "different": []
+            }
+          ],
+          "first_difference": null,
+          "final": {
+            "first": {
+              "jan": 0,
+              "feb": 4000
+            },
+            "second": {
+              "jan": 0,
+              "feb": 4000
+            }
+          }
+        }
+      },
+      "expected": "accepted",
+      "audit": {
+        "verdict": "accepted",
+        "first_rule": "По Ф-2 расходы пересчитываются при проведении покупки, а месяц учёта определяется датой её совершения в Алматы. Поэтому февральское проведение прибавляет 4 000 ₸ к январскому итогу.",
+        "second_rule": "В строке 64 для этой покупки прямо указан рост февральского счётчика на 4 000 ₸. Выбор месяца проведения воспроизводит ожидаемый результат в данном случае. Строка 64 сама по себе не устанавливает общее правило для всех покупок.",
+        "scenario": "Изначально оба счётчика карты равны нулю. Покупке 31 января в 23:58 и её проведению 1 февраля в 00:03 по Алматы соответствуют месяцы 1 и 2. Для расчёта месячных итогов этой точности достаточно. Единственное событие проведения прибавляет 4 000 ₸ ровно один раз. После него клиент видит по первой трактовке 4 000 ₸ за январь и 0 ₸ за февраль, по второй — 0 ₸ за январь и 4 000 ₸ за февраль. Различие следует из выбора счётчика по месяцу события.",
+        "control": "Контроль допустим. При тех же нулевых итогах и сумме 4 000 ₸ покупка и её проведение приходятся на февраль. Обе трактовки выбирают февральский счётчик и после проведения дают одинаковый результат — 0 ₸ за январь и 4 000 ₸ за февраль.",
+        "evidence": [
+          {
+            "line": 38,
+            "quote": "Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки."
+          },
+          {
+            "line": 64,
+            "quote": "| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ |"
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "stage": "Проверка смысла D-01",
+          "status": "accepted",
+          "usage": {
+            "input_tokens": 16212,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 474,
+            "reasoning_output_tokens": 0
+          },
+          "seconds": 16.1
+        }
+      ],
+      "seconds": 16.1,
+      "prompt_sha256": "217c82ba8d2530a34c7436caa3fd54716163ebadcbac9a9c285470e712714711"
+    },
+    {
+      "case": "valid_push",
+      "finding_id": "D-02",
+      "program": {
+        "states": [
+          {
+            "key": "spent",
+            "label": "Накопленные расходы одной карты за март",
+            "unit": "₸"
+          },
+          {
+            "key": "limit",
+            "label": "Текущий порог уведомления этой карты",
+            "unit": "₸"
+          },
+          {
+            "key": "notifications",
+            "label": "Получено push этой карты в марте",
+            "unit": "push"
+          }
+        ],
+        "inputs": [
+          {
+            "key": "amount",
+            "label": "Сумма новой покупки",
+            "unit": "₸"
+          },
+          {
+            "key": "new_limit",
+            "label": "Новый порог",
+            "unit": "₸"
+          }
+        ],
+        "observe": [
+          "notifications"
+        ],
+        "scenario": {
+          "initial": [
+            {
+              "key": "spent",
+              "value": 10000
+            },
+            {
+              "key": "limit",
+              "value": 10000
+            },
+            {
+              "key": "notifications",
+              "value": 1
+            }
+          ],
+          "events": [
+            {
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "values": [
+                {
+                  "key": "new_limit",
+                  "value": 15000
+                }
+              ]
+            },
+            {
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "values": [
+                {
+                  "key": "amount",
+                  "value": 5000
+                }
+              ]
+            }
+          ]
+        },
+        "control": {
+          "initial": [
+            {
+              "key": "spent",
+              "value": 10000
+            },
+            {
+              "key": "limit",
+              "value": 10000
+            },
+            {
+              "key": "notifications",
+              "value": 1
+            }
+          ],
+          "events": [
+            {
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "values": [
+                {
+                  "key": "new_limit",
+                  "value": 15000
+                }
+              ]
+            },
+            {
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "values": [
+                {
+                  "key": "amount",
+                  "value": 3000
+                }
+              ]
+            }
+          ]
+        },
+        "first": {
+          "source": {
+            "line": 39,
+            "quote": "На карту приходится максимум один такой push за календарный месяц."
+          },
+          "rules": [
+            {
+              "event": "raise_limit",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "limit",
+                  "expr": "new_limit"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "spent",
+                  "expr": "spent + amount"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "spent < limit <= spent + amount and notifications == 0",
+              "updates": [
+                {
+                  "target": "notifications",
+                  "expr": "notifications + 1"
+                }
+              ]
+            }
+          ]
+        },
+        "second": {
+          "source": {
+            "line": 40,
+            "quote": "Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки."
+          },
+          "rules": [
+            {
+              "event": "raise_limit",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "limit",
+                  "expr": "new_limit"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "spent",
+                  "expr": "spent + amount"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "spent < limit <= spent + amount",
+              "updates": [
+                {
+                  "target": "notifications",
+                  "expr": "notifications + 1"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "result": {
+        "version": "witness-v1",
+        "scenario": {
+          "initial": {
+            "notifications": 1
+          },
+          "steps": [
+            {
+              "step": 1,
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "inputs": {
+                "new_limit": 15000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 1
+              },
+              "different": []
+            },
+            {
+              "step": 2,
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "inputs": {
+                "amount": 5000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 2
+              },
+              "different": [
+                "notifications"
+              ]
+            }
+          ],
+          "first_difference": {
+            "step": 2,
+            "field": "notifications",
+            "first": 1,
+            "second": 2
+          },
+          "final": {
+            "first": {
+              "notifications": 1
+            },
+            "second": {
+              "notifications": 2
+            }
+          }
+        },
+        "control": {
+          "initial": {
+            "notifications": 1
+          },
+          "steps": [
+            {
+              "step": 1,
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "inputs": {
+                "new_limit": 15000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 1
+              },
+              "different": []
+            },
+            {
+              "step": 2,
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "inputs": {
+                "amount": 3000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 1
+              },
+              "different": []
+            }
+          ],
+          "first_difference": null,
+          "final": {
+            "first": {
+              "notifications": 1
+            },
+            "second": {
+              "notifications": 1
+            }
+          }
+        }
+      },
+      "expected": "accepted",
+      "audit": {
+        "verdict": "accepted",
+        "first_rule": "Строка 39 ограничивает число push по одной карте за календарный месяц. Клиент уже получил один push в марте. Повышение порога сохраняет этот счётчик, поэтому при следующем достижении порога условие notifications == 0 ложно. За март у клиента остаётся один push.",
+        "second_rule": "Строка 40 применяется к следующему достижению порога после его изменения. Сохранённые расходы в 10 000 ₸ ниже нового порога в 15 000 ₸. Когда покупка доводит расходы ровно до 15 000 ₸, клиент получает ещё один push независимо от уведомления при прежней настройке. За март получено два push.",
+        "scenario": "Обе модели воспроизводят исходное свидетельство для одной активной карты KZT с включёнными уведомлениями. В марте расходы и порог изначально равны 10 000 ₸, один push уже получен. Первое событие повышает только порог до 15 000 ₸. Второе событие — проведённая в марте покупка на 5 000 ₸. Проверка использует расходы до и после покупки: 10 000 < 15 000 = 10 000 + 5 000. Обе модели получают итог 15 000 ₸. Различие возникает только на втором шаге и следует из условия отправки push.",
+        "control": "При тех же начальных условиях и том же повышении порога покупка на 3 000 ₸ доводит мартовские расходы до 13 000 ₸. Порог 15 000 ₸ не достигнут, поэтому обе модели сохраняют один ранее полученный push.",
+        "evidence": [
+          {
+            "line": 39,
+            "quote": "* **Ф-3.** Когда расходы переходят от суммы ниже порога к сумме, равной порогу или выше, клиент получает push. На карту приходится максимум один такой push за календарный месяц."
+          },
+          {
+            "line": 40,
+            "quote": "* **Ф-4.** При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки."
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "stage": "Проверка смысла D-02",
+          "status": "accepted",
+          "usage": {
+            "input_tokens": 16323,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 515,
+            "reasoning_output_tokens": 0
+          },
+          "seconds": 15.15
+        }
+      ],
+      "seconds": 15.15,
+      "prompt_sha256": "217c82ba8d2530a34c7436caa3fd54716163ebadcbac9a9c285470e712714711"
+    },
+    {
+      "case": "wrong_scale",
+      "finding_id": "D-01",
+      "program": {
+        "states": [
+          {
+            "key": "jan",
+            "label": "Январский итог карты",
+            "unit": "₸"
+          },
+          {
+            "key": "feb",
+            "label": "Февральский итог карты",
+            "unit": "₸"
+          }
+        ],
+        "inputs": [
+          {
+            "key": "amount",
+            "label": "Сумма проведённой покупки",
+            "unit": "₸"
+          },
+          {
+            "key": "bought",
+            "label": "Месяц покупки в Алматы",
+            "unit": "месяц"
+          },
+          {
+            "key": "posted",
+            "label": "Месяц проведения в Алматы",
+            "unit": "месяц"
+          }
+        ],
+        "observe": [
+          "jan",
+          "feb"
+        ],
+        "scenario": {
+          "initial": [
+            {
+              "key": "jan",
+              "value": 0
+            },
+            {
+              "key": "feb",
+              "value": 0
+            }
+          ],
+          "events": [
+            {
+              "kind": "posted",
+              "label": "Покупка одной карты проведена по времени Алматы",
+              "values": [
+                {
+                  "key": "amount",
+                  "value": 4000
+                },
+                {
+                  "key": "bought",
+                  "value": 1
+                },
+                {
+                  "key": "posted",
+                  "value": 2
+                }
+              ]
+            }
+          ]
+        },
+        "control": {
+          "initial": [
+            {
+              "key": "jan",
+              "value": 0
+            },
+            {
+              "key": "feb",
+              "value": 0
+            }
+          ],
+          "events": [
+            {
+              "kind": "posted",
+              "label": "Покупка одной карты проведена по времени Алматы",
+              "values": [
+                {
+                  "key": "amount",
+                  "value": 4000
+                },
+                {
+                  "key": "bought",
+                  "value": 2
+                },
+                {
+                  "key": "posted",
+                  "value": 2
+                }
+              ]
+            }
+          ]
+        },
+        "first": {
+          "source": {
+            "line": 38,
+            "quote": "Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки."
+          },
+          "rules": [
+            {
+              "event": "posted",
+              "when": "bought == 1",
+              "updates": [
+                {
+                  "target": "jan",
+                  "expr": "jan + amount * 100"
+                }
+              ]
+            },
+            {
+              "event": "posted",
+              "when": "bought == 2",
+              "updates": [
+                {
+                  "target": "feb",
+                  "expr": "feb + amount * 100"
+                }
+              ]
+            }
+          ]
+        },
+        "second": {
+          "source": {
+            "line": 64,
+            "quote": "| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ |"
+          },
+          "rules": [
+            {
+              "event": "posted",
+              "when": "posted == 1",
+              "updates": [
+                {
+                  "target": "jan",
+                  "expr": "jan + amount * 100"
+                }
+              ]
+            },
+            {
+              "event": "posted",
+              "when": "posted == 2",
+              "updates": [
+                {
+                  "target": "feb",
+                  "expr": "feb + amount * 100"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "result": {
+        "version": "witness-v1",
+        "scenario": {
+          "initial": {
+            "jan": 0,
+            "feb": 0
+          },
+          "steps": [
+            {
+              "step": 1,
+              "kind": "posted",
+              "label": "Покупка одной карты проведена по времени Алматы",
+              "inputs": {
+                "amount": 4000,
+                "bought": 1,
+                "posted": 2
+              },
+              "first": {
+                "jan": 400000,
+                "feb": 0
+              },
+              "second": {
+                "jan": 0,
+                "feb": 400000
+              },
+              "different": [
+                "jan",
+                "feb"
+              ]
+            }
+          ],
+          "first_difference": {
+            "step": 1,
+            "field": "jan",
+            "first": 400000,
+            "second": 0
+          },
+          "final": {
+            "first": {
+              "jan": 400000,
+              "feb": 0
+            },
+            "second": {
+              "jan": 0,
+              "feb": 400000
+            }
+          }
+        },
+        "control": {
+          "initial": {
+            "jan": 0,
+            "feb": 0
+          },
+          "steps": [
+            {
+              "step": 1,
+              "kind": "posted",
+              "label": "Покупка одной карты проведена по времени Алматы",
+              "inputs": {
+                "amount": 4000,
+                "bought": 2,
+                "posted": 2
+              },
+              "first": {
+                "jan": 0,
+                "feb": 400000
+              },
+              "second": {
+                "jan": 0,
+                "feb": 400000
+              },
+              "different": []
+            }
+          ],
+          "first_difference": null,
+          "final": {
+            "first": {
+              "jan": 0,
+              "feb": 400000
+            },
+            "second": {
+              "jan": 0,
+              "feb": 400000
+            }
+          }
+        }
+      },
+      "expected": "rejected",
+      "audit": {
+        "verdict": "rejected",
+        "first_rule": "По строке 38 покупку учитывают после проведения, а месяц выбирают по дате покупки в Алматы. Условие по `bought` верно. Ошибка в сумме: `amount`, `jan` и `feb` выражены в тенге. В обеих ветвях заменить `amount * 100` на `amount`.",
+        "second_rule": "Для случая из строки 64 ветвь `posted == 2` верно выбирает февраль, но прибавляет 400 000 ₸ вместо 4 000 ₸. В обеих ветвях заменить `amount * 100` на `amount`. Выбор месяца проведения воспроизводит этот критерий приёмки. Общего правила для всех покупок строка 64 не устанавливает.",
+        "scenario": "Оба счётчика одной карты начинаются с нуля. Единственное событие проведения сохраняет существенную для примера последовательность: покупка совершена 31 января в 23:58 и проведена 1 февраля в 00:03 по Алматы. Для выбора счётчика достаточно месяцев 1 и 2. После исправления клиент увидит по первой трактовке 4 000 ₸ за январь и 0 ₸ за февраль, по второй — 0 ₸ за январь и 4 000 ₸ за февраль.",
+        "control": "Контроль допустим: покупка совершена и проведена в феврале, поэтому оба условия выбирают февральский счётчик. При нулевых начальных итогах обе программы должны показать 0 ₸ за январь и 4 000 ₸ за февраль. Сейчас они совпадают на ошибочной сумме 400 000 ₸ за февраль.",
+        "evidence": [
+          {
+            "line": 38,
+            "quote": "Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки."
+          },
+          {
+            "line": 64,
+            "quote": "| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ |"
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "stage": "Проверка смысла D-01",
+          "status": "accepted",
+          "usage": {
+            "input_tokens": 16224,
+            "cached_input_tokens": 10624,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 508,
+            "reasoning_output_tokens": 0
+          },
+          "seconds": 15.35
+        }
+      ],
+      "seconds": 15.35,
+      "prompt_sha256": "217c82ba8d2530a34c7436caa3fd54716163ebadcbac9a9c285470e712714711"
+    },
+    {
+      "case": "swapped_policies",
+      "finding_id": "D-02",
+      "program": {
+        "states": [
+          {
+            "key": "spent",
+            "label": "Накопленные расходы одной карты за март",
+            "unit": "₸"
+          },
+          {
+            "key": "limit",
+            "label": "Текущий порог уведомления этой карты",
+            "unit": "₸"
+          },
+          {
+            "key": "notifications",
+            "label": "Получено push этой карты в марте",
+            "unit": "push"
+          }
+        ],
+        "inputs": [
+          {
+            "key": "amount",
+            "label": "Сумма новой покупки",
+            "unit": "₸"
+          },
+          {
+            "key": "new_limit",
+            "label": "Новый порог",
+            "unit": "₸"
+          }
+        ],
+        "observe": [
+          "notifications"
+        ],
+        "scenario": {
+          "initial": [
+            {
+              "key": "spent",
+              "value": 10000
+            },
+            {
+              "key": "limit",
+              "value": 10000
+            },
+            {
+              "key": "notifications",
+              "value": 1
+            }
+          ],
+          "events": [
+            {
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "values": [
+                {
+                  "key": "new_limit",
+                  "value": 15000
+                }
+              ]
+            },
+            {
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "values": [
+                {
+                  "key": "amount",
+                  "value": 5000
+                }
+              ]
+            }
+          ]
+        },
+        "control": {
+          "initial": [
+            {
+              "key": "spent",
+              "value": 10000
+            },
+            {
+              "key": "limit",
+              "value": 10000
+            },
+            {
+              "key": "notifications",
+              "value": 1
+            }
+          ],
+          "events": [
+            {
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "values": [
+                {
+                  "key": "new_limit",
+                  "value": 15000
+                }
+              ]
+            },
+            {
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "values": [
+                {
+                  "key": "amount",
+                  "value": 3000
+                }
+              ]
+            }
+          ]
+        },
+        "first": {
+          "source": {
+            "line": 39,
+            "quote": "На карту приходится максимум один такой push за календарный месяц."
+          },
+          "rules": [
+            {
+              "event": "raise_limit",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "limit",
+                  "expr": "new_limit"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "spent",
+                  "expr": "spent + amount"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "spent < limit <= spent + amount",
+              "updates": [
+                {
+                  "target": "notifications",
+                  "expr": "notifications + 1"
+                }
+              ]
+            }
+          ]
+        },
+        "second": {
+          "source": {
+            "line": 40,
+            "quote": "Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки."
+          },
+          "rules": [
+            {
+              "event": "raise_limit",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "limit",
+                  "expr": "new_limit"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "spent",
+                  "expr": "spent + amount"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "spent < limit <= spent + amount and notifications == 0",
+              "updates": [
+                {
+                  "target": "notifications",
+                  "expr": "notifications + 1"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "result": {
+        "version": "witness-v1",
+        "scenario": {
+          "initial": {
+            "notifications": 1
+          },
+          "steps": [
+            {
+              "step": 1,
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "inputs": {
+                "new_limit": 15000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 1
+              },
+              "different": []
+            },
+            {
+              "step": 2,
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "inputs": {
+                "amount": 5000
+              },
+              "first": {
+                "notifications": 2
+              },
+              "second": {
+                "notifications": 1
+              },
+              "different": [
+                "notifications"
+              ]
+            }
+          ],
+          "first_difference": {
+            "step": 2,
+            "field": "notifications",
+            "first": 2,
+            "second": 1
+          },
+          "final": {
+            "first": {
+              "notifications": 2
+            },
+            "second": {
+              "notifications": 1
+            }
+          }
+        },
+        "control": {
+          "initial": {
+            "notifications": 1
+          },
+          "steps": [
+            {
+              "step": 1,
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "inputs": {
+                "new_limit": 15000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 1
+              },
+              "different": []
+            },
+            {
+              "step": 2,
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "inputs": {
+                "amount": 3000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 1
+              },
+              "different": []
+            }
+          ],
+          "first_difference": null,
+          "final": {
+            "first": {
+              "notifications": 1
+            },
+            "second": {
+              "notifications": 1
+            }
+          }
+        }
+      },
+      "expected": "rejected",
+      "audit": {
+        "verdict": "rejected",
+        "first_rule": "Ссылка на строку 39 верна, но первая программа выдаёт второй мартовский push при достижении нового порога. Добавить `and notifications == 0` к условию пересечения порога. Тогда за март останется один push.",
+        "second_rule": "Ссылка на строку 40 верна, но во второй программе условие `notifications == 0` блокирует push из-за уведомления по прежней настройке. Для данного сценария убрать эту проверку, сохранив `spent < limit <= spent + amount`. Тогда при достижении 15 000 ₸ клиент получит второй мартовский push.",
+        "scenario": "Сценарий воспроизводит свидетельство. По той же активной карте KZT с включёнными уведомлениями в марте уже получен один push при достижении 10 000 ₸. Повышение порога до 15 000 ₸ сохраняет расходы на уровне 10 000 ₸. Затем проведённая покупка на 5 000 ₸ доводит сумму ровно до нового порога. Счётчики следуют из переходов, но результаты сторон перепутаны. После исправления на втором шаге у первой стороны должен остаться 1 push, а у второй их должно стать 2.",
+        "control": "Контроль допустим для обеих сторон. После того же повышения порога покупка на 3 000 ₸ доводит расходы до 13 000 ₸. Порог 15 000 ₸ не достигнут, поэтому у клиента в обеих трактовках остаётся один мартовский push.",
+        "evidence": [
+          {
+            "line": 39,
+            "quote": "* **Ф-3.** Когда расходы переходят от суммы ниже порога к сумме, равной порогу или выше, клиент получает push. На карту приходится максимум один такой push за календарный месяц."
+          },
+          {
+            "line": 40,
+            "quote": "* **Ф-4.** При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки."
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "stage": "Проверка смысла D-02",
+          "status": "accepted",
+          "usage": {
+            "input_tokens": 16321,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 491,
+            "reasoning_output_tokens": 0
+          },
+          "seconds": 15.29
+        }
+      ],
+      "seconds": 15.29,
+      "prompt_sha256": "217c82ba8d2530a34c7436caa3fd54716163ebadcbac9a9c285470e712714711"
+    },
+    {
+      "case": "wrong_card_history",
+      "finding_id": "D-02",
+      "program": {
+        "states": [
+          {
+            "key": "spent",
+            "label": "Накопленные расходы одной карты за март",
+            "unit": "₸"
+          },
+          {
+            "key": "limit",
+            "label": "Текущий порог уведомления этой карты",
+            "unit": "₸"
+          },
+          {
+            "key": "notifications",
+            "label": "Все ранее полученные в марте push по другим картам клиента",
+            "unit": "push"
+          }
+        ],
+        "inputs": [
+          {
+            "key": "amount",
+            "label": "Сумма новой покупки",
+            "unit": "₸"
+          },
+          {
+            "key": "new_limit",
+            "label": "Новый порог",
+            "unit": "₸"
+          }
+        ],
+        "observe": [
+          "notifications"
+        ],
+        "scenario": {
+          "initial": [
+            {
+              "key": "spent",
+              "value": 10000
+            },
+            {
+              "key": "limit",
+              "value": 10000
+            },
+            {
+              "key": "notifications",
+              "value": 1
+            }
+          ],
+          "events": [
+            {
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "values": [
+                {
+                  "key": "new_limit",
+                  "value": 15000
+                }
+              ]
+            },
+            {
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "values": [
+                {
+                  "key": "amount",
+                  "value": 5000
+                }
+              ]
+            }
+          ]
+        },
+        "control": {
+          "initial": [
+            {
+              "key": "spent",
+              "value": 10000
+            },
+            {
+              "key": "limit",
+              "value": 10000
+            },
+            {
+              "key": "notifications",
+              "value": 1
+            }
+          ],
+          "events": [
+            {
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "values": [
+                {
+                  "key": "new_limit",
+                  "value": 15000
+                }
+              ]
+            },
+            {
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "values": [
+                {
+                  "key": "amount",
+                  "value": 3000
+                }
+              ]
+            }
+          ]
+        },
+        "first": {
+          "source": {
+            "line": 39,
+            "quote": "На карту приходится максимум один такой push за календарный месяц."
+          },
+          "rules": [
+            {
+              "event": "raise_limit",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "limit",
+                  "expr": "new_limit"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "spent",
+                  "expr": "spent + amount"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "spent < limit <= spent + amount and notifications == 0",
+              "updates": [
+                {
+                  "target": "notifications",
+                  "expr": "notifications + 1"
+                }
+              ]
+            }
+          ]
+        },
+        "second": {
+          "source": {
+            "line": 40,
+            "quote": "Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки."
+          },
+          "rules": [
+            {
+              "event": "raise_limit",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "limit",
+                  "expr": "new_limit"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "True",
+              "updates": [
+                {
+                  "target": "spent",
+                  "expr": "spent + amount"
+                }
+              ]
+            },
+            {
+              "event": "purchase",
+              "when": "spent < limit <= spent + amount",
+              "updates": [
+                {
+                  "target": "notifications",
+                  "expr": "notifications + 1"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "result": {
+        "version": "witness-v1",
+        "scenario": {
+          "initial": {
+            "notifications": 1
+          },
+          "steps": [
+            {
+              "step": 1,
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "inputs": {
+                "new_limit": 15000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 1
+              },
+              "different": []
+            },
+            {
+              "step": 2,
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "inputs": {
+                "amount": 5000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 2
+              },
+              "different": [
+                "notifications"
+              ]
+            }
+          ],
+          "first_difference": {
+            "step": 2,
+            "field": "notifications",
+            "first": 1,
+            "second": 2
+          },
+          "final": {
+            "first": {
+              "notifications": 1
+            },
+            "second": {
+              "notifications": 2
+            }
+          }
+        },
+        "control": {
+          "initial": {
+            "notifications": 1
+          },
+          "steps": [
+            {
+              "step": 1,
+              "kind": "raise_limit",
+              "label": "Клиент в марте увеличил порог той же карты с включёнными уведомлениями",
+              "inputs": {
+                "new_limit": 15000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 1
+              },
+              "different": []
+            },
+            {
+              "step": 2,
+              "kind": "purchase",
+              "label": "В марте по этой же карте проведена покупка",
+              "inputs": {
+                "amount": 3000
+              },
+              "first": {
+                "notifications": 1
+              },
+              "second": {
+                "notifications": 1
+              },
+              "different": []
+            }
+          ],
+          "first_difference": null,
+          "final": {
+            "first": {
+              "notifications": 1
+            },
+            "second": {
+              "notifications": 1
+            }
+          }
+        }
+      },
+      "expected": "rejected",
+      "audit": {
+        "verdict": "rejected",
+        "first_rule": "Строка 39 ограничивает число push по одной карте за календарный месяц. Условие `notifications == 0` проверяет историю других карт клиента. Для обеих программ следует определить `notifications` как число пороговых push, полученных в марте по проверяемой карте. Тогда начальная 1 означает, что клиент уже получил push по этой карте при достижении 10 000 ₸, и месячный лимит исчерпан.",
+        "second_rule": "После повышения порога расходы остаются равными 10 000 ₸. Покупка на 5 000 ₸ доводит их до нового порога, поэтому строка 40 обосновывает ещё один push по этой карте. Сейчас переход `notifications + 1` ошибочно прибавляет его к уведомлениям по другим картам. С исправленным определением счётчика переход от 1 к 2 отражает второй мартовский push по той же карте.",
+        "scenario": "Очередность, месяц и суммы соответствуют свидетельству. Сначала клиент повышает порог до 15 000 ₸, затем проведённая в марте покупка увеличивает расходы с 10 000 до 15 000 ₸. Различие возникает на покупке и следует из условий перехода. Однако при заданном смысле наблюдаемого поля итоги 1 и 2 не показывают, сколько push клиент получил по проверяемой карте.",
+        "control": "Контрольная покупка на 3 000 ₸ доводит расходы до 13 000 ₸, что ниже нового порога 15 000 ₸. Обе трактовки поэтому дают ноль новых push. После исправления области счётчика общий итог 1 верно обозначает ранее полученный мартовский push по той же карте.",
+        "evidence": [
+          {
+            "line": 39,
+            "quote": "На карту приходится максимум один такой push за календарный месяц."
+          },
+          {
+            "line": 40,
+            "quote": "При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки."
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "stage": "Проверка смысла D-02",
+          "status": "accepted",
+          "usage": {
+            "input_tokens": 16324,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 493,
+            "reasoning_output_tokens": 0
+          },
+          "seconds": 14.33
+        }
+      ],
+      "seconds": 14.33,
+      "prompt_sha256": "217c82ba8d2530a34c7436caa3fd54716163ebadcbac9a9c285470e712714711"
+    }
+  ]
+}
