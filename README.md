@@ -18,7 +18,7 @@ python3 -m reviewer.serve
 
 ## Проверить своё ТЗ
 
-Нужны сеть и авторизованный Codex CLI с доступом к модели. Проверенная конфигурация использует GPT-6.2 Astra. CLI должен поддерживать `--ephemeral`, `--ignore-user-config` и `--output-schema`. Авторизацию хранит Codex. Настройки модели и браузера описаны в [.env.example](.env.example).
+Нужны сеть и авторизованный Codex CLI с доступом к модели. Проверенная конфигурация использует GPT-6.2 Astra. CLI должен поддерживать `--ephemeral`, `--ignore-user-config` и `--output-schema`. Авторизацию хранит Codex. Версия CLI в проверенном прогоне — `0.171.0-alpha.13.2`. [Установка Codex CLI](https://developers.openai.com/codex/cli/) · [Настройки модели и браузера](.env.example)
 
 ```sh
 codex login
@@ -26,6 +26,8 @@ codex login status
 python3 -m reviewer specification.docx output/review.json
 python3 -m reviewer.render output/review.json output/review.html
 ```
+
+Если вы используете API-ключ, создайте его в своём проекте OpenAI, передайте значение через переменную окружения `OPENAI_API_KEY` и зарегистрируйте в хранилище Codex командой `printenv OPENAI_API_KEY | codex login --with-api-key`. В PowerShell используйте `$env:OPENAI_API_KEY | codex login --with-api-key`. Доступ к нужной модели зависит от вашей учётной записи. Опубликованные прогоны выполнены через вход в ChatGPT. [Страница ключей](https://platform.openai.com/api-keys) · [Авторизация CLI](https://developers.openai.com/codex/auth)
 
 CLI и рабочее место принимают Markdown, TXT, DOCX и PDF с текстовым слоем. Для Word сохраняются адреса абзацев и строк простых таблиц основного текста. Файлы с необработанными правками, встроенными объектами или объединёнными ячейками требуют экспорта в PDF. Для чтения PDF установите `python3 -m pip install -r requirements.txt`. Для печати в PDF нужен Chrome или Chromium. Рабочее место хранит новые документы во временной папке до остановки сервера. Для передачи коллеге скачайте отчёт и диалог.
 
