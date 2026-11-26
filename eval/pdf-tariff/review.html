@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'">
+<title>tariff.pdf · Ревью требований</title><style>:root {
+  color-scheme: light;
+  --canvas: #e7ece6;
+  --paper: #f7f7f3;
+  --ink: #202e2b;
+  --muted: #52625b;
+  --line: #c9d2ca;
+  --deep: #123e34;
+  --green: #e5ece5;
+  --warm: #fbe9d7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font: 1rem/1.55 system-ui, sans-serif;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: #205a48;
+  text-underline-offset: .2em;
+}
+
+:focus-visible {
+  outline: 3px solid #8c5020;
+  outline-offset: 3px;
+}
+
+[id] { scroll-margin-block: 1.25rem; }
+
+p { margin: 0; }
+
+.sr-only,
+.skip-link:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link:focus {
+  position: absolute;
+  z-index: 1;
+  top: .75rem;
+  left: .75rem;
+  padding: .5rem .75rem;
+  background: white;
+}
+
+.masthead {
+  background: var(--deep);
+  color: white;
+}
+
+.masthead-inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+  padding-block: .8rem;
+}
+
+.masthead strong {
+  font-size: 1.3rem;
+  letter-spacing: -.035em;
+}
+
+.masthead span {
+  color: #d0dfd3;
+  font-size: .875rem;
+}
+
+main {
+  width: min(100% - 2rem, 72rem);
+  margin: 1.75rem auto 3rem;
+  padding: clamp(1rem, 3.75vw, 2.75rem);
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.scope,
+.section-note,
+.owner,
+.facts dt { color: var(--muted); }
+
+.scope {
+  font-size: .875rem;
+  font-weight: 650;
+}
+
+h1 {
+  margin: .45rem 0 1rem;
+  font: 500 clamp(2rem, 5vw, 3.5rem)/1.06 Georgia, serif;
+  letter-spacing: -.035em;
+}
+
+h2 {
+  margin: 0 0 .875rem;
+  font-size: clamp(1.3rem, 3vw, 1.85rem);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+}
+
+h3 {
+  margin: 0 0 .45rem;
+  font-size: .875rem;
+  line-height: 1.35;
+}
+
+.overview {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.overview nav,
+.backlinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1rem;
+}
+
+.overview a,
+.citation,
+.backlinks a {
+  display: inline-block;
+  padding-block: .25rem;
+  font-size: .875rem;
+}
+
+.count {
+  padding: .3rem .65rem;
+  border-radius: 3px;
+  background: var(--green);
+  color: var(--deep);
+}
+
+.count strong {
+  margin-inline-start: .35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.conflict,
+.empty,
+.report-section { margin-top: 2rem; }
+
+.conflict + .conflict,
+.report-section {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.scenario,
+.empty {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: var(--green);
+}
+
+.scenario p { max-width: 80ch; }
+
+.outcomes,
+.follow-up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.outcome,
+.question,
+.control {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border-top: 3px solid var(--deep);
+}
+
+.outcome h3 { color: var(--deep); }
+.outcome-text,
+.question-text { font-weight: 600; }
+
+blockquote {
+  margin: .9rem 0 .5rem;
+  padding-left: .75rem;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.citation { margin-top: auto; }
+
+.question {
+  border-color: #e4cdb8;
+  background: var(--warm);
+}
+
+.owner {
+  margin-top: .75rem;
+  font-size: .875rem;
+}
+
+.owner span {
+  display: block;
+  font-weight: 650;
+}
+
+.source-list {
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  list-style: none;
+  background: white;
+}
+
+.source-row {
+  display: grid;
+  grid-template-columns: minmax(3.6rem, max-content) minmax(0, 1fr);
+  column-gap: .75rem;
+  padding: .5rem .75rem .5rem 0;
+}
+
+.source-row + .source-row { border-top: 1px solid var(--line); }
+
+.source-row:target,
+.outcome:target {
+  outline: 2px solid #8c5020;
+  outline-offset: 2px;
+  background: var(--warm);
+}
+
+.line-number {
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.source-text {
+  font: .875rem/1.55 ui-monospace, "Cascadia Code", Menlo, monospace;
+  white-space: pre-wrap;
+  tab-size: 4;
+}
+
+.backlinks { grid-column: 2; }
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: .75rem 1rem;
+  margin: 0;
+}
+
+.facts div {
+  min-width: 0;
+  padding: .65rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.facts dt { font-size: .875rem; }
+.facts dd { margin: .15rem 0 0; }
+.tokens-heading { margin-top: 1.25rem; }
+
+.attempts { margin-top: 1rem; }
+.attempts summary { cursor: pointer; }
+.attempts ol { padding-inline-start: 1.5rem; }
+.attempts li + li { margin-top: .75rem; }
+.attempts .facts { margin-top: .5rem; }
+
+@media (max-width: 45rem) {
+  main {
+    width: calc(100% - 1rem);
+    margin-top: .75rem;
+  }
+
+  .outcomes,
+  .follow-up { grid-template-columns: minmax(0, 1fr); }
+
+  .scenario,
+  .outcome,
+  .question,
+  .control,
+  .empty { padding-inline: .875rem; }
+
+  .source-row {
+    grid-template-columns: minmax(2rem, max-content) minmax(0, 1fr);
+    column-gap: .5rem;
+  }
+}
+
+.full nav{margin:1rem 0}.metrics,.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13em),1fr));gap:.8rem;margin:1rem 0}
+.metrics>div,.gates>article{padding:1rem;background:var(--green);border:1px solid var(--line)}
+.metrics strong{font-size:1.65rem;display:block}.full h3{font-size:1.05rem;margin:.35rem 0}
+.full section{margin:1.6rem 0}.finding{border-top:1px solid var(--line);padding:1rem 0}
+.finding p+p{margin-top:.45rem}.full small{color:var(--muted)}.full blockquote{margin:.45rem 0}
+.finding-export{display:inline-block;margin:.45rem 0;padding:.25rem .5rem;border:1px solid var(--line);border-radius:3px;font-size:.9rem}
+.finding-export:hover{background:var(--green)}
+.full table{width:100%;border-collapse:collapse}.full td,.full th{padding:.55rem;vertical-align:top;border-bottom:1px solid var(--line);text-align:left}
+.full th{background:var(--green)}.full summary{cursor:pointer}.full tr:target,.finding:target{background:var(--warm)}
+.full .scroll{overflow:auto}.full td:first-child{min-width:4.6em}.full section>h2{border-top:2px solid var(--deep);padding-top:1rem}
+.decision-draft{margin-top:.75rem;padding:.65rem .85rem;border:1px solid var(--line);background:var(--green)}
+.decision-draft summary{font-weight:650;color:var(--deep)}
+.draft-scenario{min-inline-size:0;margin:.8rem 0 0;padding:.65rem;border:1px solid var(--line);background:var(--paper)}
+.draft-scenario legend{padding:0 .3rem;font-weight:650}
+.draft-options{display:grid;grid-template-columns:auto minmax(0,1fr) max-content;gap:.35rem .6rem;margin-top:.45rem;align-items:start}
+.draft-options input{margin:.65rem 0 0;accent-color:var(--deep);cursor:pointer}
+.draft-options label{display:block;padding:.25rem .4rem;border-radius:3px;cursor:pointer}
+.draft-options label span{display:block}
+.draft-options input:checked + label{background:var(--green)}
+.draft-source a{display:inline-block;padding:.4rem 0;font-size:.875rem}
+.draft-result{display:none;grid-column:1/-1;padding:.75rem;border-left:3px solid var(--deep);background:white}
+.draft-result h4{margin:0 0 .35rem}
+.draft-options input[value="1"]:checked ~ .draft-result-1,.draft-options input[value="2"]:checked ~ .draft-result-2{display:block}
+@media(max-width:650px){.full .registry td{display:block;border:0}.full .registry tr{display:block;border-bottom:1px solid var(--line)}.registry thead{display:none}}
+@page{size:A4;margin:15mm 15mm 18mm;@bottom-right{content:counter(page) " / " counter(pages);font:9pt sans-serif;color:#52625b}}
+@media print{
+ html{font-size:12px}body,main,.full{font-family:Arial,sans-serif;background:white}
+ header,nav,.skip-link,.backlinks,.decision-draft,.finding-export{display:none}
+ main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
+ .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
+ .full h2,.full h3{break-after:avoid}.full section{margin:9pt 0}.full section>h2{padding-top:7pt}
+ .metrics{grid-template-columns:repeat(3,1fr)}.gates{grid-template-columns:repeat(2,1fr)}
+ .full .registry{table-layout:fixed}.full .registry th:first-child{width:10%}.full .registry th:nth-child(2){width:49%}
+ .full .registry thead{display:table-header-group}.full .registry tr{display:table-row}.full .registry td{display:table-cell}
+ .full td,.full th{padding:4pt}.full .registry td:first-child{white-space:nowrap}
+ .full .source-row,.full tr,.full blockquote{break-inside:avoid}.full .source-text{font:8.5pt/1.3 Arial,sans-serif}
+ .full .finding{padding:6pt 0}.full small{font-size:8pt}.full blockquote{margin:2pt 0}
+ .full .facts{display:flex;flex-wrap:wrap;gap:3pt 9pt}.full .facts div{padding:2pt 0}.full .facts dd{margin:1pt 0}
+ .full .attempts li{break-inside:avoid}.full .attempts .facts div{border:0}
+}
+</style></head>
+<body><a class="skip-link" href="#report">К результатам</a><header class="masthead"><div class="masthead-inner"><strong>Разбор ТЗ</strong><span>Отчёт полного прогона</span></div></header>
+<main class="full" id="report"><small>tariff.pdf · 2026-11-26 · gpt-6.2-astra</small>
+<h1>tariff.pdf</h1><nav><a href="#actions">Замечания</a> · <a href="#register">Реестр</a> · <a href="#quality">Оценка набора</a> · <a href="#coverage">Покрытие</a> · <a href="#source">Исходник</a> · <a href="#passport">Паспорт</a></nav>
+<div class="metrics"><div><strong>13</strong>пунктов в реестре</div><div><strong>1</strong>нарушений, включая 1 критических</div><div><strong>0</strong>открытых вопросов</div></div>
+<p>10 требований · 3 приёмочных примеров · 0 примеров контракта.</p><div class="gates"><article><small>Разработка</small><h3>Можно частично</h3><p>Можно реализовать расчёт для сумм строго ниже и строго выше 30 000 тенге, показ рассчитанной комиссии и списание суммы перевода вместе с показанной комиссией. Завершение расчёта для точного равенства требует решения владельца тарифа.</p><a href="#source-line-6">строка 6</a> · <a href="#source-line-7">строка 7</a> · <a href="#source-line-8">строка 8</a> · <a href="#source-line-9">строка 9</a> · <a href="#source-line-10">строка 10</a> · <a href="#source-line-15">строка 15</a></article><article><small>Тестирование</small><h3>Можно частично</h3><p>Можно принять сценарии на 29 999 и 30 001 тенге по указанным парам «комиссия и списание». Для 30 000 тенге можно подготовить тот же сценарий и проверить, что списание равно сумме перевода плюс показанная комиссия. Полная приёмка требует согласованных ожидаемых значений обоих денежных показателей на пороге.</p><a href="#source-line-6">строка 6</a> · <a href="#source-line-7">строка 7</a> · <a href="#source-line-14">строка 14</a> · <a href="#source-line-15">строка 15</a> · <a href="#source-line-16">строка 16</a> · <a href="#source-line-17">строка 17</a></article></div>
+<h2>Критические дефекты</h2><ol><li><a href="#D-01">D-01 · При переводе ровно 30 000 тенге TRF-1 задаёт комиссию 0 тенге, а пример приёмки — 150 тенге</a></li></ol>
+<section id="actions"><h2>Что исправить в первую очередь</h2><p>Замечания в порядке приоритета. У каждого есть адресат, основание и предлагаемое изменение.</p>
+<article id="D-01" class="finding"><small>D-01 · нарушение · критический</small>
+<h3>При переводе ровно 30 000 тенге TRF-1 задаёт комиссию 0 тенге, а пример приёмки — 150 тенге</h3><p>согласованность. Слово «включительно» относит 30 000 тенге к нулевой комиссии. Строка 15 для того же тарифа и той же суммы требует показать 150 тенге. Первый перевод на другой счёт при достаточном остатке подпадает под оба описания. По соседним суммам правила согласуются с таблицей.</p><p><b>Последствие.</b> Выбор трактовки меняет и сумму, которую клиент видит до подтверждения, и фактическое списание на 150 тенге. Ни один результат на пороге не удовлетворяет одновременно TRF-1 и строке 15.</p>
+<blockquote>TRF-1. Для клиента тарифа «Стандарт» комиссия равна 150 тенге, если сумма <a href="#source-line-5">строка 5</a></blockquote><blockquote>перевода меньше 30 000 тенге. При сумме от 30 000 тенге включительно комиссия <a href="#source-line-6">строка 6</a></blockquote><blockquote>равна нулю. <a href="#source-line-7">строка 7</a></blockquote><blockquote>На экране подтверждения клиент видит итоговую комиссию. <a href="#source-line-8">строка 8</a></blockquote><blockquote>успешного подтверждения банк списывает со счёта сумму перевода и показанную <a href="#source-line-9">строка 9</a></blockquote><blockquote>комиссию. <a href="#source-line-10">строка 10</a></blockquote><blockquote>Примеры приёмки для тарифа «Стандарт» <a href="#source-line-11">строка 11</a></blockquote><blockquote>| Сумма перевода | Комиссия на экране | Общее списание | <a href="#source-line-12">строка 12</a></blockquote><blockquote>| 29 999 | 150 | 30 149 | <a href="#source-line-14">строка 14</a></blockquote><blockquote>| 30 000 | 150 | 30 150 | <a href="#source-line-15">строка 15</a></blockquote><blockquote>| 30 001 | 0 | 30 001 | <a href="#source-line-16">строка 16</a></blockquote><p><b>Владелец тарифа «Стандарт».</b> Какую комиссию должен увидеть и уплатить клиент тарифа «Стандарт» при переводе ровно 30 000 тенге — 0 или 150 тенге?</p>
+<p><b>Исправление.</b> Зафиксировать решение владельца. При комиссии 0 тенге исправить в строке 15 комиссию на 0 и общее списание на 30 000. При комиссии 150 тенге исправить обе границы TRF-1, включив 30 000 в диапазон платных переводов и начав диапазон бесплатных переводов строго выше 30 000.</p><p><a href="#R-003">R-003</a> · <a href="#R-009">R-009</a> · <a href="#R-004">R-004</a> · <a href="#R-005">R-005</a> · <a href="#R-002">R-002</a></p>
+<a class="finding-export" download="D-01.md" aria-label="Скачать карточку D-01 в Markdown" href="data:text/markdown;charset=utf-8;base64,IyBELTAxIMK3INCf0YDQuCDQv9C10YDQtdCy0L7QtNC1INGA0L7QstC90L4gMzAgMDAwINGC0LXQvdCz0LUgVFJGLTEg0LfQsNC00LDRkdGCINC60L7QvNC40YHRgdC40Y4gMCDRgtC10L3Qs9C1LCDQsCDQv9GA0LjQvNC10YAg0L/RgNC40ZHQvNC60Lgg4oCUIDE1MCDRgtC10L3Qs9C1CgoqKtCi0LjQvzoqKiDQvdCw0YDRg9GI0LXQvdC40LUgIAoqKtCf0YDQuNC+0YDQuNGC0LXRgjoqKiDQutGA0LjRgtC40YfQtdGB0LrQuNC5ICAKKirQkNC00YDQtdGB0LDRgjoqKiDQktC70LDQtNC10LvQtdGGINGC0LDRgNC40YTQsCDCq9Ch0YLQsNC90LTQsNGA0YLCuyAgCioq0KHRgtCw0YLRg9GBINC60LDRgNGC0L7Rh9C60Lg6Kiog0YfQtdGA0L3QvtCy0LjQuiDQtNC70Y8g0YHQvtCz0LvQsNGB0L7QstCw0L3QuNGPCgoqKtCU0L7QutGD0LzQtdC90YI6KiogdGFyaWZmLnBkZiAgCioqU0hBLTI1NiDQuNGB0YXQvtC00L3QuNC60LA6KiogMTkwMTZhZDUxZmFlMzk4YTY3MTI5NDBkZmFmZmM3MDkwMTlkZTI0YTE0NDAwZDU3ZDUyZjdkYjNlNGEwNGIyNwoKIyMg0J7RgdC90L7QstCw0L3QuNC1CgrQodC70L7QstC+IMKr0LLQutC70Y7Rh9C40YLQtdC70YzQvdC+wrsg0L7RgtC90L7RgdC40YIgMzAgMDAwINGC0LXQvdCz0LUg0Log0L3Rg9C70LXQstC+0Lkg0LrQvtC80LjRgdGB0LjQuC4g0KHRgtGA0L7QutCwIDE1INC00LvRjyDRgtC+0LPQviDQttC1INGC0LDRgNC40YTQsCDQuCDRgtC+0Lkg0LbQtSDRgdGD0LzQvNGLINGC0YDQtdCx0YPQtdGCINC/0L7QutCw0LfQsNGC0YwgMTUwINGC0LXQvdCz0LUuINCf0LXRgNCy0YvQuSDQv9C10YDQtdCy0L7QtCDQvdCwINC00YDRg9Cz0L7QuSDRgdGH0ZHRgiDQv9GA0Lgg0LTQvtGB0YLQsNGC0L7Rh9C90L7QvCDQvtGB0YLQsNGC0LrQtSDQv9C+0LTQv9Cw0LTQsNC10YIg0L/QvtC0INC+0LHQsCDQvtC/0LjRgdCw0L3QuNGPLiDQn9C+INGB0L7RgdC10LTQvdC40Lwg0YHRg9C80LzQsNC8INC/0YDQsNCy0LjQu9CwINGB0L7Qs9C70LDRgdGD0Y7RgtGB0Y8g0YEg0YLQsNCx0LvQuNGG0LXQuS4KCiMjINCS0L7Qv9GA0L7RgSDQstC70LDQtNC10LvRjNGG0YMKCtCa0LDQutGD0Y4g0LrQvtC80LjRgdGB0LjRjiDQtNC+0LvQttC10L0g0YPQstC40LTQtdGC0Ywg0Lgg0YPQv9C70LDRgtC40YLRjCDQutC70LjQtdC90YIg0YLQsNGA0LjRhNCwIMKr0KHRgtCw0L3QtNCw0YDRgsK7INC/0YDQuCDQv9C10YDQtdCy0L7QtNC1INGA0L7QstC90L4gMzAgMDAwINGC0LXQvdCz0LUg4oCUIDAg0LjQu9C4IDE1MCDRgtC10L3Qs9C1PwoKIyMg0J/RgNC10LTQu9Cw0LPQsNC10LzQvtC1INC00LXQudGB0YLQstC40LUKCtCX0LDRhNC40LrRgdC40YDQvtCy0LDRgtGMINGA0LXRiNC10L3QuNC1INCy0LvQsNC00LXQu9GM0YbQsC4g0J/RgNC4INC60L7QvNC40YHRgdC40LggMCDRgtC10L3Qs9C1INC40YHQv9GA0LDQstC40YLRjCDQsiDRgdGC0YDQvtC60LUgMTUg0LrQvtC80LjRgdGB0LjRjiDQvdCwIDAg0Lgg0L7QsdGJ0LXQtSDRgdC/0LjRgdCw0L3QuNC1INC90LAgMzAgMDAwLiDQn9GA0Lgg0LrQvtC80LjRgdGB0LjQuCAxNTAg0YLQtdC90LPQtSDQuNGB0L/RgNCw0LLQuNGC0Ywg0L7QsdC1INCz0YDQsNC90LjRhtGLIFRSRi0xLCDQstC60LvRjtGH0LjQsiAzMCAwMDAg0LIg0LTQuNCw0L/QsNC30L7QvSDQv9C70LDRgtC90YvRhSDQv9C10YDQtdCy0L7QtNC+0LIg0Lgg0L3QsNGH0LDQsiDQtNC40LDQv9Cw0LfQvtC9INCx0LXRgdC/0LvQsNGC0L3Ri9GFINC/0LXRgNC10LLQvtC00L7QsiDRgdGC0YDQvtCz0L4g0LLRi9GI0LUgMzAgMDAwLgoKIyMg0KbQuNGC0LDRgtGLINC40Lcg0LjRgdGF0L7QtNC90LjQutCwCgrQodGC0YDQvtC60LAgNSwg0YHRgtGA0LDQvdC40YbQsCAxCgpgYGB0ZXh0ClRSRi0xLiDQlNC70Y8g0LrQu9C40LXQvdGC0LAg0YLQsNGA0LjRhNCwIMKr0KHRgtCw0L3QtNCw0YDRgsK7INC60L7QvNC40YHRgdC40Y8g0YDQsNCy0L3QsCAxNTAg0YLQtdC90LPQtSwg0LXRgdC70Lgg0YHRg9C80LzQsApgYGAKCtCh0YLRgNC+0LrQsCA2LCDRgdGC0YDQsNC90LjRhtCwIDEKCmBgYHRleHQK0L/QtdGA0LXQstC+0LTQsCDQvNC10L3RjNGI0LUgMzAgMDAwINGC0LXQvdCz0LUuINCf0YDQuCDRgdGD0LzQvNC1INC+0YIgMzAgMDAwINGC0LXQvdCz0LUg0LLQutC70Y7Rh9C40YLQtdC70YzQvdC+INC60L7QvNC40YHRgdC40Y8KYGBgCgrQodGC0YDQvtC60LAgNywg0YHRgtGA0LDQvdC40YbQsCAxCgpgYGB0ZXh0CtGA0LDQstC90LAg0L3Rg9C70Y4uCmBgYAoK0KHRgtGA0L7QutCwIDgsINGB0YLRgNCw0L3QuNGG0LAgMQoKYGBgdGV4dArQndCwINGN0LrRgNCw0L3QtSDQv9C+0LTRgtCy0LXRgNC20LTQtdC90LjRjyDQutC70LjQtdC90YIg0LLQuNC00LjRgiDQuNGC0L7Qs9C+0LLRg9GOINC60L7QvNC40YHRgdC40Y4uCmBgYAoK0KHRgtGA0L7QutCwIDksINGB0YLRgNCw0L3QuNGG0LAgMQoKYGBgdGV4dArRg9GB0L/QtdGI0L3QvtCz0L4g0L/QvtC00YLQstC10YDQttC00LXQvdC40Y8g0LHQsNC90Log0YHQv9C40YHRi9Cy0LDQtdGCINGB0L4g0YHRh9GR0YLQsCDRgdGD0LzQvNGDINC/0LXRgNC10LLQvtC00LAg0Lgg0L/QvtC60LDQt9Cw0L3QvdGD0Y4KYGBgCgrQodGC0YDQvtC60LAgMTAsINGB0YLRgNCw0L3QuNGG0LAgMQoKYGBgdGV4dArQutC+0LzQuNGB0YHQuNGOLgpgYGAKCtCh0YLRgNC+0LrQsCAxMSwg0YHRgtGA0LDQvdC40YbQsCAxCgpgYGB0ZXh0CtCf0YDQuNC80LXRgNGLINC/0YDQuNGR0LzQutC4INC00LvRjyDRgtCw0YDQuNGE0LAgwqvQodGC0LDQvdC00LDRgNGCwrsKYGBgCgrQodGC0YDQvtC60LAgMTIsINGB0YLRgNCw0L3QuNGG0LAgMQoKYGBgdGV4dAp8INCh0YPQvNC80LAg0L/QtdGA0LXQstC+0LTQsCB8INCa0L7QvNC40YHRgdC40Y8g0L3QsCDRjdC60YDQsNC90LUgfCDQntCx0YnQtdC1INGB0L/QuNGB0LDQvdC40LUgfApgYGAKCtCh0YLRgNC+0LrQsCAxNCwg0YHRgtGA0LDQvdC40YbQsCAxCgpgYGB0ZXh0CnwgMjkgOTk5IHwgMTUwIHwgMzAgMTQ5IHwKYGBgCgrQodGC0YDQvtC60LAgMTUsINGB0YLRgNCw0L3QuNGG0LAgMQoKYGBgdGV4dAp8IDMwIDAwMCB8IDE1MCB8IDMwIDE1MCB8CmBgYAoK0KHRgtGA0L7QutCwIDE2LCDRgdGC0YDQsNC90LjRhtCwIDEKCmBgYHRleHQKfCAzMCAwMDEgfCAwIHwgMzAgMDAxIHwKYGBgCg==">Скачать карточку (.md)</a>
+<details><summary>Основание приоритета · impact-v1</summary><p>Для одного допустимого сценария заданы два несовместимых результата продукта.</p><p>Клиент тарифа «Стандарт» с остатком 40 000 тенге впервые переводит ровно 30 000 тенге на другой счёт получателя и успешно подтверждает перевод.</p><p>По TRF-1 и TRF-2 клиент видит комиссию 0 тенге, банк списывает 30 000 тенге. · <a href="#source-line-6">строка 6</a></p><p>По примеру приёмки клиент видит комиссию 150 тенге, банк списывает 30 150 тенге. · <a href="#source-line-15">строка 15</a></p></details><details class="decision-draft"><summary>Подготовить критерий приёмки для QA</summary>
+<fieldset class="draft-scenario"><legend>Разная комиссия при переводе ровно 30 000 тенге</legend>
+<p><b>Сценарий.</b> Клиент тарифа «Стандарт» впервые переводит ровно 30 000 тенге на другой счёт. Остаток на счёте отправителя — 40 000 тенге. Клиент успешно подтверждает перевод.</p>
+<p>Выберите ожидаемый результат для черновика.</p>
+<div class="draft-options"><input type="radio" id="draft-D-01-1-1" name="draft-D-01-1" value="1" autocomplete="off">
+<label for="draft-D-01-1-1"><b>Исход 1</b><span>По TRF-1 сумма ровно 30 000 тенге входит в диапазон с нулевой комиссией. На экране показано 0 тенге комиссии, после подтверждения по TRF-2 банк списывает 30 000 тенге.</span></label>
+<span class="draft-source"><a href="#source-line-6">строка 6</a></span><input type="radio" id="draft-D-01-1-2" name="draft-D-01-1" value="2" autocomplete="off">
+<label for="draft-D-01-1-2"><b>Исход 2</b><span>По примеру приёмки на экране показано 150 тенге комиссии, после подтверждения банк списывает 30 150 тенге.</span></label>
+<span class="draft-source"><a href="#source-line-15">строка 15</a></span><div class="draft-result draft-result-1">
+<h4>Черновик критерия приёмки для QA</h4>
+<p><b>Сценарий.</b> Клиент тарифа «Стандарт» впервые переводит ровно 30 000 тенге на другой счёт. Остаток на счёте отправителя — 40 000 тенге. Клиент успешно подтверждает перевод.</p>
+<p><b>Ожидаемый результат.</b> По TRF-1 сумма ровно 30 000 тенге входит в диапазон с нулевой комиссией. На экране показано 0 тенге комиссии, после подтверждения по TRF-2 банк списывает 30 000 тенге.</p>
+<p><b>Контрольный пример.</b> При тех же условиях для перевода 29 999 тенге TRF-1 и строка 14 дают одинаковый результат. Комиссия на экране — 150 тенге, общее списание — 30 149 тенге.</p>
+<p><b>Основание.</b> <a href="#source-line-6">строка 6</a></p></div><div class="draft-result draft-result-2">
+<h4>Черновик критерия приёмки для QA</h4>
+<p><b>Сценарий.</b> Клиент тарифа «Стандарт» впервые переводит ровно 30 000 тенге на другой счёт. Остаток на счёте отправителя — 40 000 тенге. Клиент успешно подтверждает перевод.</p>
+<p><b>Ожидаемый результат.</b> По примеру приёмки на экране показано 150 тенге комиссии, после подтверждения банк списывает 30 150 тенге.</p>
+<p><b>Контрольный пример.</b> При тех же условиях для перевода 29 999 тенге TRF-1 и строка 14 дают одинаковый результат. Комиссия на экране — 150 тенге, общее списание — 30 149 тенге.</p>
+<p><b>Основание.</b> <a href="#source-line-15">строка 15</a></p></div></div></fieldset></details></article></section>
+<section id="quality"><h2>Качество набора требований</h2><article class="finding"><h3>Полнота</h3><p>Для тарифа «Стандарт» правило охватывает суммы ниже порога, на пороге и выше него. Таблица проверяет сам порог и обе соседние целые суммы. Для 30 000 тенге указаны два разных результата.</p><blockquote>перевода меньше 30 000 тенге. При сумме от 30 000 тенге включительно комиссия <a href="#source-line-6">строка 6</a></blockquote><blockquote>равна нулю. <a href="#source-line-7">строка 7</a></blockquote><blockquote>| 29 999 | 150 | 30 149 | <a href="#source-line-14">строка 14</a></blockquote><blockquote>| 30 000 | 150 | 30 150 | <a href="#source-line-15">строка 15</a></blockquote><blockquote>| 30 001 | 0 | 30 001 | <a href="#source-line-16">строка 16</a></blockquote></article><article class="finding"><h3>Согласованность</h3><p>Все три строки таблицы арифметически верны. Расхождение возникает при выборе комиссии ровно на пороге и через TRF-2 меняет общее списание на 150 тенге.</p><blockquote>При сумме от 30 000 тенге включительно комиссия <a href="#source-line-6">строка 6</a></blockquote><blockquote>равна нулю. <a href="#source-line-7">строка 7</a></blockquote><blockquote>банк списывает со счёта сумму перевода и показанную <a href="#source-line-9">строка 9</a></blockquote><blockquote>комиссию. <a href="#source-line-10">строка 10</a></blockquote><blockquote>| 30 000 | 150 | 30 150 | <a href="#source-line-15">строка 15</a></blockquote></article><article class="finding"><h3>Проверяемость</h3><p>Условия примеров позволяют проверить два наблюдаемых значения — комиссию на экране и общее списание после успешного подтверждения. Для 29 999 и 30 001 тенге оба значения однозначны. Для 30 000 тенге тест выполним, но вынести единый вердикт о соответствии нельзя.</p><blockquote>| Сумма перевода | Комиссия на экране | Общее списание | <a href="#source-line-12">строка 12</a></blockquote><blockquote>| 29 999 | 150 | 30 149 | <a href="#source-line-14">строка 14</a></blockquote><blockquote>| 30 000 | 150 | 30 150 | <a href="#source-line-15">строка 15</a></blockquote><blockquote>| 30 001 | 0 | 30 001 | <a href="#source-line-16">строка 16</a></blockquote><blockquote>Каждая строка описывает отдельный первый перевод при достаточном остатке. <a href="#source-line-17">строка 17</a></blockquote><blockquote>получатель имеют разные счета. <a href="#source-line-18">строка 18</a></blockquote></article><article class="finding"><h3>Прослеживаемость</h3><p>Заголовок таблицы связывает примеры с тарифом из TRF-1, а названия столбцов — с показом комиссии и списанием по TRF-2. Это позволяет проследить оба спорных значения строки 15 до одного решения о тарифном пороге.</p><blockquote>TRF-1. Для клиента тарифа «Стандарт» <a href="#source-line-5">строка 5</a></blockquote><blockquote>TRF-2. На экране подтверждения клиент видит итоговую комиссию. <a href="#source-line-8">строка 8</a></blockquote><blockquote>банк списывает со счёта сумму перевода и показанную <a href="#source-line-9">строка 9</a></blockquote><blockquote>Примеры приёмки для тарифа «Стандарт» <a href="#source-line-11">строка 11</a></blockquote><blockquote>| Сумма перевода | Комиссия на экране | Общее списание | <a href="#source-line-12">строка 12</a></blockquote><blockquote>| 30 000 | 150 | 30 150 | <a href="#source-line-15">строка 15</a></blockquote></article><article class="finding"><h3>Границы решения</h3><p>Предмет документа — комиссия за исходящий перевод на этапе подтверждения. Уточнения о целых суммах, первом переводе, достаточном остатке и разных счетах задают условия примеров. Оснований считать их ограничениями продукта или требовать HTTP-контракт для этого расчёта нет.</p><blockquote>Комиссия за исходящий перевод <a href="#source-line-2">строка 2</a></blockquote><blockquote>Расчёт при подтверждении <a href="#source-line-4">строка 4</a></blockquote><blockquote>Все суммы в примерах целые, в тенге. <a href="#source-line-10">строка 10</a></blockquote><blockquote>Каждая строка описывает отдельный первый перевод при достаточном остатке. Отправитель и <a href="#source-line-17">строка 17</a></blockquote><blockquote>получатель имеют разные счета. <a href="#source-line-18">строка 18</a></blockquote></article></section>
+
+<section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
+<table class="registry"><thead><tr><th>ID отчёта / исходника</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody><tr id="R-001"><td><b>R-001</b><br>—</td>
+<td><small>требование · </small><br><b>Комиссию рассчитывают на этапе подтверждения перевода.</b>
+<blockquote>Расчёт при подтверждении <a href="#source-line-4">строка 4</a></blockquote></td>
+<td><small>проверяемо</small><br>Открыть экран подтверждения и проверить, что итоговая комиссия уже рассчитана до подтверждения клиентом.<p></p></td></tr><tr id="R-002"><td><b>R-002</b><br>TRF-1</td>
+<td><small>требование · </small><br><b>Для клиента тарифа «Стандарт» при сумме перевода строго меньше 30 000 тенге комиссия равна 150 тенге.</b>
+<blockquote>Для клиента тарифа «Стандарт» комиссия равна 150 тенге, если сумма <a href="#source-line-5">строка 5</a></blockquote></td>
+<td><small>проверяемо</small><br>При сумме 29 999 тенге проверить комиссию 150 тенге. Приёмочный пример в строке 14 согласуется с правилом.<p><a href="#D-01">D-01</a></p></td></tr><tr id="R-003"><td><b>R-003</b><br>—</td>
+<td><small>требование · </small><br><b>Для клиента тарифа «Стандарт» при сумме перевода от 30 000 тенге включительно комиссия равна нулю.</b>
+<blockquote>При сумме от 30 000 тенге включительно комиссия <a href="#source-line-6">строка 6</a></blockquote></td>
+<td><small>нужно уточнение</small><br>При 30 001 тенге правило и пример дают ноль. Для ровно 30 000 тенге требуется согласовать ноль по TRF-1 и 150 тенге по строке 15.<p><a href="#D-01">D-01</a></p></td></tr><tr id="R-004"><td><b>R-004</b><br>TRF-2</td>
+<td><small>требование · </small><br><b>Экран подтверждения показывает клиенту итоговую комиссию за перевод.</b>
+<blockquote>На экране подтверждения клиент видит итоговую комиссию. <a href="#source-line-8">строка 8</a></blockquote></td>
+<td><small>проверяемо</small><br>Для перевода на 29 999 тенге по тарифу «Стандарт» проверить, что клиент видит на экране комиссию 150 тенге.<p><a href="#D-01">D-01</a></p></td></tr><tr id="R-005"><td><b>R-005</b><br>—</td>
+<td><small>требование · </small><br><b>После успешного подтверждения банк списывает со счёта сумму перевода и комиссию в том размере, который клиент видел на экране.</b>
+<blockquote>успешного подтверждения банк списывает со счёта сумму перевода и показанную <a href="#source-line-9">строка 9</a></blockquote></td>
+<td><small>проверяемо</small><br>Зафиксировать показанную комиссию, успешно подтвердить перевод и сверить общее списание с суммой перевода и этой комиссии.<p><a href="#D-01">D-01</a></p></td></tr><tr id="R-006"><td><b>R-006</b><br>—</td>
+<td><small>требование · </small><br><b>В примерах сумму перевода, комиссию и общее списание указывают целыми числами в тенге.</b>
+<blockquote>Все суммы в примерах целые, в тенге. <a href="#source-line-10">строка 10</a></blockquote></td>
+<td><small>проверяемо</small><br>Сверить все три денежных столбца строк 14–16 с заданной единицей и проверить отсутствие дробных значений.<p></p></td></tr><tr id="R-007"><td><b>R-007</b><br>—</td>
+<td><small>требование · </small><br><b>Каждый приёмочный пример выполняют для клиента тарифа «Стандарт».</b>
+<blockquote>Примеры приёмки для тарифа «Стандарт» <a href="#source-line-11">строка 11</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить тариф отправителя в исходных данных каждого сценария.<p></p></td></tr><tr id="R-008"><td><b>R-008</b><br>—</td>
+<td><small>приёмочный пример · </small><br><b>Клиент тарифа «Стандарт» при достаточном остатке оформляет первый перевод на 29 999 тенге на другой счёт получателя. На экране комиссия 150 тенге, после успешного подтверждения общее списание составляет 30 149 тенге.</b>
+<blockquote>| 29 999 | 150 | 30 149 | <a href="#source-line-14">строка 14</a></blockquote></td>
+<td><small>проверяемо</small><br>Сверить комиссию на экране и списание по счёту. Сумма 29 999 + 150 равна 30 149 тенге.<p></p></td></tr><tr id="R-009"><td><b>R-009</b><br>—</td>
+<td><small>приёмочный пример · </small><br><b>Клиент тарифа «Стандарт» при достаточном остатке оформляет первый перевод на 30 000 тенге на другой счёт получателя. Пример ожидает на экране комиссию 150 тенге и после успешного подтверждения общее списание 30 150 тенге.</b>
+<blockquote>| 30 000 | 150 | 30 150 | <a href="#source-line-15">строка 15</a></blockquote></td>
+<td><small>нужно уточнение</small><br>Для этой же суммы TRF-1 задаёт комиссию 0 тенге, что по TRF-2 даёт списание 30 000 тенге. Требуется согласовать оба ожидаемых значения в граничном сценарии.<p><a href="#D-01">D-01</a></p></td></tr><tr id="R-010"><td><b>R-010</b><br>—</td>
+<td><small>приёмочный пример · </small><br><b>Клиент тарифа «Стандарт» при достаточном остатке оформляет первый перевод на 30 001 тенге на другой счёт получателя. На экране комиссия 0 тенге, после успешного подтверждения общее списание составляет 30 001 тенге.</b>
+<blockquote>| 30 001 | 0 | 30 001 | <a href="#source-line-16">строка 16</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить отображение нулевой комиссии и списание ровно 30 001 тенге.<p></p></td></tr><tr id="R-011"><td><b>R-011</b><br>—</td>
+<td><small>требование · </small><br><b>Каждая строка таблицы описывает самостоятельный сценарий первого перевода.</b>
+<blockquote>Каждая строка описывает отдельный первый перевод <a href="#source-line-17">строка 17</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить, что в исходном состоянии каждого сценария отправитель ещё не совершал переводов.<p></p></td></tr><tr id="R-012"><td><b>R-012</b><br>—</td>
+<td><small>требование · </small><br><b>В каждом приёмочном сценарии остатка на счёте отправителя должно хватать для общего списания.</b>
+<blockquote>при достаточном остатке <a href="#source-line-17">строка 17</a></blockquote></td>
+<td><small>проверяемо</small><br>Для строки 15 остаток не менее 30 150 тенге покрывает оба спорных варианта списания. Для остальных строк достаточно указанного в них общего списания.<p></p></td></tr><tr id="R-013"><td><b>R-013</b><br>—</td>
+<td><small>требование · </small><br><b>В каждом приёмочном сценарии счёт отправителя отличается от счёта получателя.</b>
+<blockquote>получатель имеют разные счета. <a href="#source-line-18">строка 18</a></blockquote></td>
+<td><small>проверяемо</small><br>До оформления перевода сравнить идентификаторы счёта списания и счёта зачисления.<p></p></td></tr></tbody></table></section>
+<section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: 1. У каждого указано решение итогового ревью.</p>
+<p>Результат итоговой проверки · <a href="#D-01">D-01 · нарушение</a></p>
+    <article class="conflict" aria-labelledby="conflict-1">
+      <h2 id="conflict-1">Разная комиссия при переводе ровно 30 000 тенге</h2>
+      <section class="scenario">
+        <h3>Сценарий</h3>
+        <p>Клиент тарифа «Стандарт» впервые переводит ровно 30 000 тенге на другой счёт. Остаток на счёте отправителя — 40 000 тенге. Клиент успешно подтверждает перевод.</p>
+      </section>
+      <div class="outcomes">
+      <div class="outcome" id="conflict-1-outcome-1" tabindex="-1">
+        <h3>Исход 1</h3>
+        <p class="outcome-text">По TRF-1 сумма ровно 30 000 тенге входит в диапазон с нулевой комиссией. На экране показано 0 тенге комиссии, после подтверждения по TRF-2 банк списывает 30 000 тенге.</p>
+        <blockquote>При сумме от 30 000 тенге включительно комиссия</blockquote>
+        <a class="citation" href="#source-line-6">К строке 6 в ТЗ ↓</a>
+      </div>
+      <div class="outcome" id="conflict-1-outcome-2" tabindex="-1">
+        <h3>Исход 2</h3>
+        <p class="outcome-text">По примеру приёмки на экране показано 150 тенге комиссии, после подтверждения банк списывает 30 150 тенге.</p>
+        <blockquote>| 30 000 | 150 | 30 150 |</blockquote>
+        <a class="citation" href="#source-line-15">К строке 15 в ТЗ ↓</a>
+      </div>
+      </div>
+      <div class="follow-up">
+        <section class="question">
+          <h3>Вопрос для решения</h3>
+          <p class="question-text">Какую комиссию применять при переводе ровно 30 000 тенге — 0 тенге по TRF-1 или 150 тенге по примеру приёмки?</p>
+          <p class="owner"><span>Владелец решения</span> Владелец тарифа «Стандарт»</p>
+        </section>
+        <section class="control">
+          <h3>Где правила совпадают</h3>
+          <p>При тех же условиях для перевода 29 999 тенге TRF-1 и строка 14 дают одинаковый результат. Комиссия на экране — 150 тенге, общее списание — 30 149 тенге.</p>
+        </section>
+      </div>
+    </article></section>
+<section id="coverage"><h2>Карта покрытия исходника</h2><p>Учтено 18 непустых строк, 18 блоков, 1 таблиц, 3 строк данных таблиц и 0 блоков JSON. Структура, шаблоны и контекст имеют отдельные записи.</p>
+<details><summary>Открыть все блоки и основания классификации</summary><table><thead><tr><th>Источник</th><th>Тип</th><th>Назначение и пункты</th></tr></thead><tbody><tr><td><a href="#source-line-1">строка 1</a></td><td>текст</td><td>Предметная область документа. </td></tr><tr><td><a href="#source-line-2">строка 2</a></td><td>текст</td><td>Название спецификации определяет вид операции. </td></tr><tr><td><a href="#source-line-3">строка 3</a></td><td>текст</td><td>Подзаголовок указывает на учебное назначение документа. </td></tr><tr><td><a href="#source-line-4">строка 4</a></td><td>текст</td><td>Заголовок задаёт этап расчёта. <a href="#R-001">R-001</a></td></tr><tr><td><a href="#source-line-5">строка 5</a></td><td>текст</td><td>Первая ветвь TRF-1, условие которой завершается в строке 6. <a href="#R-002">R-002</a></td></tr><tr><td><a href="#source-line-6">строка 6</a></td><td>текст</td><td>Строка завершает первое условие TRF-1 и задаёт включительную границу второй ветви. <a href="#R-003">R-003</a></td></tr><tr><td><a href="#source-line-7">строка 7</a></td><td>текст</td><td>Нулевое значение завершает правило, учтённое в блоке 6. </td></tr><tr><td><a href="#source-line-8">строка 8</a></td><td>текст</td><td>TRF-2 задаёт видимый клиенту результат. <a href="#R-004">R-004</a></td></tr><tr><td><a href="#source-line-9">строка 9</a></td><td>текст</td><td>Последствие успешного подтверждения и состав списания. <a href="#R-005">R-005</a></td></tr><tr><td><a href="#source-line-10">строка 10</a></td><td>текст</td><td>Строка завершает правило списания и задаёт формат сумм в примерах. <a href="#R-006">R-006</a></td></tr><tr><td><a href="#source-line-11">строка 11</a></td><td>текст</td><td>Заголовок задаёт тариф для всех строк приёмки. <a href="#R-007">R-007</a></td></tr><tr><td><a href="#source-line-12">строка 12</a></td><td>шапка таблицы</td><td>Названия столбцов. </td></tr><tr><td><a href="#source-line-13">строка 13</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-14">строка 14</a></td><td>строка таблицы · шапка <a href="#source-line-12">строка 12</a></td><td>Приёмка непосредственно ниже порога. <a href="#R-008">R-008</a></td></tr><tr><td><a href="#source-line-15">строка 15</a></td><td>строка таблицы · шапка <a href="#source-line-12">строка 12</a></td><td>Приёмка на самой границе тарифа. <a href="#R-009">R-009</a></td></tr><tr><td><a href="#source-line-16">строка 16</a></td><td>строка таблицы · шапка <a href="#source-line-12">строка 12</a></td><td>Приёмка непосредственно выше порога. <a href="#R-010">R-010</a></td></tr><tr><td><a href="#source-line-17">строка 17</a></td><td>текст</td><td>Общие исходные условия приёмочных примеров. <a href="#R-011">R-011</a> · <a href="#R-012">R-012</a></td></tr><tr><td><a href="#source-line-18">строка 18</a></td><td>текст</td><td>Условие о счетах участников для всех примеров. <a href="#R-013">R-013</a></td></tr></tbody></table></details></section>
+<section id="source"><h2>Текст исходного документа</h2><ol class="source-list">
+        <li class="source-row" id="source-line-1" value="1" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>1 · с. 1</span>
+          <span class="source-text">КАРТОЧНЫЙ ПРОЦЕССИНГ</span>
+        </li>
+        <li class="source-row" id="source-line-2" value="2" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>2 · с. 1</span>
+          <span class="source-text">Комиссия за исходящий перевод</span>
+        </li>
+        <li class="source-row" id="source-line-3" value="3" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>3 · с. 1</span>
+          <span class="source-text">Спецификация расчёта комиссии · учебный документ</span>
+        </li>
+        <li class="source-row" id="source-line-4" value="4" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>4 · с. 1</span>
+          <span class="source-text">Расчёт при подтверждении</span><div class="backlinks"><a href="#R-001">↑ R-001</a></div>
+        </li>
+        <li class="source-row" id="source-line-5" value="5" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>5 · с. 1</span>
+          <span class="source-text">TRF-1. Для клиента тарифа «Стандарт» комиссия равна 150 тенге, если сумма</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#R-002">↑ R-002</a></div>
+        </li>
+        <li class="source-row" id="source-line-6" value="6" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>6 · с. 1</span>
+          <span class="source-text">перевода меньше 30 000 тенге. При сумме от 30 000 тенге включительно комиссия</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#conflict-1-outcome-1">↑ Конфликт 1 · исход 1</a><a href="#R-003">↑ R-003</a></div>
+        </li>
+        <li class="source-row" id="source-line-7" value="7" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>7 · с. 1</span>
+          <span class="source-text">равна нулю.</span><div class="backlinks"><a href="#D-01">↑ D-01</a></div>
+        </li>
+        <li class="source-row" id="source-line-8" value="8" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>8 · с. 1</span>
+          <span class="source-text">TRF-2. На экране подтверждения клиент видит итоговую комиссию. После</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#R-004">↑ R-004</a></div>
+        </li>
+        <li class="source-row" id="source-line-9" value="9" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>9 · с. 1</span>
+          <span class="source-text">успешного подтверждения банк списывает со счёта сумму перевода и показанную</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#R-005">↑ R-005</a></div>
+        </li>
+        <li class="source-row" id="source-line-10" value="10" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>10 · с. 1</span>
+          <span class="source-text">комиссию. Все суммы в примерах целые, в тенге.</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#R-006">↑ R-006</a></div>
+        </li>
+        <li class="source-row" id="source-line-11" value="11" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>11 · с. 1</span>
+          <span class="source-text">Примеры приёмки для тарифа «Стандарт»</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#R-007">↑ R-007</a></div>
+        </li>
+        <li class="source-row" id="source-line-12" value="12" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>12 · с. 1</span>
+          <span class="source-text">| Сумма перевода | Комиссия на экране | Общее списание |</span><div class="backlinks"><a href="#D-01">↑ D-01</a></div>
+        </li>
+        <li class="source-row" id="source-line-13" value="13" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>13 · с. 1</span>
+          <span class="source-text">| --- | --- | --- |</span>
+        </li>
+        <li class="source-row" id="source-line-14" value="14" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>14 · с. 1</span>
+          <span class="source-text">| 29 999 | 150 | 30 149 |</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#R-008">↑ R-008</a></div>
+        </li>
+        <li class="source-row" id="source-line-15" value="15" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>15 · с. 1</span>
+          <span class="source-text">| 30 000 | 150 | 30 150 |</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#conflict-1-outcome-2">↑ Конфликт 1 · исход 2</a><a href="#R-009">↑ R-009</a></div>
+        </li>
+        <li class="source-row" id="source-line-16" value="16" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>16 · с. 1</span>
+          <span class="source-text">| 30 001 | 0 | 30 001 |</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#R-010">↑ R-010</a></div>
+        </li>
+        <li class="source-row" id="source-line-17" value="17" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>17 · с. 1</span>
+          <span class="source-text">Каждая строка описывает отдельный первый перевод при достаточном остатке. Отправитель и</span><div class="backlinks"><a href="#R-011">↑ R-011</a><a href="#R-012">↑ R-012</a></div>
+        </li>
+        <li class="source-row" id="source-line-18" value="18" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>18 · с. 1</span>
+          <span class="source-text">получатель имеют разные счета.</span><div class="backlinks"><a href="#R-013">↑ R-013</a></div>
+        </li></ol></section>
+    <section class="report-section" aria-labelledby="passport">
+      <h2 id="passport" tabindex="-1">Паспорт прогона</h2>
+      <dl class="facts"><div><dt>Документ</dt><dd>tariff.pdf</dd></div><div><dt>Строк в документе</dt><dd>18</dd></div><div><dt>SHA-256 документа</dt><dd>19016ad51fae398a6712940dfaffc709019de24a14400d57d52f7db3e4a04b27</dd></div><div><dt>Провайдер</dt><dd>codex-cli</dd></div><div><dt>Модель</dt><dd>gpt-6.2-astra</dd></div><div><dt>Версия агента</dt><dd>f7bf7e8ec4b7</dd></div><div><dt>Начало · UTC</dt><dd>2026-11-26T19:14:18.463804+00:00</dd></div><div><dt>Длительность · с</dt><dd>104.52</dd></div><div><dt>Лимит параллельных запросов</dt><dd>6</dd></div><div><dt>SHA-256 проверяющего кода</dt><dd>35926549795b6d12b4e290b753190939aeccbf7299ac58d9e40dc4384712e6d4</dd></div><div><dt>Версия формата JSON</dt><dd>2</dd></div></dl>
+      <h3 class="tokens-heading">Токены</h3>
+      <dl class="facts"><div><dt>Вход</dt><dd>42175</dd></div><div><dt>Вход из кеша</dt><dd>10880</dd></div><div><dt>Запись в кеш</dt><dd>0</dd></div><div><dt>Выход</dt><dd>5109</dd></div><div><dt>Рассуждение</dt><dd>44</dd></div></dl>
+
+      <details class="attempts">
+        <summary>Попытки · 3</summary>
+        <ol>
+        <li>
+          <p><strong>Сценарии · Принята · 13.2 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>12913</dd></div><div><dt>Вход из кеша</dt><dd>0</dd></div><div><dt>Запись в кеш</dt><dd>0</dd></div><div><dt>Выход</dt><dd>389</dd></div><div><dt>Рассуждение</dt><dd>0</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 1–18 · Принята · 49.63 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>13434</dd></div><div><dt>Вход из кеша</dt><dd>10880</dd></div><div><dt>Запись в кеш</dt><dd>0</dd></div><div><dt>Выход</dt><dd>2209</dd></div><div><dt>Рассуждение</dt><dd>44</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Весь документ · Принята · 54.87 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>15828</dd></div><div><dt>Вход из кеша</dt><dd>0</dd></div><div><dt>Запись в кеш</dt><dd>0</dd></div><div><dt>Выход</dt><dd>2511</dd></div><div><dt>Рассуждение</dt><dd>0</dd></div></dl>
+        </li>
+        </ol>
+      </details>
+    </section></main></body></html>
