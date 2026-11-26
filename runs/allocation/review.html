@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Разбор ТЗ · allocation.md</title>
+  <style>
+:root {
+  color-scheme: light;
+  --canvas: #e7ece6;
+  --paper: #f7f7f3;
+  --ink: #202e2b;
+  --muted: #52625b;
+  --line: #c9d2ca;
+  --deep: #123e34;
+  --green: #e5ece5;
+  --warm: #fbe9d7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font: 1rem/1.55 system-ui, sans-serif;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: #205a48;
+  text-underline-offset: .2em;
+}
+
+:focus-visible {
+  outline: 3px solid #8c5020;
+  outline-offset: 3px;
+}
+
+[id] { scroll-margin-block: 1.25rem; }
+
+p { margin: 0; }
+
+.sr-only,
+.skip-link:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link:focus {
+  position: absolute;
+  z-index: 1;
+  top: .75rem;
+  left: .75rem;
+  padding: .5rem .75rem;
+  background: white;
+}
+
+.masthead {
+  background: var(--deep);
+  color: white;
+}
+
+.masthead-inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+  padding-block: .8rem;
+}
+
+.masthead strong {
+  font-size: 1.3rem;
+  letter-spacing: -.035em;
+}
+
+.masthead span {
+  color: #d0dfd3;
+  font-size: .875rem;
+}
+
+main {
+  width: min(100% - 2rem, 72rem);
+  margin: 1.75rem auto 3rem;
+  padding: clamp(1rem, 3.75vw, 2.75rem);
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.scope,
+.section-note,
+.owner,
+.facts dt { color: var(--muted); }
+
+.scope {
+  font-size: .875rem;
+  font-weight: 650;
+}
+
+h1 {
+  margin: .45rem 0 1rem;
+  font: 500 clamp(2rem, 5vw, 3.5rem)/1.06 Georgia, serif;
+  letter-spacing: -.035em;
+}
+
+h2 {
+  margin: 0 0 .875rem;
+  font-size: clamp(1.3rem, 3vw, 1.85rem);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+}
+
+h3 {
+  margin: 0 0 .45rem;
+  font-size: .875rem;
+  line-height: 1.35;
+}
+
+.overview {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.overview nav,
+.backlinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1rem;
+}
+
+.overview a,
+.citation,
+.backlinks a {
+  display: inline-block;
+  padding-block: .25rem;
+  font-size: .875rem;
+}
+
+.count {
+  padding: .3rem .65rem;
+  border-radius: 3px;
+  background: var(--green);
+  color: var(--deep);
+}
+
+.count strong {
+  margin-inline-start: .35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.conflict,
+.empty,
+.report-section { margin-top: 2rem; }
+
+.conflict + .conflict,
+.report-section {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.scenario,
+.empty {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: var(--green);
+}
+
+.scenario p { max-width: 80ch; }
+
+.outcomes,
+.follow-up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.outcome,
+.question,
+.control {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border-top: 3px solid var(--deep);
+}
+
+.outcome h3 { color: var(--deep); }
+.outcome-text,
+.question-text { font-weight: 600; }
+
+blockquote {
+  margin: .9rem 0 .5rem;
+  padding-left: .75rem;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.citation { margin-top: auto; }
+
+.question {
+  border-color: #e4cdb8;
+  background: var(--warm);
+}
+
+.owner {
+  margin-top: .75rem;
+  font-size: .875rem;
+}
+
+.owner span {
+  display: block;
+  font-weight: 650;
+}
+
+.source-list {
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  list-style: none;
+  background: white;
+}
+
+.source-row {
+  display: grid;
+  grid-template-columns: minmax(3.6rem, max-content) minmax(0, 1fr);
+  column-gap: .75rem;
+  padding: .5rem .75rem .5rem 0;
+}
+
+.source-row + .source-row { border-top: 1px solid var(--line); }
+
+.source-row:target,
+.outcome:target {
+  outline: 2px solid #8c5020;
+  outline-offset: 2px;
+  background: var(--warm);
+}
+
+.line-number {
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.source-text {
+  font: .875rem/1.55 ui-monospace, "Cascadia Code", Menlo, monospace;
+  white-space: pre-wrap;
+  tab-size: 4;
+}
+
+.backlinks { grid-column: 2; }
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: .75rem 1rem;
+  margin: 0;
+}
+
+.facts div {
+  min-width: 0;
+  padding: .65rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.facts dt { font-size: .875rem; }
+.facts dd { margin: .15rem 0 0; }
+.tokens-heading { margin-top: 1.25rem; }
+
+.attempts { margin-top: 1rem; }
+.attempts summary { cursor: pointer; }
+.attempts ol { padding-inline-start: 1.5rem; }
+.attempts li + li { margin-top: .75rem; }
+.attempts .facts { margin-top: .5rem; }
+
+@media (max-width: 45rem) {
+  main {
+    width: calc(100% - 1rem);
+    margin-top: .75rem;
+  }
+
+  .outcomes,
+  .follow-up { grid-template-columns: minmax(0, 1fr); }
+
+  .scenario,
+  .outcome,
+  .question,
+  .control,
+  .empty { padding-inline: .875rem; }
+
+  .source-row {
+    grid-template-columns: minmax(2rem, max-content) minmax(0, 1fr);
+    column-gap: .5rem;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#report">К отчёту</a>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <strong>Разбор ТЗ</strong>
+      <span>Офлайн-отчёт</span>
+    </div>
+  </header>
+  <main id="report" tabindex="-1">
+    <div class="intro">
+      <p class="scope">Проверка поведенческих противоречий</p>
+      <h1>allocation.md</h1>
+      <div class="overview">
+        <p class="count">Конфликты <strong>1</strong></p>
+        <nav aria-label="Разделы отчёта">
+          <a href="#source">Текст ТЗ ↓</a>
+          <a href="#passport">Паспорт прогона ↓</a>
+        </nav>
+      </div>
+    </div>
+    
+    <article class="conflict" aria-labelledby="conflict-1">
+      <h2 id="conflict-1">Очередь зачисления определяется по двум разным датам</h2>
+      <section class="scenario">
+        <h3>Сценарий</h3>
+        <p>У клиента два активных договора с остатком ближайшего взноса по 6 000 ₸. Договор №41 заключён 2 марта, ближайший платёж по нему — 17 мая. Договор №59 заключён 9 марта, ближайший платёж по нему — 12 мая. Клиент вносит общий платёж 8 000 ₸.</p>
+      </section>
+      <div class="outcomes">
+      <div class="outcome" id="conflict-1-outcome-1" tabindex="-1">
+        <h3>Исход 1</h3>
+        <p class="outcome-text">Платёж по №59 наступает раньше, поэтому на №59 зачисляются 6 000 ₸, а оставшиеся 2 000 ₸ — на №41.</p>
+        <blockquote>Сначала деньги направляются на взнос с наиболее ранней датой ближайшего платежа.</blockquote>
+        <a class="citation" href="#source-line-7">К строке 7 в ТЗ ↓</a>
+      </div>
+      <div class="outcome" id="conflict-1-outcome-2" tabindex="-1">
+        <h3>Исход 2</h3>
+        <p class="outcome-text">Договор №41 заключён раньше, поэтому на №41 зачисляются 6 000 ₸, а оставшиеся 2 000 ₸ — на №59.</p>
+        <blockquote>Очередь зачисления строится по дате заключения договора, от более ранней к более поздней.</blockquote>
+        <a class="citation" href="#source-line-13">К строке 13 в ТЗ ↓</a>
+      </div>
+      </div>
+      <div class="follow-up">
+        <section class="question">
+          <h3>Вопрос для решения</h3>
+          <p class="question-text">Какая дата должна определять очередь зачисления общего платежа — дата ближайшего платежа или дата заключения договора?</p>
+          <p class="owner"><span>Владелец решения</span> Владелец продукта рассрочки</p>
+        </section>
+        <section class="control">
+          <h3>Где правила совпадают</h3>
+          <p>В примере приёмки №41 и заключён раньше №59 (2 марта против 9 марта), и имеет более ранний ближайший платёж (12 мая против 17 мая). По обоим правилам из 8 000 ₸ на №41 зачисляются 6 000 ₸, на №59 — 2 000 ₸.</p>
+        </section>
+      </div>
+    </article>
+    <section class="report-section" aria-labelledby="source">
+      <h2 id="source" tabindex="-1">Текст ТЗ</h2>
+      <p class="section-note">Непустые строки из снимка прогона с исходными номерами.</p>
+      <ol class="source-list" role="list">
+        <li class="source-row" id="source-line-1" value="1" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>1</span>
+          <span class="source-text"># Распределение платежа по рассрочкам</span>
+        </li>
+        <li class="source-row" id="source-line-3" value="3" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>3</span>
+          <span class="source-text">Клиент может одним платежом пополнить несколько активных договоров рассрочки в тенге. Сервис распределяет полученную сумму между непогашенными плановыми взносами клиента.</span>
+        </li>
+        <li class="source-row" id="source-line-5" value="5" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>5</span>
+          <span class="source-text">## Правила продукта</span>
+        </li>
+        <li class="source-row" id="source-line-7" value="7" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>7</span>
+          <span class="source-text">Р-12. Сначала деньги направляются на взнос с наиболее ранней датой ближайшего платежа. Если дата одинакова, первым пополняется договор с меньшим номером.</span><div class="backlinks"><a href="#conflict-1-outcome-1">↑ Конфликт 1 · исход 1</a></div>
+        </li>
+        <li class="source-row" id="source-line-9" value="9" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>9</span>
+          <span class="source-text">Р-13. По каждому договору зачисляется не более остатка соответствующего взноса. Остальные деньги переходят к следующему договору в очереди.</span>
+        </li>
+        <li class="source-row" id="source-line-11" value="11" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>11</span>
+          <span class="source-text">## Пакетное зачисление</span>
+        </li>
+        <li class="source-row" id="source-line-13" value="13" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>13</span>
+          <span class="source-text">Для общего платежа исполнитель выбирает все активные договоры клиента с ненулевым взносом. Очередь зачисления строится по дате заключения договора, от более ранней к более поздней. При равенстве дат используется меньший номер договора.</span><div class="backlinks"><a href="#conflict-1-outcome-2">↑ Конфликт 1 · исход 2</a></div>
+        </li>
+        <li class="source-row" id="source-line-15" value="15" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>15</span>
+          <span class="source-text">## Пример приёмки</span>
+        </li>
+        <li class="source-row" id="source-line-17" value="17" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>17</span>
+          <span class="source-text">| Договор | Заключён | Ближайший платёж | Остаток взноса |</span>
+        </li>
+        <li class="source-row" id="source-line-18" value="18" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>18</span>
+          <span class="source-text">| --- | --- | --- | --- |</span>
+        </li>
+        <li class="source-row" id="source-line-19" value="19" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>19</span>
+          <span class="source-text">| 41 | 2 марта | 12 мая | 6 000 ₸ |</span>
+        </li>
+        <li class="source-row" id="source-line-20" value="20" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>20</span>
+          <span class="source-text">| 59 | 9 марта | 17 мая | 6 000 ₸ |</span>
+        </li>
+        <li class="source-row" id="source-line-22" value="22" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>22</span>
+          <span class="source-text">При получении 8 000 ₸ на договор 41 зачисляются 6 000 ₸, на договор 59 — 2 000 ₸.</span>
+        </li>
+      </ol>
+    </section>
+    
+    <section class="report-section" aria-labelledby="passport">
+      <h2 id="passport" tabindex="-1">Паспорт прогона</h2>
+      <dl class="facts"><div><dt>Документ</dt><dd>allocation.md</dd></div><div><dt>Строк в документе</dt><dd>22</dd></div><div><dt>SHA-256 документа</dt><dd>7f0dc250068903140e6a472eedf806959fdcd2a865160dcc723ba9ff55ce3bb2</dd></div><div><dt>Провайдер</dt><dd>codex-cli</dd></div><div><dt>Модель</dt><dd>gpt-6.2-astra</dd></div><div><dt>Версия агента</dt><dd>f6faf07e5cb6</dd></div><div><dt>Начало · UTC</dt><dd>2026-11-26T17:53:54.207269+00:00</dd></div><div><dt>Длительность · с</dt><dd>14.28</dd></div><div><dt>Версия формата JSON</dt><dd>1</dd></div></dl>
+      <h3 class="tokens-heading">Токены</h3>
+      <dl class="facts"><div><dt>Вход</dt><dd>12979</dd></div><div><dt>Вход из кеша</dt><dd>0</dd></div><div><dt>Запись в кеш</dt><dd>0</dd></div><div><dt>Выход</dt><dd>433</dd></div><div><dt>Рассуждение</dt><dd>0</dd></div></dl>
+      
+    </section>
+  </main>
+</body>
+</html>
