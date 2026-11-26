@@ -44,7 +44,7 @@
 
   function evidence(witness) {
     return `<aside class="guide-evidence" aria-label="Два основания в ТЗ">${[witness.first, witness.second].map(side =>
-      `<figure><figcaption><span>${tableHeaders.has(side.source.line) ? "Из таблицы" : "Из документа"}</span> ${sourceLink(side.source)}</figcaption>${quotation(side.source)}</figure>`).join("")}</aside>`;
+      `<figure><figcaption><span class="guide-origin">${tableHeaders.has(side.source.line) ? "Из таблицы" : "Из документа"}</span><span class="guide-chosen">Основание выбора</span> ${sourceLink(side.source)}</figcaption>${quotation(side.source)}</figure>`).join("")}</aside>`;
   }
 
   function render(focus = false) {
@@ -74,9 +74,16 @@
     root.innerHTML = `<div class="guide-wrap"><div class="guide-bar"><ol aria-label="Шаги согласования">${stages.map((label,i) =>
       `<li ${i === stage ? 'aria-current="step"' : ""} class="${i <= stage ? "reached" : ""}"><span>${label}</span></li>`).join("")}</ol>${selector}</div>
       <div class="guide-grid"><article class="guide-sheet" data-stage="${stage}">${body}</article>${evidence(witness)}</div></div>`;
+    function highlightSource() {
+      root.querySelectorAll(".guide-evidence figure").forEach((card, i) => {
+        card.classList.toggle("selected", stage > 0 && state.side === i);
+      });
+    }
+    highlightSource();
     root.querySelector("select")?.addEventListener("change", event => { index = Number(event.target.value); render(true); });
     root.querySelectorAll('input[type="radio"]').forEach(input => input.addEventListener("change", () => {
       state.side = Number(input.value);
+      highlightSource();
       root.querySelector('[data-act="next"]').disabled = false;
     }));
     root.querySelector('[data-act="next"]')?.addEventListener("click", () => { state.stage++; render(true); });

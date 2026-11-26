@@ -28,6 +28,9 @@
 #guided-review .guide-evidence {position: relative; display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; padding: 8px 5px}
 #guided-review figure {margin: 0; background: #fffdf5; color: var(--g-ink); border: 2px solid var(--g-ink); border-radius: 9px; padding: 13px 18px 17px; box-shadow: 3px 4px 0 var(--g-ink); position: relative; transform: rotate(-1.6deg); min-width: 0}
 #guided-review figure + figure {margin-top: 7px; margin-left: 5%; background: #ffe392; transform: rotate(1.5deg)}
+#guided-review .guide-chosen, #guided-review figure.selected .guide-origin {display: none}
+#guided-review figure.selected .guide-chosen {display: inline; color: #114735}
+#guided-review figure.selected {background: #c9eed9; box-shadow: 4px 5px 0 var(--g-ink); transform: translateY(-3px)}
 #guided-review figcaption {display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; font: 650 .74rem/1.3 ui-monospace, monospace; padding-bottom: .45rem; border-bottom: 1px dashed #796875}
 #guided-review blockquote {margin: .6rem 0 0; font-size: clamp(.85rem, 1.2vw, 1.02rem); font-weight: 530; line-height: 1.4; overflow-wrap: anywhere}
 #guided-review .guide-table {margin: .55rem 0 0; display: grid; grid-template-columns: minmax(65px, .75fr) minmax(0, 2fr); column-gap: .7rem; row-gap: .3rem; line-height: 1.33; overflow-wrap: anywhere}
@@ -46,6 +49,7 @@
 #guided-review .guide-copy-status:not(:empty) {margin-top: .6rem}
 #guided-review textarea {display: block; width: 100%; min-height: 5rem}
 @media (prefers-reduced-motion: no-preference) {
+  #guided-review figure {transition: transform .22s ease, background-color .18s ease, box-shadow .18s ease}
   #guided-review .guide-sheet {animation: guide-appear .26s cubic-bezier(.2,.76,.25,1) both}
   @keyframes guide-appear {from {opacity: .15; transform: translateY(7px)} to {opacity: 1; transform: translateY(0)}}
 }
