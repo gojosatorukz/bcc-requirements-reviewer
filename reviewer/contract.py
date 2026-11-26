@@ -139,6 +139,14 @@ INSTRUCTIONS = """Ты рецензент технических требова�
 
 def validate_shape(value, schema, path):
     kind = schema["type"]
+    if isinstance(kind, list):
+        for member in kind:
+            try:
+                validate_shape(value, {**schema, "type": member}, path)
+            except ValueError:
+                continue
+            return
+        raise ValueError(f"{path}: требуется значение одного из типов {', '.join(kind)}")
     if kind == "object":
         if type(value) is not dict or set(value) != set(schema["properties"]):
             raise ValueError(f"{path}: неверный состав полей")

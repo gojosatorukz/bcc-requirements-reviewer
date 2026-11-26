@@ -28,7 +28,7 @@ def rule(source, expr):
                                          "updates": [{"target": "total", "expr": expr}]}]}
 
 
-PROGRAM = {"states": [{"key": "total", "label": "Баланс", "unit": "баллы"}],
+PROGRAM = {"domains": [], "states": [{"key": "total", "label": "Баланс", "unit": "баллы"}],
            "inputs": [{"key": "points", "label": "Начисляемые баллы", "unit": "баллы"}],
            "observe": ["total"], "scenario": case(80), "control": case(10),
            "first": rule(REFS[0], "total + points"), "second": rule(REFS[1], "min(60, total + points)")}

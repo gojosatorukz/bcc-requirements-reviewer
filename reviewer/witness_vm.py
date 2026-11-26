@@ -1,4 +1,4 @@
-"""Replay two source-linked interpretations on shared inputs using bounded integer expressions."""
+"""Replay source-linked interpretations with bounded integers and closed nominal domains."""
 
 import ast
 from dataclasses import dataclass
@@ -14,20 +14,34 @@ def _list(items):
 
 
 FIELD = record(key=TEXT, label=TEXT, unit=TEXT)
-VALUE = record(key=TEXT, value={"type": "integer"})
+OPTION = record(value=TEXT, source=EVIDENCE)
+DOMAIN = record(key=TEXT, options=_list(OPTION))
+VALUE = record(key=TEXT, value={"type": ["integer", "string"]})
 EVENT = record(kind=TEXT, label=TEXT, values=_list(VALUE))
 CASE = record(initial=_list(VALUE), events=_list(EVENT))
 UPDATE = record(target=TEXT, expr=TEXT)
 RULE = record(event=TEXT, when=TEXT, updates=_list(UPDATE))
 SIDE = record(source=EVIDENCE, rules=_list(RULE))
-PROGRAM = record(states=_list(FIELD), inputs=_list(FIELD), observe=_list(TEXT), first=SIDE, second=SIDE,
-                 scenario=CASE, control=CASE)
+_PROGRAM_FIELDS = dict(states=_list(FIELD), inputs=_list(FIELD), observe=_list(TEXT), first=SIDE,
+                       second=SIDE, scenario=CASE, control=CASE)
+_OLD_PROGRAM = record(**_PROGRAM_FIELDS)
+PROGRAM = record(domains=_list(DOMAIN), **_PROGRAM_FIELDS)
 VERSION = "witness-v1"
 
 LANGUAGE = """Составь общую исполняемую модель двух прочтений. Все обозначения и поля нужны для
 данного бизнес-сценария. В states и inputs задай уникальный короткий ASCII key в snake_case,
 понятную русскую подпись label и unit, например «₸», «push», «месяц» или «1» для множителя.
-Все значения — точные целые числа; для дробных денег выбери меньшую общую единицу. Сначала
+Для числовых полей используй точные целые числа; для дробных денег выбери меньшую общую единицу.
+Если контракт возвращает именованный статус, используй исходную строку как результат.
+Объяви закрытый тип в domains: key — имя типа, options — конечный список допустимых строк.
+Каждый объект option содержит value и source (строка и дословная цитата с полным именем).
+Для поля такого типа укажи unit="enum:имя_типа". Для программы только с числами domains=[].
+Строки в initial и values — точные значения справочника. У результата и входа могут быть
+разные справочники, включая фразы на языке источника. Не изобретай синонимы и коды.
+Укажи все перечисленные в ТЗ варианты данного типа и реализуй все явно заданные переходы
+используемого события, включая иные согласованные исходы. В выражении строку заключай в
+кавычки. Допустимы ==, !=, присваивание и условный выбор значений одного типа по реальным
+входным данным. Порядок, арифметика и сравнение разных справочников запрещены. Сначала
 определи подтверждённое цитатой правило каждой стороны, затем запиши его вычисление.
 Обе программы получают одни и те же initial (все состояния), затем общие события. Каждое
 событие имеет kind (ASCII key), содержательный label и только входы этого события в values.
@@ -44,7 +58,7 @@ abs(a), x if условие else y. Сравнения == != < <= > >=, усло
 Укажи observe — одинаковые для обеих сторон измеримые поля состояния. scenario приводит к
 расхождению, control — соседний пример, в котором расхождения нет НИ НА ОДНОМ шаге.
 Используй те же виды событий в том же порядке и тот же набор входов в каждом событии
-обеих последовательностей. Измени только необходимые числовые входы либо начальные значения.
+обеих последовательностей. Измени только необходимые входы либо начальные значения.
 Делай сравнимый контроль, сохраняя смысл и допустимость событий. Не добавляй фиктивный флаг
 «версия», «трактовка», «контроль», заранее выбранный ответ или заведомо искусственное условие.
 В first.source и second.source скопируй соответствующие исходные цитаты свидетельства.
@@ -84,7 +98,52 @@ def _key(text):
     return text
 
 
-def _fields(rows, name, minimum):
+@dataclass(frozen=True)
+class _Domain:
+    key: str
+    options: frozenset
+
+
+@dataclass(frozen=True)
+class _StringLiterals:
+    # A conditional may select several literals before a field determines their nominal type.
+    options: frozenset
+
+
+def _cites_option(value, ref, lines):
+    line = lines.get(ref["line"], "")
+    quote = ref["quote"]
+    # Test the word boundary in the full source. The citation itself may end mid-token.
+    for candidate in re.finditer(re.escape(value), quote):
+        pattern = (re.escape(quote[:candidate.start()]) + r"(?<![\w-])" + re.escape(value) +
+                   r"(?![\w-])" + re.escape(quote[candidate.end():]))
+        if re.search(pattern, line):
+            return True
+    return False
+
+
+def _domains(rows, lines):
+    _count(rows, 0, 12, "Справочники")
+    domains = {}
+    for row in rows:
+        key = _key(row["key"])
+        if key in domains:
+            raise ValueError(f"Справочник {key} указан дважды")
+        _count(row["options"], 1, 48, key)
+        options = set()
+        for option in row["options"]:
+            value, ref = option["value"], option["source"]
+            _short_text(value, 100, key)
+            if value in options:
+                raise ValueError(f"{key}: значение {value} указано дважды")
+            if ref["line"] < 1 or not _cites_option(value, ref, lines):
+                raise ValueError(f"{key}: исходная строка {ref['line']} не подтверждает точное значение {value!r}")
+            options.add(value)
+        domains[key] = _Domain(key, frozenset(options))
+    return domains
+
+
+def _fields(rows, name, minimum, domains):
     _count(rows, minimum, 24, name)
     fields = {}
     for row in rows:
@@ -93,7 +152,13 @@ def _fields(rows, name, minimum):
             raise ValueError(f"{name}: повтор поля {key}")
         _short_text(row["label"], 120, key)
         _short_text(row["unit"], 32, key)
-        fields[key] = row["unit"]
+        unit = row["unit"]
+        if domains is not None and unit.startswith("enum:"):
+            domain = unit[5:]
+            if domain not in domains:
+                raise ValueError(f"{key}: неизвестный справочник {domain}")
+            unit = domains[domain]
+        fields[key] = unit
     return fields
 
 
@@ -104,13 +169,21 @@ def _values(rows, allowed, name, *, all_required=False):
         key = row["key"]
         if key not in allowed or key in values:
             raise ValueError(f"{name}: неизвестное или повторное поле {key}")
-        values[key] = _bounded(row["value"], key)
+        value, unit = row["value"], allowed[key]
+        if isinstance(unit, _Domain):
+            if type(value) is not str or value not in unit.options:
+                raise ValueError(f"{key}: значение отсутствует в справочнике {unit.key}")
+            values[key] = value
+        else:
+            values[key] = _bounded(value, key)
     if all_required and values.keys() != allowed.keys():
         raise ValueError(f"{name}: указаны не все начальные значения")
     return values
 
 
 def _numeric(unit):
+    if isinstance(unit, (_Domain, _StringLiterals)):
+        raise ValueError("Арифметика над значениями справочника запрещена")
     if unit is _BOOL:
         raise ValueError("Нельзя использовать логическое значение как число")
     return unit
@@ -119,6 +192,14 @@ def _numeric(unit):
 def _same_unit(left, right):
     if left == right:
         return left
+    if isinstance(left, _StringLiterals):
+        if isinstance(right, _StringLiterals):
+            return _StringLiterals(left.options | right.options)
+        if isinstance(right, _Domain) and left.options <= right.options:
+            return right
+        raise ValueError("Строка не принадлежит нужному справочнику")
+    if isinstance(right, _StringLiterals):
+        return _same_unit(right, left)
     if left is _LITERAL:
         return _numeric(right)
     if right is _LITERAL:
@@ -158,6 +239,9 @@ def _unit(node, fields):
     if isinstance(node, ast.Constant):
         if type(node.value) is bool:
             return _BOOL
+        if type(node.value) is str:
+            _short_text(node.value, 100, "Строковый литерал")
+            return _StringLiterals(frozenset((node.value,)))
         _bounded(node.value, "Литерал")
         return _LITERAL
     if isinstance(node, ast.BinOp) and type(node.op) in _ARITHMETIC:
@@ -167,8 +251,10 @@ def _unit(node, fields):
         for op, other in zip(node.ops, node.comparators):
             current = _unit(other, fields)
             unit = _same_unit(previous, current)
-            if unit is _BOOL and not isinstance(op, (ast.Eq, ast.NotEq)):
-                raise ValueError("Логические значения можно сравнивать только на равенство")
+            if isinstance(unit, _StringLiterals):
+                raise ValueError("Сравнение строк требует поля конкретного справочника")
+            if (unit is _BOOL or isinstance(unit, _Domain)) and not isinstance(op, (ast.Eq, ast.NotEq)):
+                raise ValueError("Логические и именованные значения можно сравнивать только на равенство")
             previous = current
         return _BOOL
     if isinstance(node, ast.UnaryOp):
@@ -355,9 +441,14 @@ def _run(case, sides, observe, explanation=None, point=None):
 
 
 def _evaluate(program, lines, witness, sample, explanation=None, point=None):
-    validate_shape(program, PROGRAM, "Исполняемый пример")
-    states = _fields(program["states"], "Состояния", 1)
-    inputs = _fields(program["inputs"], "Входы", 0)
+    schema = PROGRAM if isinstance(program, dict) and "domains" in program else _OLD_PROGRAM
+    validate_shape(program, schema, "Исполняемый пример")
+    domains = _domains(program["domains"], lines) if "domains" in program else None
+    states = _fields(program["states"], "Состояния", 1, domains)
+    inputs = _fields(program["inputs"], "Входы", 0, domains)
+    used_domains = {unit.key for unit in (*states.values(), *inputs.values()) if isinstance(unit, _Domain)}
+    if used_domains != (domains or {}).keys():
+        raise ValueError("Заявлен справочник, который не используется в полях")
     if states.keys() & inputs.keys():
         raise ValueError("Имена состояний и входов должны различаться")
     observe = program["observe"]
@@ -386,7 +477,8 @@ def _evaluate(program, lines, witness, sample, explanation=None, point=None):
         sides[name] = _compile(side, event_fields, states, inputs)
     if program["first"]["source"] == program["second"]["source"]:
         raise ValueError("Обе стороны ссылаются на одну и ту же цитату")
-    replay = {"version": VERSION, "scenario": _run(scenario, sides, observe, explanation if sample is None else None, point),
+    replay = {"version": "witness-enum-v1" if domains else VERSION,
+              "scenario": _run(scenario, sides, observe, explanation if sample is None else None, point),
               "control": _run(control, sides, observe)}
     if replay["scenario"]["first_difference"] is None:
         raise ValueError("В общем сценарии наблюдаемые результаты совпадают на всех шагах")
