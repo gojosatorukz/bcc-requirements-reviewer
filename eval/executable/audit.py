@@ -58,6 +58,20 @@ def verify(name, report_path, document):
     return report, pairs, len(cites)
 
 
+def check_protocol(name, pairs):
+    positive = {"official": ((38, 64), (39, 40)), "hotel": ((12, 16),), "fee": ((9, 13),)}
+    for left, right in positive.get(name, ()):
+        outcomes = [item["status"] for anchors, item in pairs if anchors == {left, right}]
+        require(outcomes == ["executed"], f"{name}: строки {left} и {right} дали {outcomes}")
+    if name == "aligned":
+        require(not any(anchors == {12, 16} for anchors, _ in pairs),
+                "aligned: согласованные К-2 и В-1 представлены как критический конфликт")
+    if name == "ledger":
+        for anchors, _ in pairs:
+            require(not (anchors.intersection(range(30, 38)) and anchors.intersection(range(40, 47))),
+                    "ledger: правила разных версий представлены как один критический конфликт")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Офлайн-проверка материалов исполняемых примеров")
     parser.add_argument("--official", type=Path, default=ROOT / "submission/requirements.md")
@@ -66,6 +80,7 @@ def main():
     args = parser.parse_args()
     for name, document in documents(args.official, args.cases or CASES).items():
         report, pairs, count = verify(name, args.runs / (name + ".json"), document)
+        check_protocol(name, pairs)
         description = [(sorted(anchors), item["status"]) for anchors, item in pairs]
         print(f"{name}: {count} подтверждённых ссылок, {report['run']['fresh_calls']} вызовов, пары {description}")
 
