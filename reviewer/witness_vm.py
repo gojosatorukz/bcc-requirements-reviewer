@@ -295,27 +295,63 @@ def _advance(state, inputs, rules):
     return {**state, **updates}
 
 
-def _run(case, sides, observe):
+class _Readings:
+    """Collect only values actually read, including short-circuit and conditional expressions."""
+    def __init__(self, context):
+        self.context = context
+        self.used = {}
+
+    def __getitem__(self, name):
+        self.used[name] = self.context[name]
+        return self.used[name]
+
+
+def _explain_field(state, inputs, rules, field):
+    before = {**state, **inputs}
+    reasons = []
+    for rule in rules:
+        assignments = [(target, expr) for target, expr in rule.updates if target == field]
+        if not assignments:
+            continue
+        guard_inputs = _Readings(before)
+        matched = _read(rule.condition, guard_inputs)
+        changes = []
+        for target, expr in assignments:
+            operands = _Readings(before)
+            after = _read(expr, operands) if matched else before[target]
+            changes.append({"target": target, "expr": ast.unparse(expr), "reads": operands.used,
+                            "before": before[target], "after": after, "applied": matched})
+        reasons.append({"when": ast.unparse(rule.condition), "matched": matched, "reads": guard_inputs.used,
+                        "updates": changes})
+    return reasons
+
+
+def _run(case, sides, observe, explanation=None):
     initial, events = case
     states = {name: initial.copy() for name in sides}
     start = {field: initial[field] for field in observe}
     trace = []
     first_difference = None
     for index, (kind, label, inputs) in enumerate(events, 1):
+        before = states.copy()
         snapshot = {}
         for name, rules in sides.items():
-            states[name] = _advance(states[name], inputs, rules.get(kind, ()))
+            states[name] = _advance(before[name], inputs, rules.get(kind, ()))
             snapshot[name] = {field: states[name][field] for field in observe}
         fields = [key for key in observe if snapshot["first"][key] != snapshot["second"][key]]
         if fields and first_difference is None:
             key = fields[0]
             first_difference = {"step": index, "field": key, "first": snapshot["first"][key],
                                 "second": snapshot["second"][key]}
+            if explanation is not None:
+                explanation.update(step=index, field=key, kind=kind, label=label)
+                for name, rules in sides.items():
+                    explanation[name] = _explain_field(before[name], inputs, rules.get(kind, ()), key)
         trace.append({"step": index, "kind": kind, "label": label, "inputs": inputs, **snapshot, "different": fields})
     return {"initial": start, "steps": trace, "first_difference": first_difference, "final": snapshot}
 
 
-def _evaluate(program, lines, witness, sample):
+def _evaluate(program, lines, witness, sample, explanation=None):
     validate_shape(program, PROGRAM, "Исполняемый пример")
     states = _fields(program["states"], "Состояния", 1)
     inputs = _fields(program["inputs"], "Входы", 0)
@@ -344,7 +380,8 @@ def _evaluate(program, lines, witness, sample):
         sides[name] = _compile(side, event_fields, states, inputs)
     if program["first"]["source"] == program["second"]["source"]:
         raise ValueError("Обе стороны ссылаются на одну и ту же цитату")
-    replay = {"version": VERSION, "scenario": _run(scenario, sides, observe), "control": _run(control, sides, observe)}
+    replay = {"version": VERSION, "scenario": _run(scenario, sides, observe, explanation if sample is None else None),
+              "control": _run(control, sides, observe)}
     if replay["scenario"]["first_difference"] is None:
         raise ValueError("В общем сценарии наблюдаемые результаты совпадают на всех шагах")
     if replay["control"]["first_difference"] is not None:
@@ -352,7 +389,7 @@ def _evaluate(program, lines, witness, sample):
     if sample is not None:
         if [event["kind"] for event in sample["events"]] != [event[0] for event in scenario[1]]:
             raise ValueError("При повторном исполнении нужны прежние виды событий в том же порядке")
-        return _run(_case(sample, states, inputs, event_fields), sides, observe)
+        return _run(_case(sample, states, inputs, event_fields), sides, observe, explanation)
     return replay
 
 
@@ -365,3 +402,12 @@ def simulate(program, lines, case, witness=None):
     """Revalidate the original witness, then replay its rules on new inputs, including ones that agree."""
     validate_shape(case, CASE, "Тестовые входы")
     return _evaluate(program, lines, witness, case)
+
+
+def explain_step(program, lines, witness=None, *, case=None):
+    """Explain the first differing field using evaluated operands. Equal exploratory traces return None."""
+    if case is not None:
+        validate_shape(case, CASE, "Тестовые входы")
+    explanation = {}
+    _evaluate(program, lines, witness, case, explanation)
+    return explanation or None

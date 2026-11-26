@@ -3,7 +3,7 @@ import json
 import random
 import unittest
 
-from reviewer.witness_vm import execute, simulate
+from reviewer.witness_vm import execute, explain_step, simulate
 
 
 PURCHASE = "Месяц определяется по дате совершения покупки."
@@ -133,6 +133,29 @@ class ExecutableWitnessTests(unittest.TestCase):
              "second": {"source": SOURCES["second"], "rules": [update("clear", "held", "0")]}}
         self.assertEqual(execute(p, LINES)["scenario"]["first_difference"],
                          {"step": 1, "field": "held", "first": 7700, "second": 0})
+
+    def test_explanation_shows_checked_guards_and_values_read_at_the_first_split(self):
+        program = threshold_program()
+        details = explain_step(program, LINES, WITNESS)
+        self.assertEqual((details["step"], details["field"], details["kind"]), (2, "count", "settle"))
+        blocked, = details["first"]
+        sent, = details["second"]
+        self.assertFalse(blocked["matched"])
+        self.assertEqual(blocked["reads"], {"enabled": 1, "spent": 10000, "limit": 15000, "amount": 5000, "count": 1})
+        self.assertEqual(blocked["updates"], [{"target": "count", "expr": "count + 1",
+                                              "reads": {}, "before": 1, "after": 1, "applied": False}])
+        self.assertTrue(sent["matched"])
+        self.assertEqual(sent["updates"], [{"target": "count", "expr": "count + 1",
+                                           "reads": {"count": 1}, "before": 1, "after": 2, "applied": True}])
+        self.assertIsNone(explain_step(program, LINES, WITNESS, case=program["control"]))
+
+    def test_explanation_does_not_evaluate_skipped_expressions_or_short_circuit_operands(self):
+        program = threshold_program()
+        program["first"]["rules"][-1]["when"] = "count == 0 and amount > 0"
+        program["first"]["rules"][-1]["updates"][0]["expr"] = "count + 1 if count == 0 else count // 0"
+        blocked, = explain_step(program, LINES)["first"]
+        self.assertEqual(blocked["reads"], {"count": 1})
+        self.assertEqual(blocked["updates"][0]["reads"], {})
 
     def test_an_intermediate_difference_is_reported_even_after_reconvergence(self):
         program = ledgers()
