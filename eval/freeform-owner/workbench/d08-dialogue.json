@@ -1,0 +1,197 @@
+{
+  "report_type": "owner_dialogue",
+  "schema_version": 1,
+  "finding_id": "D-08",
+  "baseline_sha256": "9938b9c13e4bdde61157a049b5ac69985fbbfe328474c41ffbbd96003fb53706",
+  "answers": [
+    "Для сохранённой настройки используем GET /cards/{cardId}/limit. Из него берём сохранённые amount и enabled. Про первое открытие пока не решил.",
+    "До первого сохранения тот же GET возвращает HTTP 200, amount равен null, enabled равен false. Никакую запись при этом не создаём."
+  ],
+  "turns": [
+    {
+      "question": "Какой запрос по карте возвращает текущие порог и переключатель, в том числе до первого сохранения?",
+      "answer": "Для сохранённой настройки используем GET /cards/{cardId}/limit. Из него берём сохранённые amount и enabled. Про первое открытие пока не решил.",
+      "kind": "partial",
+      "state": "needs_followup",
+      "commitments": [
+        {
+          "text": "Если настройка карты уже сохранена, GET /cards/{cardId}/limit возвращает сохранённые значения amount и enabled.",
+          "support": [
+            {
+              "turn": 1,
+              "quote": "Для сохранённой настройки используем GET /cards/{cardId}/limit. Из него берём сохранённые amount и enabled."
+            }
+          ]
+        }
+      ],
+      "confirmed": [
+        "Если настройка карты уже сохранена, GET /cards/{cardId}/limit возвращает сохранённые значения amount и enabled."
+      ],
+      "evidence": [
+        {
+          "line": 52,
+          "quote": "Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API»."
+        },
+        {
+          "line": 120,
+          "quote": "Заменить настройку и вернуть результат сохранения."
+        },
+        {
+          "line": 37,
+          "quote": "По умолчанию уведомление выключено."
+        }
+      ],
+      "retired": [],
+      "gaps": [
+        "Не определено, какой запрос выполняет приложение при открытии настроек до первого сохранения и какой ответ API оно получает."
+      ],
+      "follow_up": "Если для карты demo-42 настройку ещё не сохраняли, какой запрос выполняет приложение при открытии экрана и что возвращает API?",
+      "rule": ""
+    },
+    {
+      "question": "Если для карты demo-42 настройку ещё не сохраняли, какой запрос выполняет приложение при открытии экрана и что возвращает API?",
+      "answer": "До первого сохранения тот же GET возвращает HTTP 200, amount равен null, enabled равен false. Никакую запись при этом не создаём.",
+      "kind": "third",
+      "state": "ready",
+      "commitments": [
+        {
+          "text": "Если настройка карты уже сохранена, GET /cards/{cardId}/limit возвращает сохранённые значения amount и enabled.",
+          "support": [
+            {
+              "turn": 1,
+              "quote": "Для сохранённой настройки используем GET /cards/{cardId}/limit. Из него берём сохранённые amount и enabled."
+            }
+          ]
+        },
+        {
+          "text": "Если настройку карты ещё не сохраняли, GET /cards/{cardId}/limit возвращает HTTP 200 с amount = null и enabled = false и не создаёт запись.",
+          "support": [
+            {
+              "turn": 1,
+              "quote": "Для сохранённой настройки используем GET /cards/{cardId}/limit."
+            },
+            {
+              "turn": 2,
+              "quote": "До первого сохранения тот же GET возвращает HTTP 200, amount равен null, enabled равен false. Никакую запись при этом не создаём."
+            }
+          ]
+        }
+      ],
+      "confirmed": [
+        "Если настройка карты уже сохранена, GET /cards/{cardId}/limit возвращает сохранённые значения amount и enabled.",
+        "Если настройку карты ещё не сохраняли, GET /cards/{cardId}/limit возвращает HTTP 200 с amount = null и enabled = false и не создаёт запись."
+      ],
+      "evidence": [
+        {
+          "line": 52,
+          "quote": "Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API»."
+        },
+        {
+          "line": 103,
+          "quote": "Сохранение порога. Функциональные требования: чтение порога"
+        },
+        {
+          "line": 120,
+          "quote": "Заменить настройку и вернуть результат сохранения."
+        },
+        {
+          "line": 37,
+          "quote": "По умолчанию уведомление выключено."
+        }
+      ],
+      "retired": [],
+      "gaps": [],
+      "follow_up": "",
+      "rule": "При открытии экрана приложение вызывает GET /cards/{cardId}/limit. Для карты с сохранённой настройкой API возвращает сохранённые amount и enabled. До первого сохранения API возвращает HTTP 200 с amount = null и enabled = false и не создаёт запись."
+    }
+  ],
+  "finding_status": "открыто",
+  "kind": "third",
+  "state": "ready",
+  "commitments": [
+    {
+      "text": "Если настройка карты уже сохранена, GET /cards/{cardId}/limit возвращает сохранённые значения amount и enabled.",
+      "support": [
+        {
+          "turn": 1,
+          "quote": "Для сохранённой настройки используем GET /cards/{cardId}/limit. Из него берём сохранённые amount и enabled."
+        }
+      ]
+    },
+    {
+      "text": "Если настройку карты ещё не сохраняли, GET /cards/{cardId}/limit возвращает HTTP 200 с amount = null и enabled = false и не создаёт запись.",
+      "support": [
+        {
+          "turn": 1,
+          "quote": "Для сохранённой настройки используем GET /cards/{cardId}/limit."
+        },
+        {
+          "turn": 2,
+          "quote": "До первого сохранения тот же GET возвращает HTTP 200, amount равен null, enabled равен false. Никакую запись при этом не создаём."
+        }
+      ]
+    }
+  ],
+  "confirmed": [
+    "Если настройка карты уже сохранена, GET /cards/{cardId}/limit возвращает сохранённые значения amount и enabled.",
+    "Если настройку карты ещё не сохраняли, GET /cards/{cardId}/limit возвращает HTTP 200 с amount = null и enabled = false и не создаёт запись."
+  ],
+  "evidence": [
+    {
+      "line": 52,
+      "quote": "Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API»."
+    },
+    {
+      "line": 103,
+      "quote": "Сохранение порога. Функциональные требования: чтение порога"
+    },
+    {
+      "line": 120,
+      "quote": "Заменить настройку и вернуть результат сохранения."
+    },
+    {
+      "line": 37,
+      "quote": "По умолчанию уведомление выключено."
+    }
+  ],
+  "gaps": [],
+  "follow_up": "",
+  "rule": "При открытии экрана приложение вызывает GET /cards/{cardId}/limit. Для карты с сохранённой настройкой API возвращает сохранённые amount и enabled. До первого сохранения API возвращает HTTP 200 с amount = null и enabled = false и не создаёт запись.",
+  "run": {
+    "model": "gpt-6.2-astra",
+    "provider": "codex-cli",
+    "elapsed_seconds": 18.03,
+    "agent_version": "f78fc4d58467",
+    "engine_sha256": "0c8ae1c7d55a29b74b1061fad1dc2f1c8e4885ff32915203392c165c6982cb22",
+    "usage": {
+      "input_tokens": 15256,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 513,
+      "reasoning_output_tokens": 41
+    },
+    "current_usage": {
+      "input_tokens": 15256,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 513,
+      "reasoning_output_tokens": 41
+    },
+    "fresh_calls": 1,
+    "restored_attempts": 0,
+    "attempts": [
+      {
+        "stage": "Ответ владельца",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 15256,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 513,
+          "reasoning_output_tokens": 41
+        },
+        "seconds": 18.02
+      }
+    ]
+  }
+}
