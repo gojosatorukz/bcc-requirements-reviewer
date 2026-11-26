@@ -89,8 +89,24 @@ class WorkbenchTest(unittest.TestCase):
         self.assertEqual(headers["Content-Disposition"], 'attachment; filename="review.json"')
         (benchmark / "review.html").write_text("<title>Benchmark</title>")
         self.assertIn(b"Benchmark", self.request("GET", "/reports/demo/review.html")[1])
+        latest = self.demo.with_name("bcc-priority")
+        latest.mkdir()
+        (latest / "review.json").write_text('{"priority_policy":"impact-v1"}')
+        self.assertIn(b"Benchmark", self.request("GET", "/reports/demo/review.html")[1])
+        (latest / "review.html").write_text("<title>Impact</title>")
+        self.assertIn(b"Impact", self.request("GET", "/reports/demo/review.html")[1])
         self.assertEqual(self.request("GET", "/reports/demo/../review.json")[0], 404)
         self.assertEqual(self.calls, [])
+
+    def test_gallery_serves_only_the_bundled_assets(self):
+        directory = self.root / "design" / "concepts"
+        directory.mkdir(parents=True)
+        for name in ("index.html", "gallery.css", "case.js", "gallery.js", "private.txt"):
+            (directory / name).write_text(name)
+        for name in ("index.html", "gallery.css", "case.js", "gallery.js"):
+            status, body, _ = self.request("GET", f"/design/concepts/{name}")
+            self.assertEqual((status, body), (200, name.encode()))
+        self.assertEqual(self.request("GET", "/design/concepts/private.txt")[0], 404)
 
     def test_full_and_recheck_run_paths(self):
         code, body, _ = self.upload()
