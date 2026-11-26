@@ -82,23 +82,107 @@ def select_findings(previous, selected):
     return old, issues
 
 
-def normalized(text):
-    return " ".join(text.split())
+JSON_TOKEN = re.compile(r'"(?:[^"\\]|\\.)*"|\s+')
+JSON_PROPERTY = re.compile(r'^\s*"(?:[^"\\]|\\.)*"\s*:')
+FENCE = re.compile(r"^\s*(`{3,}|~{3,})\s*(\S*)")
+INLINE_CODE = re.compile(r"`[^`\n]+`")
+JSON_STRUCTURE = re.compile(r'"(?:[^"\\]|\\.)*"|[{}\[\]]')
+
+
+def normalize_json(text):
+    return JSON_TOKEN.sub(lambda match: "" if match[0].isspace() else match[0], text)
+
+
+def is_json_container(text):
+    if not text.startswith(("{", "[")):
+        return False
+    try:
+        json.loads(text)
+    except (ValueError, RecursionError):
+        return False
+    return True
+
+
+def bare_json_lines(rows):
+    indices = set()
+    start = 0
+    depth = 0
+    for index, (_, text) in enumerate(rows):
+        if not depth:
+            if text.strip() not in {"{", "["}:
+                continue
+            start = index
+        for match in JSON_STRUCTURE.finditer(text):
+            if match[0] in {"{", "["}:
+                depth += 1
+            elif match[0] in {"}", "]"}:
+                depth -= 1
+        if depth < 0:
+            depth = 0
+        elif not depth and is_json_container("\n".join(text for _, text in rows[start:index + 1]).strip()):
+            indices.update(line for line, _ in rows[start:index + 1])
+    return indices
+
+
+def normalize_source(rows):
+    values = {}
+    json_lines = bare_json_lines(rows)
+    fence = None
+    json_body = False
+    for line, text in rows:
+        stripped = text.strip()
+        marker = FENCE.match(text)
+        if marker and fence is None:
+            fence, language = marker.groups()
+            json_body = language.lower() == "json"
+        elif fence and stripped.startswith(fence) and not stripped.strip(fence[0]):
+            fence, json_body = None, False
+        elif json_body or line in json_lines or (stripped.startswith('"') and JSON_PROPERTY.match(stripped)) \
+                or is_json_container(stripped):
+            values[line] = normalize_json(text)
+            json_lines.add(line)
+            continue
+        # Handle JSON snippets in Markdown code spans independently of the surrounding prose.
+        parts = []
+        start = 0
+        for inline in INLINE_CODE.finditer(text):
+            snippet = inline[0][1:-1].strip()
+            if is_json_container(snippet):
+                parts.extend((" ".join(text[start:inline.start()].split()), "`" + normalize_json(snippet) + "`"))
+                start = inline.end()
+                json_lines.add(line)
+        parts.append(" ".join(text[start:].split()))
+        values[line] = " ".join(part for part in parts if part)
+    return values, json_lines
 
 
 def make_diff(old, new):
-    before = [{"line": i, "text": text} for i, text in sorted(old.items())]
-    after = [{"line": i, "text": text} for i, text in sorted(new.items())]
-    # Keep source addresses while ignoring blank lines and whitespace-only edits.
-    matcher = SequenceMatcher(None, [normalized(row["text"]) for row in before],
-                              [normalized(row["text"]) for row in after], autojunk=False)
+    if old == new:
+        return []
+    before, after = sorted(old.items()), sorted(new.items())
+    old_text, _ = normalize_source(before)
+    new_text, _ = normalize_source(after)
+    left, right = list(old_text.values()), list(new_text.values())
+    if left == right:
+        return []
+    # Comparing long, repeated regions is expensive. Preserve unchanged edges and
+    # compare only the middle, keeping offsets into the original source lines.
+    shared_length = min(len(left), len(right))
+    prefix = 0
+    while prefix < shared_length and left[prefix] == right[prefix]:
+        prefix += 1
+    left_end, right_end = len(left), len(right)
+    while left_end > prefix and right_end > prefix and left[left_end - 1] == right[right_end - 1]:
+        left_end -= 1
+        right_end -= 1
+    matcher = SequenceMatcher(None, left[prefix:left_end], right[prefix:right_end], autojunk=False)
     hunks = []
     for operation, start_old, end_old, start_new, end_new in matcher.get_opcodes():
         if operation != "equal":
             hunks.append({
                 "id": f"C-{len(hunks) + 1:03d}", "operation": operation,
-                "before": before[start_old:end_old],
-                "after": after[start_new:end_new],
+                "before": [{"line": line, "text": text} for line, text in before[prefix + start_old:prefix + end_old]],
+                "after": [{"line": line, "text": text} for line, text in after[prefix + start_new:prefix + end_new]],
             })
     return hunks
 
@@ -109,7 +193,9 @@ def check_decisions(result, findings, old, new, diff):
     if sorted(row["id"] for row in result["checks"]) != sorted(expected):
         raise ValueError("Требуется ровно одно решение для каждого из " + ", ".join(sorted(expected)))
     hunks = {hunk["id"]: hunk for hunk in diff}
-    old_text = {normalized(line) for line in old.values()}
+    old_text, _ = normalize_source(sorted(old.items()))
+    previous_values = set(old_text.values())
+    new_text, json_lines = normalize_source(sorted(new.items()))
     for row in result["checks"]:
         fid = row["id"]
         status = row["status"]
@@ -119,7 +205,8 @@ def check_decisions(result, findings, old, new, diff):
         finding = expected[fid]
         behavioral = finding["candidates"] or finding.get("triage", {}).get("witness")
         if status == PERSISTS and behavioral and len({
-            (entry["line"], normalized(entry["quote"])) for entry in evidence
+            (entry["line"], entry["quote"].strip() if entry["line"] in json_lines
+             else " ".join(entry["quote"].split())) for entry in evidence
         }) < 2:
             raise ValueError(f"{fid}: у сохранившегося поведенческого конфликта нужны две разные цитаты")
         refs = row["diff_hunks"]
@@ -128,7 +215,7 @@ def check_decisions(result, findings, old, new, diff):
         cited = {entry["line"] for entry in evidence}
         if status in {RESOLVED, CHANGED}:
             if not refs or any(
-                not any(line["line"] in cited and normalized(line["text"]) not in old_text
+                not any(line["line"] in cited and new_text[line["line"]] not in previous_values
                         for line in hunks[ref]["after"]) for ref in refs
             ):
                 raise ValueError(f"{fid}: нужно процитировать содержательно изменённую новую строку "
@@ -162,7 +249,8 @@ def recheck(previous_path, revised_path, model, selected=()):
     findings = [issue["finding"] for issue in issues]
     old_run = previous["run"]
     revision = version()
-    digest = engine_digest("recheck.py", "full.py", "full_render.py", "input.py", "segments.py", "priority.py")
+    digest = engine_digest("recheck.py", "full.py", "full_render.py", "input.py", "segments.py",
+                           "json_examples.py", "priority.py")
     diff = make_diff(old, new)
     matches = revised_hash == old_run["input_sha256"]
     same_lines = old == new and old_run["input_lines"] == len(revised)
