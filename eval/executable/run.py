@@ -19,6 +19,8 @@ CASES = {
     "fee": (HERE / "minor-units/merchant-fee.md", "9e9912ebc20ec9e54a8908be53e005a38cfdc8cec99310cf9a2850a5c38dda29"),
     "sdk-original": (HERE / "public-ledger/sdk-original.md", "9656e8a15c00c8a02baa5208463bc4ec039797471f934cc6d703a62a53f42cd9"),
     "sdk-fixed": (HERE / "public-ledger/sdk-fixed.md", "0b21941de1b1a761178e7b4510e321f47efa45cb7ad8061e8d37e8f3f1603198"),
+    "named-state": (HERE / "named-state/statement-status.md", "e8548c745218a259ef0fa61850ce51327dba7ee81e68cf71952121fb33190f3d"),
+    "named-state-aligned": (HERE / "named-state/statement-status-aligned.md", "576c1f29bbb1ab5c547010e11cf226ec3a5057acb40d3dab5611e5bc69783ff2"),
 }
 
 
