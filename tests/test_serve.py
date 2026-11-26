@@ -1,4 +1,5 @@
 import http.client
+from hashlib import sha256
 import json
 from pathlib import Path
 import sys
@@ -40,8 +41,10 @@ class WorkbenchTest(unittest.TestCase):
         self.addCleanup(self.release.set)
         self.origin = f"http://127.0.0.1:{self.server.server_port}"
 
-    def worker(self, mode, document, baseline, json_report, html_report, model, progress, findings=()):
+    def worker(self, mode, document, baseline, json_report, html_report, model, progress, findings=(),
+               decisions=(), baseline_sha256=None):
         self.calls.append((mode, document.name, document.read_bytes(), baseline, model, findings))
+        self.decision_args = decisions, baseline_sha256
         if document.name == "failure.md":
             raise RuntimeError("provider stderr contains secret-token")
         progress("Весь документ · проверено")
@@ -162,6 +165,30 @@ class WorkbenchTest(unittest.TestCase):
             self.assertEqual(self.wait_until_done(json.loads(body)["id"])["state"], "done")
             self.assertEqual(self.calls[-1][-1], expected)
 
+    def test_decisions_are_bound_to_report_bytes_and_selected_findings(self):
+        path = self.demo / "review.json"
+        finding = {"id": "D-01", "priority": "критический", "category": "нарушение",
+                   "triage": {"witness": [{"first": {"outcome": "A"}, "second": {"outcome": "B"}}]}}
+        path.write_text(json.dumps({"schema_version": 2, "whole": {"findings": [finding, {"id": "D-02"}]}}))
+        code, body, headers = self.request("GET", "/reports/demo/review.json")
+        self.assertEqual(code, 200)
+        digest = sha256(body).hexdigest()
+        self.assertEqual(headers["X-Report-SHA256"], digest)
+        base = "/api/runs?mode=recheck&baseline=demo"
+        valid = "&decision=D-01%3Dfirst&baseline_sha256=" + digest
+        for invalid in ("&finding=D-02" + valid, valid + "&decision=D-01%3Dsecond", "&decision=D-01%3Dfirst"):
+            with self.subTest(invalid=invalid):
+                self.assertEqual(self.upload(base + invalid)[0], 400)
+        path.write_bytes(body + b"\n")
+        self.assertEqual(self.upload(base + valid)[0], 409)
+        self.assertEqual(self.calls, [])
+        path.write_bytes(body)
+        self.release.set()
+        code, body, _ = self.upload(base + valid)
+        self.assertEqual(code, 202)
+        self.assertEqual(self.wait_until_done(json.loads(body)["id"])["state"], "done")
+        self.assertEqual(self.decision_args, (("D-01=first",), digest))
+
     def test_validates_origin_host_names_and_size(self):
         self.assertEqual(self.upload(Origin="http://127.0.0.1.evil.invalid")[0], 403)
         self.assertEqual(self.upload(Host=f"attacker.invalid:{self.server.server_port}")[0], 403)
@@ -186,6 +213,14 @@ class WorkbenchTest(unittest.TestCase):
 
 
 class FindingArgumentsTest(unittest.TestCase):
+    @patch("reviewer.serve.execute")
+    def test_owner_decisions_pass_sha_to_cli(self, execute_mock):
+        digest = "a" * 64
+        cli_worker("recheck", Path("updated.md"), Path("baseline.json"), Path("review.json"), Path("review.html"),
+                   None, lambda text: None, decisions=("D-01=first", "D-02=second"), baseline_sha256=digest)
+        self.assertEqual(execute_mock.call_args_list[0].args[0][-6:],
+                         ["--decision", "D-01=first", "--decision", "D-02=second", "--baseline-sha256", digest])
+
     @patch("reviewer.serve.execute")
     def test_recheck_passes_repeated_finding_flags_to_cli(self, execute_mock):
         cli_worker("recheck", Path("updated.md"), Path("baseline.json"),

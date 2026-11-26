@@ -2,6 +2,7 @@
 
 import argparse
 from dataclasses import dataclass, field
+from hashlib import sha256
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -147,7 +148,8 @@ def execute(command, progress, failure):
             raise SafeWorkerError(known_failure[0] if known_failure else failure)
 
 
-def cli_worker(mode, document, baseline, json_report, html_report, model, progress, findings=()):
+def cli_worker(mode, document, baseline, json_report, html_report, model, progress, findings=(),
+               decisions=(), baseline_sha256=None):
     python = [sys.executable, "-m"]
     if mode == "full":
         command = [*python, "reviewer", str(document), str(json_report)]
@@ -155,6 +157,10 @@ def cli_worker(mode, document, baseline, json_report, html_report, model, progre
         command = [*python, "reviewer.recheck", str(baseline), str(document), str(json_report)]
         for finding in findings:
             command.extend(["--finding", finding])
+        for decision in decisions:
+            command.extend(["--decision", decision])
+        if decisions:
+            command.extend(["--baseline-sha256", baseline_sha256])
     if model:
         command.extend(["--model", model])
     execute(command, progress, "CLI завершил проверку с ошибкой. Проверьте доступность Codex и параметры модели.")
@@ -201,7 +207,7 @@ class Workbench:
                                      else "Отчёт ещё недоступен.")
             return run.directory
 
-    def start(self, mode, baseline, name, length, stream, findings=()):
+    def start(self, mode, baseline, name, length, stream, findings=(), decisions=(), baseline_sha256=None):
         if not self.upload_lock.acquire(blocking=False):
             raise WorkbenchError(HTTPStatus.CONFLICT, "Уже загружается другой документ.")
         try:
@@ -209,8 +215,8 @@ class Workbench:
                 if self.active is not None:
                     raise WorkbenchError(HTTPStatus.CONFLICT, "Дождитесь завершения текущей проверки.")
             baseline_report = self.reports(baseline, baseline=True) / "review.json" if baseline else None
-            if findings:
-                self.check_findings(baseline_report, findings)
+            if findings or decisions:
+                self.check_findings(baseline_report, findings, decisions, baseline_sha256)
             identifier = uuid4().hex
             directory = self.storage / identifier
             payload = stream.read(length)
@@ -224,25 +230,47 @@ class Workbench:
             with self.lock:
                 self.runs[identifier] = run
                 self.active = identifier
-                self.thread = Thread(target=self._run, args=(run, document, baseline_report, findings), daemon=True)
+                self.thread = Thread(target=self._run,
+                                     args=(run, document, baseline_report, findings, decisions, baseline_sha256),
+                                     daemon=True)
                 self.thread.start()
             return identifier
         finally:
             self.upload_lock.release()
 
     @staticmethod
-    def check_findings(baseline_report, findings):
+    def check_findings(baseline_report, findings, decisions=(), baseline_sha256=None):
         try:
-            report = json.loads(baseline_report.read_text(encoding="utf-8"))
+            raw = baseline_report.read_bytes()
+            if decisions and sha256(raw).hexdigest() != baseline_sha256:
+                raise WorkbenchError(HTTPStatus.CONFLICT, "Базовый отчёт изменился. Обновите страницу и зафиксируйте решение заново.")
+            report = json.loads(raw)
             if report["schema_version"] != 2 or type(report["whole"]["findings"]) is not list:
                 raise ValueError("Invalid baseline")
-            eligible = {item["id"] for item in report["whole"]["findings"]}
+            eligible = {item["id"]: item for item in report["whole"]["findings"]}
         except (OSError, ValueError, KeyError, TypeError) as exc:
             raise WorkbenchError(HTTPStatus.CONFLICT, "Не удалось прочитать замечания базового отчёта.") from exc
         if any(finding not in eligible for finding in findings):
             raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Выбрано замечание, которого нет в базовом отчёте.")
+        for decision in decisions:
+            identifier, side = decision.split("=")
+            item = eligible.get(identifier, {})
+            in_scope = identifier in findings if findings else item.get("priority") == "критический"
+            triage = item.get("triage")
+            if triage is not None:
+                witnesses = triage.get("witness", []) if isinstance(triage, dict) else []
+            else:
+                candidates = item.get("candidates") or []
+                conflicts = report.get("conflicts") or []
+                witnesses = [conflicts[n-1] for n in candidates if type(n) is int and 1 <= n <= len(conflicts)]
+                if len(candidates) != len(witnesses):
+                    witnesses = []
+            if (not in_scope or item.get("priority") != "критический" or item.get("category") != "нарушение" or
+                    not isinstance(witnesses, list) or len(witnesses) != 1 or
+                    not isinstance(witnesses[0], dict) or not witnesses[0].get(side)):
+                raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Решение относится к неподходящему замечанию или сценарию.")
 
-    def _run(self, run, document, baseline, findings):
+    def _run(self, run, document, baseline, findings, decisions, baseline_sha256):
         def on_progress(line):
             with self.lock:
                 run.record(line)
@@ -254,6 +282,8 @@ class Workbench:
         state, error = "done", ""
         try:
             options = {"findings": findings} if findings else {}
+            if decisions:
+                options.update(decisions=decisions, baseline_sha256=baseline_sha256)
             self.worker(run.mode, document, baseline, json_report, html_report, self.model, on_progress, **options)
             if not all((run.directory / name).is_file() for name in REPORT_FILES):
                 raise SafeWorkerError("Проверка не сформировала оба отчёта.")
@@ -297,7 +327,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Неверный путь запроса.")
         return urlsplit(self.path)
 
-    def reply(self, status, body, content_type, download=None):
+    def reply(self, status, body, content_type, download=None, report_digest=False):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -310,6 +340,8 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                          "frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'")
         if download:
             self.send_header("Content-Disposition", f'attachment; filename="{download}"')
+        if report_digest:
+            self.send_header("X-Report-SHA256", sha256(body).hexdigest())
         self.end_headers()
         self.wfile.write(body)
 
@@ -337,7 +369,8 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 name = report[2]
                 directory = app.reports(report[1])
                 download = name if parse_qs(route.query).get("download") == ["1"] else None
-                self.reply(HTTPStatus.OK, (directory / name).read_bytes(), REPORT_FILES[name], download)
+                self.reply(HTTPStatus.OK, (directory / name).read_bytes(), REPORT_FILES[name], download,
+                           report_digest=name == "review.json")
                 return
             raise WorkbenchError(HTTPStatus.NOT_FOUND, "Страница не найдена.")
         except WorkbenchError as exc:
@@ -356,15 +389,24 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             modes = query.get("mode", [])
             baselines = query.get("baseline", [])
             findings = tuple(query.get("finding", []))
+            decisions = tuple(query.get("decision", []))
+            hashes = query.get("baseline_sha256", [])
             if modes == ["full"] and not baselines and set(query) == {"mode"}:
                 baseline = None
-            elif (modes == ["recheck"] and len(baselines) == 1 and set(query) <= {"mode", "baseline", "finding"}
+            elif (modes == ["recheck"] and len(baselines) == 1 and
+                  set(query) <= {"mode", "baseline", "finding", "decision", "baseline_sha256"}
                   and re.fullmatch(rf"demo|{JOB_ID}", baselines[0])):
                 baseline = baselines[0]
             else:
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Укажите mode=full или mode=recheck с baseline.")
             if len(findings) != len(set(findings)) or any(not re.fullmatch(FINDING_ID, fid) for fid in findings):
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Укажите уникальные идентификаторы замечаний вида D-01.")
+            decision_ids = {item.partition("=")[0] for item in decisions}
+            if (len(decision_ids) != len(decisions) or
+                    any(not re.fullmatch(rf"{FINDING_ID}=(?:first|second)", item) for item in decisions) or
+                    (decisions and (len(hashes) != 1 or not re.fullmatch(r"[0-9a-f]{64}", hashes[0]))) or
+                    (hashes and not decisions)):
+                raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Для решений нужны уникальные D-ID, исходы и SHA-256 базового отчёта.")
             names = self.headers.get_all("X-File-Name", [])
             if len(names) != 1:
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Укажите одно имя файла в X-File-Name.")
@@ -377,7 +419,8 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Загрузите непустой файл.")
             if size > LIMITS[Path(name).suffix.lower()]:
                 raise WorkbenchError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Файл превышает допустимый размер.")
-            identifier = self.server.app.start(modes[0], baseline, name, size, self.rfile, findings)
+            decision_options = {"decisions": decisions, "baseline_sha256": hashes[0]} if decisions else {}
+            identifier = self.server.app.start(modes[0], baseline, name, size, self.rfile, findings, **decision_options)
             self.json(HTTPStatus.ACCEPTED, {"id": identifier})
         except WorkbenchError as exc:
             self.json(exc.code, {"error": str(exc)})

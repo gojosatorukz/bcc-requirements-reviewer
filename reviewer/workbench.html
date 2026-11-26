@@ -61,6 +61,11 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 #finding-options{max-height:15rem;overflow:auto;margin:.4rem 0}
 #finding-options label{display:flex;align-items:baseline;gap:.5rem;padding:.4rem .2rem;font-weight:500}
 #finding-options input{flex:none;accent-color:var(--accent)}
+#decision-preflight{margin-top:.6rem;padding:.65rem .75rem;background:var(--soft);border-left:3px solid #ff7045;overflow-wrap:anywhere}
+#decision-preflight label{display:block;margin:.35rem 0}
+.owner-result{margin-top:.8rem;padding:.7rem;background:var(--soft);border-left:3px solid var(--accent);overflow-wrap:anywhere}
+.owner-result[data-tone="conflict"]{background:#ffded6;border:2px solid #942c20;color:#74281d}
+.owner-result strong{display:block;margin-bottom:.35rem}
 #finding-reset{margin-top:.4rem}
 .drop{border:1.5px dashed var(--line);border-radius:.65rem;padding:.9rem;background:var(--paper);transition:border-color .18s var(--ease),background .18s var(--ease)}
 .drop.drag{border-color:var(--ink);background:var(--lemon)}
@@ -160,6 +165,10 @@ a{color:var(--accent);text-underline-offset:.18em}
             <fieldset id="finding-options" aria-label="Замечания для перепроверки"></fieldset>
             <button id="finding-reset" type="button" hidden>Сбросить выбор</button>
           </details>
+          <div id="decision-preflight">
+            <p id="decision-preflight-text" role="status"></p>
+            <label id="use-owner-decisions-label" hidden><input id="use-owner-decisions" type="checkbox" checked> Учитывать зафиксированные решения</label>
+          </div>
         </div>
         <div class="drop" id="drop">
           <label for="file">Документ</label>
@@ -226,6 +235,13 @@ const idPattern = /^[0-9a-f]{32}$/;
 const stateLabels = {queued:'В очереди', running:'Проверка идёт', done:'Отчёт готов', failed:'Ошибка проверки'};
 const modeLabels = {full:'Полное ревью', recheck:'Проверка новой версии'};
 const storageKey = 'reviewer.workbench.v1';
+const decisionKey = 'reviewer.owner-decisions.v1';
+const reportHash = /^[a-f0-9]{64}$/;
+let ownerDecisions;
+try { ownerDecisions = JSON.parse(sessionStorage.getItem(decisionKey)) || {}; }
+catch { ownerDecisions = {}; }
+const baselineVersions = new Map();
+let guidedBaseline = null;
 
 function restore() {
   try {
@@ -268,7 +284,9 @@ function refreshControls() {
   baseline.disabled = busy || !baseline.value;
   get('finding-options').disabled = busy;
   get('finding-reset').disabled = busy;
+  get('use-owner-decisions').disabled = busy;
   get('submit').disabled = busy || (recheck && (!baseline.value || Boolean(findingLoad)));
+  renderDecisionPreflight();
 }
 
 function selectedFindings() {
@@ -279,7 +297,36 @@ function updateFindingSummary() {
   const count = selectedFindings().length;
   get('finding-summary').textContent = count ? 'Замечания · выбрано ' + count : 'Замечания · все критические';
   get('finding-reset').hidden = !count;
+  renderDecisionPreflight();
 }
+
+function scopedDecisions(id, findings) {
+  const version = baselineVersions.get(id);
+  if (!version) return [];
+  const allowed = findings.length ? findings : version.critical;
+  const chosen = ownerDecisions[id + ':' + version.sha] || {};
+  return allowed.filter(id => id in chosen && ['first', 'second'].includes(chosen[id]))
+    .map(id => id + '=' + chosen[id]);
+}
+
+function renderDecisionPreflight() {
+  const choices = scopedDecisions(baseline.value, selectedFindings());
+  get('use-owner-decisions-label').hidden = !choices.length;
+  get('decision-preflight-text').textContent = choices.length ?
+    'Решения владельца в области проверки: ' + choices.map(value => value.split('=')[0]).join(', ') + '.' :
+    'Перепроверка без зафиксированных решений владельца.';
+}
+
+window.addEventListener('review:decision', ({detail}) => {
+  if (!guidedBaseline || detail.key !== guidedBaseline.key ||
+      !/^D-(?:0[1-9]|[1-9][0-9]+)$/.test(detail.finding) ||
+      ![null, 'first', 'second'].includes(detail.side)) return;
+  const saved = ownerDecisions[detail.key] ||= {};
+  if (detail.side === null) delete saved[detail.finding];
+  else saved[detail.finding] = detail.side;
+  try { sessionStorage.setItem(decisionKey, JSON.stringify(ownerDecisions)); } catch {}
+  renderDecisionPreflight();
+});
 
 async function loadFindings(id) {
   if (findingBaseline === id) return;
@@ -296,9 +343,10 @@ async function loadFindings(id) {
   findingLoad = controller;
   status.textContent = 'Загружаем замечания…';
   try {
-    const report = await request('/reports/' + id + '/review.json', {signal: controller.signal});
+    const {value:report, sha} = await request('/reports/' + id + '/review.json', {signal: controller.signal}, true);
     if (findingLoad !== controller) return;
     if (!isFullReport(report)) throw new Error('Нужен полный отчёт.');
+    rememberBaselineVersion(id, report, sha);
     rememberReportFingerprint(id, report);
     for (const finding of report.whole.findings) {
       const label = document.createElement('label');
@@ -466,7 +514,7 @@ function showCoverage(coverage) {
   meter.value = checked;
 }
 
-async function request(path, options) {
+async function request(path, options, withHash = false) {
   const response = await fetch(path, {cache:'no-store', ...options});
   const value = await response.json().catch(() => null);
   if (!response.ok || !value) {
@@ -474,7 +522,7 @@ async function request(path, options) {
     error.status = response.status;
     throw error;
   }
-  return value;
+  return withHash ? {value, sha:response.headers.get('X-Report-SHA256')} : value;
 }
 
 function forget(id) {
@@ -516,6 +564,27 @@ function renderRecheck(report, reportUrl) {
     const badge = resultText('span', check.status, 'result-badge');
     badge.dataset.tone = Object.hasOwn(tones, check.status) ? tones[check.status] : 'unknown';
     card.append(resultText('h4', check.id + ' · ' + check.title), badge, resultText('p', check.reason));
+    if (check.owner_decision) {
+      const decision = check.owner_decision;
+      const panel = document.createElement('div');
+      panel.className = 'owner-result';
+      if (decision.status === 'противоречит решению') panel.dataset.tone = 'conflict';
+      panel.append(resultText('strong', 'Решение владельца · ' + decision.status),
+        resultText('p', 'Зафиксированный исход. ' + decision.outcome), resultText('p', decision.reason));
+      if (decision.source) {
+        const ref = resultText('p', 'Базовое ТЗ, строка ' + decision.source.line + ' · ');
+        ref.append(resultText('q', decision.source.quote));
+        panel.append(ref);
+      }
+      for (const {line, quote} of decision.evidence || []) {
+        const source = resultText('a', 'Строка ' + line);
+        source.href = reportUrl + '#line-' + line;
+        const item = document.createElement('p');
+        item.append(source, ' · ', resultText('q', quote));
+        panel.append(item);
+      }
+      card.append(panel);
+    }
     card.append(resultText('p', 'Цитаты из новой версии', 'result-evidence-title'));
     if (check.revised_evidence.length) {
       const list = document.createElement('ul');
@@ -681,6 +750,11 @@ form.addEventListener('submit', async event => {
   if (selectedMode === 'recheck') {
     params.set('baseline', selectedBaseline);
     for (const id of findings) params.append('finding', id);
+    const decisions = get('use-owner-decisions').checked ? scopedDecisions(selectedBaseline, findings) : [];
+    if (decisions.length) {
+      params.set('baseline_sha256', baselineVersions.get(selectedBaseline).sha);
+      for (const decision of decisions) params.append('decision', decision);
+    }
   }
   const selectedFile = file;
   busy = true;
@@ -726,12 +800,24 @@ function isFullReport(report) {
     Array.isArray(report.conflicts) && Array.isArray(report.registry) && Array.isArray(report.source);
 }
 
-function publishReport(report, id) {
+function rememberBaselineVersion(id, report, sha) {
+  if (!reportHash.test(sha || '')) {
+    baselineVersions.delete(id);
+    return null;
+  }
+  baselineVersions.set(id, {sha, critical:report.whole.findings.filter(f => f.priority === 'критический').map(f => f.id)});
+  return id + ':' + sha;
+}
+
+function publishReport(report, id, sha) {
+  const key = rememberBaselineVersion(id, report, sha);
+  guidedBaseline = key ? {key} : null;
+  renderDecisionPreflight();
   rememberReportFingerprint(id, report);
   const reportUrl = '/reports/' + id + '/review.html';
   const name = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
   get('review-document').textContent = [id === 'demo' ? 'Демо' : 'Полное ревью', name].filter(Boolean).join(' · ');
-  window.dispatchEvent(new CustomEvent('review:loaded', {detail:{report, reportUrl}}));
+  window.dispatchEvent(new CustomEvent('review:loaded', {detail:{report, reportUrl, key, decisions:ownerDecisions[key] || {}}}));
   get('review-title').textContent = get('guided-review').hidden ? 'Проверка требований' : 'Согласование';
 }
 
@@ -739,9 +825,9 @@ async function loadGuidedFull(id) {
   if (requestedGuidedId === id) return;
   requestedGuidedId = id;
   try {
-    const report = await request('/reports/' + id + '/review.json');
+    const {value:report, sha} = await request('/reports/' + id + '/review.json', undefined, true);
     await demoLoad;
-    if (requestedGuidedId === id && isFullReport(report)) publishReport(report, id);
+    if (requestedGuidedId === id && isFullReport(report)) publishReport(report, id, sha);
   } catch (error) {
     if (requestedGuidedId !== id) return;
     requestedGuidedId = null;
@@ -751,7 +837,7 @@ async function loadGuidedFull(id) {
 
 async function loadDemo() {
   try {
-    const report = await request('/reports/demo/review.json');
+    const {value:report, sha} = await request('/reports/demo/review.json', undefined, true);
     if (!isFullReport(report)) throw new Error('Некорректный демо-отчёт.');
     const title = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
     get('demo-title').textContent = title || 'Демо-отчёт';
@@ -772,7 +858,7 @@ async function loadDemo() {
     get('demo-summary').hidden = false;
     demoReady = true;
     refreshBaselines();
-    publishReport(report, 'demo');
+    publishReport(report, 'demo', sha);
   } catch {
     get('demo-status').textContent = 'Демо-отчёт сейчас недоступен.';
   }

@@ -65,3 +65,6 @@
   #guided-review .guide-evidence {padding: 2px 4px}
   #guided-review figure, #guided-review figure + figure {transform: none; margin-left: 0}
 }
+#guided-review .guide-record{margin-top:.85rem;padding:.65rem .8rem;background:#f5ead8;border-left:3px solid #ff7045}
+#guided-review .guide-record p{margin:0 0 .45rem}
+#guided-review .guide-record button{margin:.25rem .55rem .25rem 0}

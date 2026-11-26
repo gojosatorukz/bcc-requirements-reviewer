@@ -10,16 +10,18 @@
   let tableHeaders = new Map(), sourceLines = new Map();
   let markupLines = new Set();
   let pages = [];
+  let decisionKey, decisions = {};
 
   function readCases(report) {
     const result = [];
     for (const finding of report.whole?.findings ?? []) {
       if (finding.priority !== "критический" || finding.category !== "нарушение") continue;
       const cited = new Set(finding.evidence.map(item => item.line));
-      const witnesses = finding.triage?.witness ?? (finding.candidates ?? []).map(n => report.conflicts?.[n - 1]);
+      const witnesses = finding.triage ? (finding.triage.witness ?? []) :
+        (finding.candidates ?? []).map(n => report.conflicts?.[n - 1]);
       for (const witness of witnesses) {
         if (witness?.scenario && [witness.first, witness.second].every(side => side?.outcome && cited.has(side.source?.line))) {
-          result.push({finding, witness});
+          result.push({finding, witness, canRecord:witnesses.length === 1});
         }
       }
     }
@@ -70,11 +72,13 @@
   }
 
   function render(focus = false) {
-    const {finding, witness} = cases[index];
+    const {finding, witness, canRecord} = cases[index];
     const state = positions[index];
     const {stage, side} = state;
     const outcomes = [witness.first, witness.second];
     const source = outcomes[side]?.source;
+    const saved = decisions[finding.id];
+    const current = side === 0 ? "first" : "second";
     const draft = source ? `Сценарий: ${witness.scenario}\nОжидаемый результат: ${outcomes[side].outcome}\nОснование: строка ${source.line} ТЗ.\nВопрос: ${finding.question}` : "";
     const selector = cases.length > 1
       ? `<label class="guide-select">Конфликт <select aria-label="Выбрать конфликт">${cases.map(({finding: f}, i) => `<option value="${i}" ${i === index ? "selected" : ""}>${escape(f.id)} · ${i+1} из ${cases.length}</option>`).join("")}</select></label>`
@@ -90,7 +94,11 @@
       <div class="guide-actions"><button type="button" data-act="next" class="guide-primary" ${side === null ? "disabled" : ""}>Подготовить критерий <span aria-hidden="true">→</span></button><button type="button" class="guide-back" data-act="back">Назад</button></div>`;
     } else {
       body = `<h2 tabindex="-1">Черновик для QA</h2><dl class="guide-draft"><dt>Сценарий</dt><dd>${escape(witness.scenario)}</dd><dt>Ожидаемый результат</dt><dd>${escape(outcomes[side].outcome)}</dd><dt>Основание</dt><dd>${sourceLink(source)}</dd></dl>
-      <div class="guide-actions"><button type="button" class="guide-primary" data-act="copy">Скопировать критерий</button><button type="button" class="guide-back" data-act="back">Изменить решение</button></div>
+      <div class="guide-actions"><button type="button" class="guide-primary" data-act="copy">Скопировать критерий</button><button type="button" class="guide-back" data-act="back">Изменить черновик</button></div>
+      ${decisionKey && canRecord ? `<div class="guide-record"><p role="status">${saved ? (saved === current ? "Выбранный исход зафиксирован для этой версии отчёта." :
+         "Для этой версии отчёта зафиксирован другой исход. Можно заменить его.") : "Решение владельца пока не зафиксировано."}</p>
+        ${saved !== current ? `<button type="button" class="guide-primary" data-act="record">${saved ? "Заменить решение владельца" : "Зафиксировать решение владельца"}</button>` : ""}
+        ${saved ? '<button type="button" class="guide-back" data-act="cancel">Отменить фиксацию</button>' : ""}</div>` : ""}
       <div class="guide-copy-status" role="status"></div>`;
     }
     root.innerHTML = `<div class="guide-wrap"><div class="guide-bar"><ol aria-label="Шаги согласования">${stages.map((label,i) =>
@@ -110,6 +118,14 @@
     }));
     root.querySelector('[data-act="next"]')?.addEventListener("click", () => { state.stage++; render(true); });
     root.querySelector('[data-act="back"]')?.addEventListener("click", () => { state.stage--; render(true); });
+    function record(chosen) {
+      if (chosen === null) delete decisions[finding.id];
+      else decisions[finding.id] = chosen;
+      window.dispatchEvent(new CustomEvent("review:decision", {detail:{key:decisionKey, finding:finding.id, side:chosen}}));
+      render(true);
+    }
+    root.querySelector('[data-act="record"]')?.addEventListener("click", () => record(current));
+    root.querySelector('[data-act="cancel"]')?.addEventListener("click", () => record(null));
     root.querySelector('[data-act="copy"]')?.addEventListener("click", async () => {
       const status = root.querySelector(".guide-copy-status");
       try {
@@ -126,11 +142,13 @@
   }
 
   window.addEventListener("review:loaded", ({detail}) => {
-    const {report, reportUrl: url} = detail;
-    const identity = [url, report.run?.input_sha256, report.run?.started_utc].join("|");
+    const {report, reportUrl: url, key} = detail;
+    const identity = key || [url, report.run?.input_sha256, report.run?.started_utc].join("|");
     if (identity === reportIdentity) return;
     reportIdentity = identity;
     reportUrl = url;
+    decisionKey = key;
+    decisions = {...detail.decisions};
     pages = report.run?.pages ?? [];
     sourceLines = new Map((report.source ?? []).map(line => [line.line, line.text]));
     tableHeaders = new Map((report.segments ?? []).filter(segment => segment.kind === "строка таблицы")
@@ -138,7 +156,10 @@
     markupLines = new Set((report.segments ?? []).filter(segment => segment.kind === "разметка")
       .map(segment => segment.start));
     cases = readCases(report);
-    positions = cases.map(() => ({stage:0, side:null}));
+    positions = cases.map(({finding, canRecord}) => {
+      const saved = canRecord && decisions[finding.id];
+      return saved === "first" || saved === "second" ? {stage:2, side:saved === "first" ? 0 : 1} : {stage:0, side:null};
+    });
     index = 0;
     root.hidden = !cases.length;
     if (cases.length) render(); else root.replaceChildren();
