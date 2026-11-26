@@ -42,9 +42,10 @@ class WorkbenchTest(unittest.TestCase):
         self.origin = f"http://127.0.0.1:{self.server.server_port}"
 
     def worker(self, mode, document, baseline, json_report, html_report, model, progress, findings=(),
-               decisions=(), baseline_sha256=None):
+               decisions=(), baseline_sha256=None, clarifications=()):
         self.calls.append((mode, document.name, document.read_bytes(), baseline, model, findings))
         self.decision_args = decisions, baseline_sha256
+        self.clarifications = [json.loads(path.read_text()) for path in clarifications]
         if document.name == "failure.md":
             raise RuntimeError("provider stderr contains secret-token")
         progress("Весь документ · проверено")
@@ -188,6 +189,106 @@ class WorkbenchTest(unittest.TestCase):
         self.assertEqual(code, 202)
         self.assertEqual(self.wait_until_done(json.loads(body)["id"])["state"], "done")
         self.assertEqual(self.decision_args, (("D-01=first",), digest))
+
+    def discussion_fixture(self):
+        path = self.demo / "review.json"
+        items = [{"id": "D-01", "priority": "критический", "category": "нарушение",
+                  "triage": {"witness": [{"first": {"outcome": "A"}, "second": {"outcome": "B"}}]}},
+                 {"id": "D-08", "priority": "существенный"}]
+        path.write_text(json.dumps({"schema_version": 2, "whole": {"findings": items}}))
+        digest = sha256(path.read_bytes()).hexdigest()
+        route = "/api/clarifications/demo/" + digest
+        headers = {"Origin": self.origin, "Content-Type": "application/json"}
+
+        def send(fid, answer, previous=None, **overrides):
+            data = dict(finding_id=fid, answer=answer, previous=previous, **overrides)
+            code, body, _ = self.request("POST", route, json.dumps(data), headers)
+            return code, json.loads(body)
+
+        return route, digest, send
+
+    @patch("reviewer.clarify.clarify")
+    def test_free_text_is_canonical_through_reload_stale_turns_and_scoped_recheck(self, clarify):
+        route, digest, send = self.discussion_fixture()
+        def reply(path, fid, answers, model, sha, *, prior):
+            self.assertEqual((path, model, sha), (self.demo / "review.json", "test-model", digest))
+            if len(answers) > 1:
+                self.assertEqual(prior["answers"], answers[:-1])
+            return dict(finding_id=fid, baseline_sha256=sha, answers=answers, rule="Итог.", follow_up="Какой месяц?",
+                        state="needs_followup" if len(answers) == 1 else "ready")
+        clarify.side_effect = reply
+        self.assertEqual(send("D-01", "День покупки.", record={"state": "ready"})[0], 400)
+        self.assertEqual(send("D-99", "Как обычно.")[0], 400)
+        code, first = send("D-01", "Только после проведения.")
+        self.assertEqual(code, 200)
+        self.assertEqual(first["question"], "Какой месяц?")
+        self.assertEqual(json.loads(self.request("GET", route)[1])["entries"], [first])
+        self.assertEqual(send("D-01", "Уточнение со старой вкладки.")[0], 409)
+        scope = "/api/runs?mode=recheck&baseline=demo"
+        bound = "&baseline_sha256=" + digest
+        self.release.set()
+        def check(path):
+            code, body, _ = self.upload(path)
+            self.assertEqual(code, 202, body)
+            self.assertEqual(self.wait_until_done(json.loads(body)["id"])["state"], "done")
+
+        # An ordinary critical recheck automatically carries the official open discussion.
+        check(scope)
+        self.assertEqual(self.clarifications, [first["record"]])
+        self.assertEqual(self.decision_args, ((), digest))
+        self.assertEqual(self.upload(scope + bound + "&decision=D-01%3Dfirst")[0], 409)
+        code, updated = send("D-01", "По месяцу покупки.", first["token"])
+        self.assertEqual(code, 200)
+        self.assertEqual(updated["question"], "Что нужно изменить в предложенном правиле «Итог.»?")
+        self.assertNotEqual(updated["token"], first["token"])
+        self.assertEqual(updated["history_tokens"], [first["token"], updated["token"]])
+        for turn, entry in enumerate([first, updated], 1):
+            code, raw, headers = self.request("GET", route + "/D-01/" + entry["token"] + ".json")
+            self.assertEqual((code, json.loads(raw)), (200, entry["record"]))
+            self.assertIn(f"owner-D-01-turn-{turn}.json", headers["Content-Disposition"])
+        self.assertEqual(self.request("GET", route + "/D-08/" + first["token"] + ".json")[0], 404)
+        self.assertEqual(self.upload(scope + bound + "&clarification=" + first["token"])[0], 409)
+        check(scope + bound + "&clarification=" + updated["token"])
+        self.assertEqual(self.clarifications, [updated["record"]])
+        code, other = send("D-08", "Частичный ответ.")
+        self.assertEqual(code, 200)
+        self.assertEqual(self.upload(scope + bound + "&clarification=" + other["token"])[0], 409)
+        self.assertEqual(self.upload(scope + bound + "&dialogue_snapshot=1")[0], 409)
+        self.assertEqual(self.upload(scope + bound + "&dialogue_snapshot=1&finding=D-01&finding=D-08&clarification=" + updated["token"])[0], 409)
+        check(scope + "&finding=D-08")
+        self.assertEqual(self.clarifications, [other["record"]])
+        path = self.demo / "review.json"
+        path.write_bytes(path.read_bytes() + b"\n")
+        self.assertEqual(self.request("GET", route)[0], 409)
+        self.assertEqual(self.upload(scope + bound + "&clarification=" + updated["token"])[0], 409)
+        check(scope)
+        self.assertEqual(self.clarifications, [])
+
+    @patch("reviewer.clarify.clarify")
+    def test_busy_dialogue_rejects_concurrent_turn_and_recheck_and_recovers_on_failure(self, clarify):
+        _, _, send = self.discussion_fixture()
+        entered, finish = Event(), Event()
+        def unavailable(*args, **kwargs):
+            entered.set()
+            if not finish.wait(2):
+                self.fail("Dialogue did not receive release")
+            raise ValueError("private provider diagnostics")
+        clarify.side_effect = unavailable
+        received = []
+        thread = Thread(target=lambda: received.append(send("D-01", "В обработке.")))
+        thread.start()
+        try:
+            self.assertTrue(entered.wait(1))
+            self.assertEqual(send("D-01", "Дубликат.")[0], 409)
+            self.assertEqual(self.upload("/api/runs?mode=recheck&baseline=demo")[0], 409)
+        finally:
+            finish.set()
+            thread.join()
+        self.assertEqual(received[0][0], 502)
+        self.assertNotIn("private", received[0][1]["error"])
+        clarify.side_effect = None
+        clarify.return_value = {"state": "needs_followup", "answers": ["Повтор."], "follow_up": "Какой месяц?"}
+        self.assertEqual(send("D-01", "Повтор.")[0], 200)
 
     def test_validates_origin_host_names_and_size(self):
         self.assertEqual(self.upload(Origin="http://127.0.0.1.evil.invalid")[0], 403)

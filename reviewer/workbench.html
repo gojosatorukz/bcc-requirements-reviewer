@@ -66,6 +66,17 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 .owner-result{margin-top:.8rem;padding:.7rem;background:var(--soft);border-left:3px solid var(--accent);overflow-wrap:anywhere}
 .owner-result[data-tone="conflict"]{background:#ffded6;border:2px solid #942c20;color:#74281d}
 .owner-result strong{display:block;margin-bottom:.35rem}
+.workspace .aside-cards{display:grid;gap:1.35rem;min-width:0}
+#discussion form{display:grid;gap:.65rem}
+#discussion label{font-weight:700}
+#discussion select,#discussion textarea{width:100%;padding:.55rem .68rem;border:1px solid var(--line);border-radius:.5rem;background:var(--paper);color:var(--ink);font:inherit}
+#discussion textarea{resize:vertical;min-height:5.5rem}
+#discussion-question{padding:.75rem;background:#ffedbb;border-left:3px solid var(--ink);font-weight:650}
+#discussion-submit,#discussion-recheck{width:fit-content;padding:.55rem .85rem;border:1.5px solid var(--ink);border-radius:.6rem;background:var(--field);color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
+#discussion-submit:disabled{opacity:.5;cursor:default}
+#discussion details p,#discussion-details>p{padding:.35rem 0;white-space:pre-wrap}
+#discussion-baseline,#discussion-state{margin-bottom:.65rem}
+#discussion-recheck{margin-top:.6rem;background:var(--paper)}
 #finding-reset{margin-top:.4rem}
 .drop{border:1.5px dashed var(--line);border-radius:.65rem;padding:.9rem;background:var(--paper);transition:border-color .18s var(--ease),background .18s var(--ease)}
 .drop.drag{border-color:var(--ink);background:var(--lemon)}
@@ -204,6 +215,22 @@ a{color:var(--accent);text-underline-offset:.18em}
         </div>
       </div>
     </section>
+    <div class="aside-cards">
+    <section class="card" id="discussion" aria-labelledby="discussion-title" hidden>
+      <h2 id="discussion-title">Ответ владельца</h2>
+      <p id="discussion-baseline" class="muted"></p>
+      <form id="discussion-form">
+        <label for="discussion-finding">Замечание</label>
+        <select id="discussion-finding"></select>
+        <p id="discussion-question"></p>
+        <div id="discussion-details"></div>
+        <label for="discussion-answer">Ваш ответ</label>
+        <textarea id="discussion-answer" maxlength="2400" placeholder="Опишите правило своими словами. Можно уточнить только часть." required></textarea>
+        <button type="submit" id="discussion-submit">Передать ответ агенту</button>
+      </form>
+      <p id="discussion-state" role="status" aria-live="polite"></p>
+      <button type="button" id="discussion-recheck" hidden>Проверить новую версию ТЗ</button>
+    </section>
     <section class="card" aria-labelledby="demo-heading">
       <h2 id="demo-heading">Пример полного ревью</h2>
       <p id="demo-status" class="muted" role="status">Загружаем сводку демо-отчёта…</p>
@@ -217,6 +244,7 @@ a{color:var(--accent);text-underline-offset:.18em}
         </div>
       </div>
     </section>
+    </div>
   </div>
 </main>
 <script src="/reviewer/guided.js"></script>
@@ -242,6 +270,10 @@ try { ownerDecisions = JSON.parse(sessionStorage.getItem(decisionKey)) || {}; }
 catch { ownerDecisions = {}; }
 const baselineVersions = new Map();
 let guidedBaseline = null;
+let discussion = null;
+const discussions = new Map();
+const discussionDrafts = new Map();
+let answering = false;
 
 function restore() {
   try {
@@ -286,6 +318,7 @@ function refreshControls() {
   get('finding-reset').disabled = busy;
   get('use-owner-decisions').disabled = busy;
   get('submit').disabled = busy || (recheck && (!baseline.value || Boolean(findingLoad)));
+  get('discussion-recheck').disabled = busy || answering;
   renderDecisionPreflight();
 }
 
@@ -305,16 +338,27 @@ function scopedDecisions(id, findings) {
   if (!version) return [];
   const allowed = findings.length ? findings : version.critical;
   const chosen = ownerDecisions[id + ':' + version.sha] || {};
-  return allowed.filter(id => id in chosen && ['first', 'second'].includes(chosen[id]))
+  const entries = discussions.get(id + ':' + version.sha) || new Map();
+  return allowed.filter(id => !entries.has(id) && id in chosen && ['first', 'second'].includes(chosen[id]))
     .map(id => id + '=' + chosen[id]);
+}
+
+function scopedConversations(id, findings) {
+  const version = baselineVersions.get(id);
+  if (!version) return [];
+  const entries = discussions.get(id + ':' + version.sha);
+  return (findings.length ? findings : version.critical).map(fid => entries?.get(fid)).filter(Boolean);
 }
 
 function renderDecisionPreflight() {
   const choices = scopedDecisions(baseline.value, selectedFindings());
+  const records = scopedConversations(baseline.value, selectedFindings());
   get('use-owner-decisions-label').hidden = !choices.length;
-  get('decision-preflight-text').textContent = choices.length ?
-    'Решения владельца в области проверки: ' + choices.map(value => value.split('=')[0]).join(', ') + '.' :
-    'Перепроверка без зафиксированных решений владельца.';
+  const details = [];
+  if (choices.length) details.push('Зафиксированные исходы: ' + choices.map(value => value.split('=')[0]).join(', ') + '.');
+  if (records.length) details.push('Ответы владельца войдут в проверку: ' +
+    records.map(({record}) => record.finding_id + (record.state === 'ready' ? ' (правило)' : ' (ожидает уточнения)')).join(', ') + '.');
+  get('decision-preflight-text').textContent = details.join(' ') || 'Перепроверка без зафиксированных решений владельца.';
 }
 
 window.addEventListener('review:decision', ({detail}) => {
@@ -348,6 +392,7 @@ async function loadFindings(id) {
     if (!isFullReport(report)) throw new Error('Нужен полный отчёт.');
     rememberBaselineVersion(id, report, sha);
     rememberReportFingerprint(id, report);
+    publishReport(report, id, sha);
     for (const finding of report.whole.findings) {
       const label = document.createElement('label');
       const input = document.createElement('input');
@@ -553,6 +598,152 @@ function resultText(tag, text, className) {
   return element;
 }
 
+function discussionUrl(view) {
+  return '/api/clarifications/' + view.baseline + '/' + view.sha;
+}
+
+function viewAnswers(view) {
+  return discussions.get(view.key) || new Map();
+}
+
+function renderDiscussion() {
+  const view = discussion;
+  if (!view) return;
+  const fid = get('discussion-finding').value;
+  const finding = view.findings.find(item => item.id === fid);
+  if (!finding) return;
+  const entry = viewAnswers(view).get(fid);
+  const record = entry?.record;
+  const followUp = record?.state === 'needs_followup';
+  get('discussion-question').textContent = entry?.question || finding.question;
+  get('discussion-finding').disabled = answering;
+  const details = get('discussion-details');
+  details.replaceChildren();
+  if (record) {
+    details.append(resultText('strong', followUp ? 'Замечание открыто · нужно уточнение' : 'Замечание открыто · правило готово для проверки'));
+    if (!followUp) details.append(resultText('p', record.rule));
+    if (followUp && record.confirmed?.length) {
+      details.append(resultText('p', 'Уже согласовано. ' + record.confirmed.join(' ')));
+    }
+    const history = document.createElement('details');
+    history.append(resultText('summary', 'Переписка · ответов ' + record.answers.length));
+    const file = (token, label) => {
+      const link = resultText('a', label);
+      link.href = discussionUrl(view) + '/' + fid + '/' + token + '.json';
+      link.download = '';
+      return link;
+    };
+    record.turns.forEach((turn, index) => {
+      history.append(resultText('p', 'Агент · ' + turn.question), resultText('p', 'Владелец · ' + turn.answer),
+        file(entry.history_tokens[index], 'Скачать ход ' + (index + 1)));
+    });
+    details.append(history, file(entry.token, 'Скачать диалог · JSON'));
+  }
+  const field = get('discussion-answer');
+  const draftKey = view.key + ':' + fid;
+  field.value = discussionDrafts.get(draftKey) || '';
+  field.disabled = !view.loaded || answering || (record?.answers.length || 0) >= 12;
+  get('discussion-submit').disabled = field.disabled || !field.value.trim();
+  get('discussion-submit').textContent = record ? 'Передать уточнение' : 'Передать ответ агенту';
+  get('discussion-recheck').hidden = !record;
+  get('discussion-recheck').disabled = busy || answering;
+}
+
+function refreshDiscussionLinks(view) {
+  if (view !== discussion) return;
+  window.dispatchEvent(new CustomEvent('review:dialogue', {
+    detail:{key:view.key, ids:[...viewAnswers(view).keys()]},
+  }));
+  renderDecisionPreflight();
+}
+
+async function readDiscussion(view) {
+  const {entries} = await request(discussionUrl(view));
+  if (view !== discussion) return;
+  discussions.set(view.key, new Map(entries.map(entry => [entry.record.finding_id, entry])));
+  view.loaded = true;
+  renderDiscussion();
+  refreshDiscussionLinks(view);
+}
+
+async function mountDiscussion(baseline, sha, key, findings, label) {
+  const view = key && findings.length ? {baseline, sha, key, findings, loaded:false} : null;
+  discussion = view;
+  get('discussion').hidden = !view;
+  if (!view) return;
+  get('discussion-baseline').textContent = label;
+  get('discussion-finding').replaceChildren(...findings.map(f => new Option(f.id + ' · ' + f.title, f.id)));
+  get('discussion-state').textContent = '';
+  renderDiscussion();
+  try {
+    await readDiscussion(view);
+  } catch (error) {
+    if (view === discussion) get('discussion-state').textContent = error.message + ' Обновите страницу.';
+  }
+}
+
+get('discussion-finding').addEventListener('change', () => {
+  get('discussion-state').textContent = '';
+  renderDiscussion();
+});
+get('discussion-answer').addEventListener('input', event => {
+  if (!discussion) return;
+  discussionDrafts.set(discussion.key + ':' + get('discussion-finding').value, event.target.value);
+  get('discussion-submit').disabled = !event.target.value.trim();
+});
+window.addEventListener('review:write-answer', ({detail}) => {
+  if (!discussion || detail.key !== discussion.key) return;
+  get('discussion-finding').value = detail.finding;
+  renderDiscussion();
+  get('discussion').scrollIntoView({block:'center'});
+  get('discussion-answer').focus({preventScroll:true});
+});
+get('discussion-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const view = discussion;
+  if (!view?.loaded || answering) return;
+  const fid = get('discussion-finding').value;
+  const answer = get('discussion-answer').value;
+  if (!answer.trim()) return;
+  const previous = viewAnswers(view).get(fid)?.token || null;
+  answering = true;
+  renderDiscussion();
+  const status = get('discussion-state');
+  status.textContent = 'Агент сопоставляет ответ с требованиями…';
+  try {
+    const entry = await request(discussionUrl(view), {method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({finding_id:fid, answer, previous})});
+    viewAnswers(view).set(fid, entry);
+    discussionDrafts.delete(view.key + ':' + fid);
+    if (view === discussion) {
+      status.textContent = entry.record.state === 'ready' ? 'Правило сохранено. Загрузите исправленное ТЗ для проверки.' : 'Агент задал уточняющий вопрос.';
+      if (session.last?.mode === 'recheck' && session.last.baseline === view.baseline && !busy) dismissRecheck();
+      refreshDiscussionLinks(view);
+    }
+  } catch (error) {
+    if (error.status === 409) {
+      try { await readDiscussion(view); } catch { view.loaded = false; }
+    }
+    if (view === discussion) status.textContent = error.message;
+  } finally {
+    answering = false;
+    renderDiscussion();
+  }
+});
+get('discussion-recheck').addEventListener('click', async () => {
+  if (busy || !discussion) return;
+  const {baseline:id} = discussion;
+  const fid = get('discussion-finding').value;
+  form.elements.mode.value = 'recheck';
+  baseline.value = id;
+  await loadFindings(id);
+  if (busy || findingBaseline !== id) return;
+  for (const input of get('finding-options').querySelectorAll('input')) input.checked = input.value === fid;
+  updateFindingSummary();
+  refreshControls();
+  get('file').focus();
+});
+
 function renderRecheck(report, reportUrl) {
   const content = get('recheck-summary');
   const files = report.run.previous_input_name + ' → ' + report.run.input_name;
@@ -561,9 +752,31 @@ function renderRecheck(report, reportUrl) {
   for (const check of report.checks) {
     const card = document.createElement('article');
     card.className = 'result-card';
-    const badge = resultText('span', check.status, 'result-badge');
-    badge.dataset.tone = Object.hasOwn(tones, check.status) ? tones[check.status] : 'unknown';
-    card.append(resultText('h4', check.id + ' · ' + check.title), badge, resultText('p', check.reason));
+    const lifecycle = check.workflow_status;
+    const badge = resultText('span', lifecycle ? 'Замечание ' + lifecycle : check.status, 'result-badge');
+    badge.dataset.tone = lifecycle ? (lifecycle === 'закрыто' ? 'resolved' : 'persists') : (tones[check.status] || 'unknown');
+    card.append(resultText('h4', check.id + ' · ' + check.title), badge);
+    if (lifecycle) card.append(resultText('p', 'Исходное расхождение · ' + check.status));
+    card.append(resultText('p', check.reason));
+    if (check.clarification) {
+      const record = check.clarification;
+      const panel = document.createElement('div');
+      panel.className = 'owner-result';
+      panel.append(resultText('strong', 'Правило владельца · ' + record.status));
+      if (record.rule) panel.append(resultText('p', record.rule));
+      if (record.follow_up) panel.append(resultText('p', 'Вопрос владельцу · ' + record.follow_up));
+      for (const condition of record.conditions || []) {
+        panel.append(resultText('p', condition.text + ' · ' + condition.status), resultText('p', condition.reason));
+        for (const evidence of condition.evidence || []) {
+          const link = resultText('a', 'Строка ' + evidence.line);
+          link.href = reportUrl + '#line-' + evidence.line;
+          const line = document.createElement('p');
+          line.append(link, ' · ', resultText('q', evidence.quote));
+          panel.append(line);
+        }
+      }
+      card.append(panel);
+    }
     if (check.owner_decision) {
       const decision = check.owner_decision;
       const panel = document.createElement('div');
@@ -622,6 +835,17 @@ async function loadRecheck(run, reportUrl) {
         typeof report.scope !== 'string' || (run.findings?.length &&
           (report.checks.length !== run.findings.length || run.findings.some(id => !report.checks.some(check => check.id === id))))) {
       throw new Error('Ответ не соответствует прогону.');
+    }
+    if (run.dialogueTokens) {
+      const {entries} = await request(discussionUrl(run), {signal:controller.signal});
+      if (recheckLoad !== controller || session.last?.id !== run.id) return;
+      const ids = new Set(report.checks.map(check => check.id));
+      const tokens = entries.filter(entry => ids.has(entry.record.finding_id)).map(entry => entry.token).sort();
+      if (JSON.stringify(tokens) !== JSON.stringify(run.dialogueTokens)) {
+        get('recheck-summary').replaceChildren();
+        status.textContent = 'После запуска обсуждение изменилось. Для проверки актуального решения запустите перепроверку ещё раз.';
+        return;
+      }
     }
     renderRecheck(report, reportUrl);
     status.textContent = (report.selection === 'critical' ? 'Проверено критических замечаний: ' :
@@ -751,9 +975,13 @@ form.addEventListener('submit', async event => {
     params.set('baseline', selectedBaseline);
     for (const id of findings) params.append('finding', id);
     const decisions = get('use-owner-decisions').checked ? scopedDecisions(selectedBaseline, findings) : [];
-    if (decisions.length) {
-      params.set('baseline_sha256', baselineVersions.get(selectedBaseline).sha);
+    const records = scopedConversations(selectedBaseline, findings);
+    const version = baselineVersions.get(selectedBaseline);
+    if (version) {
+      params.set('dialogue_snapshot', '1');
+      params.set('baseline_sha256', version.sha);
       for (const decision of decisions) params.append('decision', decision);
+      for (const {token} of records) params.append('clarification', token);
     }
   }
   const selectedFile = file;
@@ -772,6 +1000,10 @@ form.addEventListener('submit', async event => {
     });
     if (!idPattern.test(response.id)) throw new Error('Сервер не вернул номер прогона.');
     session.last = {id:response.id, name:selectedFile.name, mode:selectedMode, findings};
+    if (params.has('dialogue_snapshot')) {
+      Object.assign(session.last, {baseline:selectedBaseline, sha:params.get('baseline_sha256'),
+        dialogueTokens:params.getAll('clarification').sort()});
+    }
     save();
     setStatus(modeLabels[selectedMode] + ' · В очереди', false, true);
     poll(session.last);
@@ -818,6 +1050,9 @@ function publishReport(report, id, sha) {
   const name = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
   get('review-document').textContent = [id === 'demo' ? 'Демо' : 'Полное ревью', name].filter(Boolean).join(' · ');
   window.dispatchEvent(new CustomEvent('review:loaded', {detail:{report, reportUrl, key, decisions:ownerDecisions[key] || {}}}));
+  if (discussion?.key !== key || !key) {
+    mountDiscussion(id, sha, key, report.whole.findings, get('review-document').textContent);
+  }
   get('review-title').textContent = get('guided-review').hidden ? 'Проверка требований' : 'Согласование';
 }
 

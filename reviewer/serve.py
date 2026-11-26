@@ -33,6 +33,7 @@ STATIC_FILES = {
 LIMITS = {".md": 120_000, ".txt": 120_000, ".pdf": 16_000_000}
 JOB_ID = r"[0-9a-f]{32}"
 FINDING_ID = r"D-(?:0[1-9]|[1-9][0-9]+)"
+DIALOGUE_ROUTE = rf"/api/clarifications/(demo|{JOB_ID})/([0-9a-f]{{64}})"
 PROGRESS = re.compile(r"(?:Сценарии|Блоки [0-9]+–[0-9]+|Весь документ|Повторная проверка) · "
                       r"(?:проверено|проверена сохранённая стадия)")
 PLAN = re.compile(r"План проверки · групп строк: ([0-9]{1,6})")
@@ -149,7 +150,7 @@ def execute(command, progress, failure):
 
 
 def cli_worker(mode, document, baseline, json_report, html_report, model, progress, findings=(),
-               decisions=(), baseline_sha256=None):
+               decisions=(), baseline_sha256=None, clarifications=()):
     python = [sys.executable, "-m"]
     if mode == "full":
         command = [*python, "reviewer", str(document), str(json_report)]
@@ -159,7 +160,9 @@ def cli_worker(mode, document, baseline, json_report, html_report, model, progre
             command.extend(["--finding", finding])
         for decision in decisions:
             command.extend(["--decision", decision])
-        if decisions:
+        for record_path in clarifications:
+            command.extend(["--clarification", str(record_path)])
+        if decisions or clarifications:
             command.extend(["--baseline-sha256", baseline_sha256])
     if model:
         command.extend(["--model", model])
@@ -181,6 +184,60 @@ class Workbench:
         self.upload_lock = Lock()
         self.active = None
         self.thread = None
+        self.dialogues = {}
+        self.pending_dialogues = set()
+
+    def dialogue_report(self, baseline, sha):
+        path = self.reports(baseline, baseline=True) / "review.json"
+        if sha256(path.read_bytes()).hexdigest() != sha:
+            raise WorkbenchError(HTTPStatus.CONFLICT, "Базовый отчёт изменился. Обновите страницу.")
+        return path
+
+    def conversations(self, baseline, sha):
+        self.dialogue_report(baseline, sha)
+        with self.lock:
+            return [item for key, item in self.dialogues.items() if key[:2] == (baseline, sha)]
+
+    def answer(self, baseline, sha, payload):
+        from .clarify import MAX_ANSWER, MAX_TURNS, clarify, next_question
+
+        if (not isinstance(payload, dict) or set(payload) != {"finding_id", "answer", "previous"} or
+                not isinstance(payload["finding_id"], str) or not re.fullmatch(FINDING_ID, payload["finding_id"]) or
+                not isinstance(payload["answer"], str) or not payload["answer"].strip() or len(payload["answer"]) > MAX_ANSWER or
+                (payload["previous"] is not None and (not isinstance(payload["previous"], str) or
+                 not re.fullmatch(JOB_ID, payload["previous"])))):
+            raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Передайте номер замечания и ответ длиной от 1 до 2400 символов.")
+        path = self.dialogue_report(baseline, sha)
+        fid = payload["finding_id"]
+        self.check_findings(path, [fid])
+        key = (baseline, sha, fid)
+        with self.lock:
+            previous = self.dialogues.get(key, {})
+            if payload["previous"] != previous.get("token") or key in self.pending_dialogues:
+                raise WorkbenchError(HTTPStatus.CONFLICT, "Обсуждение обновилось или ещё обрабатывается. Загрузите актуальную историю.")
+            prior = previous.get("record")
+            answers = prior["answers"] if prior else []
+            if len(answers) >= MAX_TURNS:
+                raise WorkbenchError(HTTPStatus.BAD_REQUEST, "В обсуждении уже 12 ответов.")
+            self.pending_dialogues.add(key)
+        try:
+            model = self.model or os.environ.get("REVIEW_MODEL", "gpt-6.2-astra")
+            record = clarify(path, fid, [*answers, payload["answer"]], model, sha, prior=prior)
+            self.dialogue_report(baseline, sha)
+            token = uuid4().hex
+            entry = {"token": token, "history_tokens": [*previous.get("history_tokens", []), token],
+                     "record": record, "question": next_question(record)}
+            dest = self.storage / "clarifications"
+            dest.mkdir(mode=0o700, parents=True, exist_ok=True)
+            (dest / (entry["token"] + ".json")).write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
+            with self.lock:
+                self.dialogues[key] = entry
+            return entry
+        except (ValueError, KeyError, TypeError) as exc:
+            raise WorkbenchError(HTTPStatus.BAD_GATEWAY, "Агенту не удалось проверить ответ. Текст можно отправить ещё раз.") from exc
+        finally:
+            with self.lock:
+                self.pending_dialogues.discard(key)
 
     def status(self, identifier):
         with self.lock:
@@ -207,7 +264,8 @@ class Workbench:
                                      else "Отчёт ещё недоступен.")
             return run.directory
 
-    def start(self, mode, baseline, name, length, stream, findings=(), decisions=(), baseline_sha256=None):
+    def start(self, mode, baseline, name, length, stream, findings=(), decisions=(), baseline_sha256=None,
+              dialogue_tokens=(), dialogue_snapshot=False):
         if not self.upload_lock.acquire(blocking=False):
             raise WorkbenchError(HTTPStatus.CONFLICT, "Уже загружается другой документ.")
         try:
@@ -215,8 +273,26 @@ class Workbench:
                 if self.active is not None:
                     raise WorkbenchError(HTTPStatus.CONFLICT, "Дождитесь завершения текущей проверки.")
             baseline_report = self.reports(baseline, baseline=True) / "review.json" if baseline else None
-            if findings or decisions:
-                self.check_findings(baseline_report, findings, decisions, baseline_sha256)
+            with self.lock:
+                has_dialogue = any(key[0] == baseline for key in (*self.dialogues, *self.pending_dialogues))
+            clarifications = []
+            if findings or decisions or dialogue_tokens or dialogue_snapshot or has_dialogue:
+                eligible, digest = self.check_findings(baseline_report, findings, decisions, baseline_sha256)
+                scope = set(findings or [fid for fid, item in eligible.items() if item.get("priority") == "критический"])
+                with self.lock:
+                    keys = [(baseline, digest, fid) for fid in sorted(scope)]
+                    if any(key in self.pending_dialogues for key in keys):
+                        raise WorkbenchError(HTTPStatus.CONFLICT, "Дождитесь ответа агента в обсуждении замечания.")
+                    current = {key[2]: self.dialogues[key]["token"] for key in keys if key in self.dialogues}
+                valid_tokens = set(current.values())
+                if (not set(dialogue_tokens) <= valid_tokens or
+                        (dialogue_snapshot and set(dialogue_tokens) != valid_tokens)):
+                    raise WorkbenchError(HTTPStatus.CONFLICT, "Обсуждение изменилось. Обновите страницу перед проверкой.")
+                if any(value.split("=")[0] in current for value in decisions):
+                    raise WorkbenchError(HTTPStatus.CONFLICT, "У замечания уже есть ответ своими словами. Обновите страницу.")
+                clarifications = [self.storage / "clarifications" / (token + ".json") for token in current.values()]
+                if clarifications:
+                    baseline_sha256 = digest
             identifier = uuid4().hex
             directory = self.storage / identifier
             payload = stream.read(length)
@@ -231,7 +307,7 @@ class Workbench:
                 self.runs[identifier] = run
                 self.active = identifier
                 self.thread = Thread(target=self._run,
-                                     args=(run, document, baseline_report, findings, decisions, baseline_sha256),
+                                     args=(run, document, baseline_report, findings, decisions, baseline_sha256, clarifications),
                                      daemon=True)
                 self.thread.start()
             return identifier
@@ -242,7 +318,8 @@ class Workbench:
     def check_findings(baseline_report, findings, decisions=(), baseline_sha256=None):
         try:
             raw = baseline_report.read_bytes()
-            if decisions and sha256(raw).hexdigest() != baseline_sha256:
+            digest = sha256(raw).hexdigest()
+            if baseline_sha256 is not None and digest != baseline_sha256:
                 raise WorkbenchError(HTTPStatus.CONFLICT, "Базовый отчёт изменился. Обновите страницу и зафиксируйте решение заново.")
             report = json.loads(raw)
             if report["schema_version"] != 2 or type(report["whole"]["findings"]) is not list:
@@ -269,8 +346,9 @@ class Workbench:
                     not isinstance(witnesses, list) or len(witnesses) != 1 or
                     not isinstance(witnesses[0], dict) or not witnesses[0].get(side)):
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Решение относится к неподходящему замечанию или сценарию.")
+        return eligible, digest
 
-    def _run(self, run, document, baseline, findings, decisions, baseline_sha256):
+    def _run(self, run, document, baseline, findings, decisions, baseline_sha256, clarifications):
         def on_progress(line):
             with self.lock:
                 run.record(line)
@@ -282,8 +360,12 @@ class Workbench:
         state, error = "done", ""
         try:
             options = {"findings": findings} if findings else {}
+            if decisions or clarifications:
+                options.update(baseline_sha256=baseline_sha256)
             if decisions:
-                options.update(decisions=decisions, baseline_sha256=baseline_sha256)
+                options.update(decisions=decisions)
+            if clarifications:
+                options.update(clarifications=clarifications)
             self.worker(run.mode, document, baseline, json_report, html_report, self.model, on_progress, **options)
             if not all((run.directory / name).is_file() for name in REPORT_FILES):
                 raise SafeWorkerError("Проверка не сформировала оба отчёта.")
@@ -348,6 +430,17 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
     def json(self, status, response):
         self.reply(status, json.dumps(response, ensure_ascii=False).encode(), REPORT_FILES["review.json"])
 
+    def body_size(self, limit):
+        sizes = self.headers.get_all("Content-Length", [])
+        if self.headers.get("Transfer-Encoding") or len(sizes) != 1 or not re.fullmatch(r"[0-9]{1,10}", sizes[0]):
+            raise WorkbenchError(HTTPStatus.LENGTH_REQUIRED, "Укажите размер запроса.")
+        size = int(sizes[0])
+        if not size:
+            raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Запрос пуст.")
+        if size > limit:
+            raise WorkbenchError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Превышен допустимый размер запроса.")
+        return size
+
     def do_GET(self):
         try:
             route = self.route()
@@ -363,6 +456,21 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             status = re.fullmatch(rf"/api/status/({JOB_ID})", route.path)
             if status:
                 self.json(HTTPStatus.OK, app.status(status[1]))
+                return
+            dialogue = re.fullmatch(DIALOGUE_ROUTE, route.path)
+            if dialogue:
+                self.json(HTTPStatus.OK, {"entries": app.conversations(*dialogue.groups())})
+                return
+            history = re.fullmatch(DIALOGUE_ROUTE + rf"/({FINDING_ID})/({JOB_ID})\.json", route.path)
+            if history:
+                baseline, sha, fid, token = history.groups()
+                entries = app.conversations(baseline, sha)
+                tokens = next((e["history_tokens"] for e in entries if e["record"]["finding_id"] == fid), [])
+                if token not in tokens:
+                    raise WorkbenchError(HTTPStatus.NOT_FOUND, "Ход обсуждения не найден.")
+                body = (app.storage / "clarifications" / (token + ".json")).read_bytes()
+                self.reply(HTTPStatus.OK, body, REPORT_FILES["review.json"],
+                           f"owner-{fid}-turn-{tokens.index(token) + 1}.json")
                 return
             report = re.fullmatch(rf"/reports/(demo|{JOB_ID})/(review\.(?:html|json))", route.path)
             if report:
@@ -383,6 +491,17 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             route = self.route(write=True)
+            dialogue = re.fullmatch(DIALOGUE_ROUTE, route.path)
+            if dialogue:
+                if self.headers.get_content_type() != "application/json":
+                    raise WorkbenchError(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "Передайте ответ в формате JSON.")
+                raw = self.rfile.read(self.body_size(24000))
+                try:
+                    payload = json.loads(raw.decode("utf-8"))
+                except (UnicodeError, ValueError, RecursionError) as exc:
+                    raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Не удалось прочитать ответ.") from exc
+                self.json(HTTPStatus.OK, self.server.app.answer(*dialogue.groups(), payload))
+                return
             if route.path != "/api/runs":
                 raise WorkbenchError(HTTPStatus.NOT_FOUND, "Страница не найдена.")
             query = parse_qs(route.query, keep_blank_values=True)
@@ -390,11 +509,13 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             baselines = query.get("baseline", [])
             findings = tuple(query.get("finding", []))
             decisions = tuple(query.get("decision", []))
+            tokens = tuple(query.get("clarification", []))
+            snapshot = query.get("dialogue_snapshot", [])
             hashes = query.get("baseline_sha256", [])
             if modes == ["full"] and not baselines and set(query) == {"mode"}:
                 baseline = None
             elif (modes == ["recheck"] and len(baselines) == 1 and
-                  set(query) <= {"mode", "baseline", "finding", "decision", "baseline_sha256"}
+                  set(query) <= {"mode", "baseline", "finding", "decision", "baseline_sha256", "clarification", "dialogue_snapshot"}
                   and re.fullmatch(rf"demo|{JOB_ID}", baselines[0])):
                 baseline = baselines[0]
             else:
@@ -404,22 +525,18 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             decision_ids = {item.partition("=")[0] for item in decisions}
             if (len(decision_ids) != len(decisions) or
                     any(not re.fullmatch(rf"{FINDING_ID}=(?:first|second)", item) for item in decisions) or
-                    (decisions and (len(hashes) != 1 or not re.fullmatch(r"[0-9a-f]{64}", hashes[0]))) or
-                    (hashes and not decisions)):
+                    len(tokens) != len(set(tokens)) or any(not re.fullmatch(JOB_ID, t) for t in tokens) or
+                    (snapshot and snapshot != ["1"]) or
+                    ((decisions or tokens or snapshot) and (len(hashes) != 1 or not re.fullmatch(r"[0-9a-f]{64}", hashes[0]))) or
+                    (hashes and not (decisions or tokens or snapshot))):
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Для решений нужны уникальные D-ID, исходы и SHA-256 базового отчёта.")
             names = self.headers.get_all("X-File-Name", [])
             if len(names) != 1:
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Укажите одно имя файла в X-File-Name.")
             name = upload_name(names[0])
-            sizes = self.headers.get_all("Content-Length", [])
-            if self.headers.get("Transfer-Encoding") or len(sizes) != 1 or not re.fullmatch(r"[0-9]{1,10}", sizes[0]):
-                raise WorkbenchError(HTTPStatus.LENGTH_REQUIRED, "Передайте файл с известным размером.")
-            size = int(sizes[0])
-            if size <= 0:
-                raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Загрузите непустой файл.")
-            if size > LIMITS[Path(name).suffix.lower()]:
-                raise WorkbenchError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Файл превышает допустимый размер.")
-            decision_options = {"decisions": decisions, "baseline_sha256": hashes[0]} if decisions else {}
+            size = self.body_size(LIMITS[Path(name).suffix.lower()])
+            decision_options = ({"decisions": decisions, "dialogue_tokens": tokens, "baseline_sha256": hashes[0],
+                                 "dialogue_snapshot": bool(snapshot)} if hashes else {})
             identifier = self.server.app.start(modes[0], baseline, name, size, self.rfile, findings, **decision_options)
             self.json(HTTPStatus.ACCEPTED, {"id": identifier})
         except WorkbenchError as exc:

@@ -11,6 +11,7 @@
   let markupLines = new Set();
   let pages = [];
   let decisionKey, decisions = {};
+  let conversationIds = new Set();
 
   function readCases(report) {
     const result = [];
@@ -77,7 +78,8 @@
     const {stage, side} = state;
     const outcomes = [witness.first, witness.second];
     const source = outcomes[side]?.source;
-    const saved = decisions[finding.id];
+    const hasDialogue = conversationIds.has(finding.id);
+    const saved = hasDialogue ? null : decisions[finding.id];
     const current = side === 0 ? "first" : "second";
     const draft = source ? `Сценарий: ${witness.scenario}\nОжидаемый результат: ${outcomes[side].outcome}\nОснование: строка ${source.line} ТЗ.\nВопрос: ${finding.question}` : "";
     const selector = cases.length > 1
@@ -95,11 +97,14 @@
     } else {
       body = `<h2 tabindex="-1">Черновик для QA</h2><dl class="guide-draft"><dt>Сценарий</dt><dd>${escape(witness.scenario)}</dd><dt>Ожидаемый результат</dt><dd>${escape(outcomes[side].outcome)}</dd><dt>Основание</dt><dd>${sourceLink(source)}</dd></dl>
       <div class="guide-actions"><button type="button" class="guide-primary" data-act="copy">Скопировать критерий</button><button type="button" class="guide-back" data-act="back">Изменить черновик</button></div>
-      ${decisionKey && canRecord ? `<div class="guide-record"><p role="status">${saved ? (saved === current ? "Выбранный исход зафиксирован для этой версии отчёта." :
+      ${decisionKey && canRecord && !hasDialogue ? `<div class="guide-record"><p role="status">${saved ? (saved === current ? "Выбранный исход зафиксирован для этой версии отчёта." :
          "Для этой версии отчёта зафиксирован другой исход. Можно заменить его.") : "Решение владельца пока не зафиксировано."}</p>
         ${saved !== current ? `<button type="button" class="guide-primary" data-act="record">${saved ? "Заменить решение владельца" : "Зафиксировать решение владельца"}</button>` : ""}
         ${saved ? '<button type="button" class="guide-back" data-act="cancel">Отменить фиксацию</button>' : ""}</div>` : ""}
       <div class="guide-copy-status" role="status"></div>`;
+    }
+    if (decisionKey) {
+      body += `<button type="button" class="guide-back" data-act="answer">${hasDialogue ? "Открыть переписку с владельцем" : "Ответить своими словами"}</button>`;
     }
     root.innerHTML = `<div class="guide-wrap"><div class="guide-bar"><ol aria-label="Шаги согласования">${stages.map((label,i) =>
       `<li ${i === stage ? 'aria-current="step"' : ""} class="${i <= stage ? "reached" : ""}"><span>${label}</span></li>`).join("")}</ol>${selector}</div>
@@ -118,6 +123,8 @@
     }));
     root.querySelector('[data-act="next"]')?.addEventListener("click", () => { state.stage++; render(true); });
     root.querySelector('[data-act="back"]')?.addEventListener("click", () => { state.stage--; render(true); });
+    root.querySelector('[data-act="answer"]')?.addEventListener("click", () =>
+      window.dispatchEvent(new CustomEvent("review:write-answer", {detail:{key:decisionKey, finding:finding.id}})));
     function record(chosen) {
       if (chosen === null) delete decisions[finding.id];
       else decisions[finding.id] = chosen;
@@ -148,6 +155,7 @@
     reportIdentity = identity;
     reportUrl = url;
     decisionKey = key;
+    conversationIds = new Set();
     decisions = {...detail.decisions};
     pages = report.run?.pages ?? [];
     sourceLines = new Map((report.source ?? []).map(line => [line.line, line.text]));
@@ -163,5 +171,11 @@
     index = 0;
     root.hidden = !cases.length;
     if (cases.length) render(); else root.replaceChildren();
+  });
+
+  window.addEventListener("review:dialogue", ({detail}) => {
+    if (detail.key !== decisionKey || !cases.length) return;
+    conversationIds = new Set(detail.ids);
+    render();
   });
 })();
