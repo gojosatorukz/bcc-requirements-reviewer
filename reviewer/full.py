@@ -190,6 +190,18 @@ def check_critical_sources(result, candidates):
                 raise ValueError(f"Для критического кандидата {number} нужны цитаты из строк {sorted(required)}")
 
 
+class InvalidStageResult(ValueError):
+    def __init__(self, stage, reason, attempts):
+        super().__init__(f"{stage}: {reason}")
+        self.attempts = attempts
+
+
+class StageProviderError(ValueError):
+    def __init__(self, stage, reason, attempts):
+        super().__init__(f"{stage}: {reason}")
+        self.attempts = attempts
+
+
 def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, digest):
     prompt = instruction + "\n" + packed(payload)
     key = sha256(packed([model, digest, prompt, schema]).encode()).hexdigest()
@@ -215,7 +227,12 @@ def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, d
     message = prompt
     for attempt in range(3):
         start = monotonic()
-        result, usage = codex_provider.complete(message, model, schema)
+        try:
+            result, usage = codex_provider.complete(message, model, schema)
+        except ValueError as exc:
+            attempts.append({"stage": stage, "status": "failed", "usage": None,
+                             "seconds": round(monotonic() - start, 2)})
+            raise StageProviderError(stage, str(exc), attempts) from exc
         entry = {"stage": stage, "status": "accepted", "usage": usage, "seconds": round(monotonic() - start, 2)}
         attempts.append(entry)
         try:
@@ -224,7 +241,7 @@ def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, d
         except ValueError as exc:
             entry.update(status="rejected", reason=str(exc))
             if attempt == 2:
-                raise ValueError(f"{stage}: {exc}") from exc
+                raise InvalidStageResult(stage, str(exc), attempts) from exc
             message = (prompt + "\nПредыдущий ответ:\n" + packed(result)
                        + "\nИсправь ошибку и верни полный результат: " + str(exc))
         else:
@@ -323,8 +340,11 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6):
     whole["findings"].sort(key=lambda f: (priority.ORDER[f["priority"]], min(e["line"] for e in f["evidence"])))
     for i, item in enumerate(whole["findings"], 1):
         item["id"] = f"D-{i:02d}"
-    return {"segments": segments, "registry": registry, "whole": whole, "json_checks": json_checks,
-            "priority_policy": priority.POLICY, **candidates}, attempts + events
+    from .executable import build
+    result = {"segments": segments, "registry": registry, "whole": whole, "json_checks": json_checks,
+              "priority_policy": priority.POLICY, **candidates}
+    result["executables"], execution_attempts = build(result, source, model, checkpoint, digest, workers)
+    return result, attempts + events + execution_attempts
 
 
 def original_id(text, header=""):
