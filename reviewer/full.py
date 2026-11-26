@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 import sys
 from tempfile import NamedTemporaryFile
+from time import monotonic
 
 from . import codex_provider
 from .contract import EVIDENCE, INSTRUCTIONS, REVIEW, TEXT, record, validate_review, validate_shape
@@ -87,7 +88,18 @@ reconciled.requirements с обоснованным закрытием. Кажд
 массивы только переданных идентификаторов. Не придумывай новых.
 Отдельно реши, что можно делать разработчикам и тестировщикам сейчас и что блокирует
 полную реализацию или приёмку. Дай обоснование каждого решения и ссылки на строки.
-Если нормативных требований в документе нет, учти это в решениях о готовности."""
+Если нормативных требований в документе нет, учти это в решениях о готовности.
+Перед публикацией для каждой спорной пары попытайся выполнить оба правила одновременно.
+Проверь, совпадают ли участник, момент и наблюдаемый результат. Пример ответа может быть
+неисчерпывающим, а внутреннее состояние и представление для клиента — разными объектами.
+Если есть совместимая трактовка и документ не требует выбирать между исходами, закрой
+гипотезу с цитатой либо обозначь конкретное недостающее решение как вопрос.
+Для каждого критического поведенческого кандидата в finding процитируй исходные строки
+обеих сторон. Проверяй также соседнее условие, при котором правила согласуются.
+Если описан HTTP, примени критерий совместимости с RFC 9110 §9.2.1: GET, HEAD, OPTIONS и
+TRACE не запрашивают изменение состояния ресурса. Отличай явно запрошенное изменение
+от служебных побочных эффектов. Для нарушения укажи норму в criterion и процитируй место
+в документе, где заказаны метод и эффект. Не выводи свойства сети из названия операции."""
 
 
 def packed(value):
@@ -150,6 +162,18 @@ def check_whole(result, registry, candidates, lines):
         citations(row["evidence"], lines)
 
 
+def check_critical_sources(result, candidates):
+    for finding in result["findings"]:
+        if finding["priority"] != "критический":
+            continue
+        cited = {e["line"] for e in finding["evidence"]}
+        for number in finding["candidates"]:
+            candidate = candidates[number - 1]
+            required = {candidate[side]["source"]["line"] for side in ("first", "second")}
+            if required - cited:
+                raise ValueError(f"Для критического кандидата {number} нужны цитаты из строк {sorted(required)}")
+
+
 def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, digest):
     prompt = instruction + "\n" + packed(payload)
     key = sha256(packed([model, digest, prompt, schema]).encode()).hexdigest()
@@ -164,8 +188,9 @@ def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, d
     attempts = []
     message = prompt
     for attempt in range(3):
+        start = monotonic()
         result, usage = codex_provider.complete(message, model, schema)
-        entry = {"stage": stage, "status": "accepted", "usage": usage}
+        entry = {"stage": stage, "status": "accepted", "usage": usage, "seconds": round(monotonic() - start, 2)}
         attempts.append(entry)
         try:
             validate_shape(result, schema, stage)
@@ -186,18 +211,37 @@ def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, d
             return result, attempts
 
 
-def analyze(blocks, lines, model, checkpoint, digest):
+def local_batches(semantic, source):
+    # Bound both the number of units and the amount of text one worker must annotate.
+    weights = [50 + sum(len(source.get(i, "")) for i in range(b["start"], b["end"] + 1)) for b in semantic]
+    groups = max(1, (len(semantic) + 21) // 22)
+    target = max(1, sum(weights) // groups)
+    batch = []
+    weight = 0
+    for block, size in zip(semantic, weights):
+        if batch and (len(batch) >= 26 or weight + size // 2 > target):
+            yield batch
+            batch = []
+            weight = 0
+        batch.append(block)
+        weight += size
+    if batch:
+        yield batch
+
+
+def analyze(blocks, lines, model, checkpoint, digest, workers=6):
     source = {n: text for n, text in enumerate(lines, 1) if text.strip()}
     segments = segment(lines)
     semantic = [b for b in segments if b["kind"] not in {"разметка", "шапка таблицы"}]
-    chunks = [semantic[i:i + 15] for i in range(0, len(semantic), 15)]
+    chunks = list(local_batches(semantic, source))
 
     def local(batch):
+        assigned = [{k: v for k, v in b.items() if k != "section"} for b in batch]
         return call_stage(f"Блоки {batch[0]['start']}–{batch[-1]['start']}", LOCAL,
-                          {"source": source, "assigned": batch}, BATCH,
+                          {"source": source, "assigned": assigned}, BATCH,
                           lambda result: check_batch(result, batch, source), model, checkpoint, digest)
 
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         behavioral = pool.submit(call_stage, "Сценарии", INSTRUCTIONS, blocks, REVIEW,
                                  lambda r: validate_review(r, source), model, checkpoint, digest)
         local_results = list(pool.map(local, chunks))
@@ -216,11 +260,20 @@ def analyze(blocks, lines, model, checkpoint, digest):
             b["requirements"].append(rid)
             registry.append(dict(item, id=rid, start=b["start"], original_id=original_id(source[b["start"]], source.get(b.get("header"), ""))))
     flags = [r["id"] for r in registry if r["status"] == "нужно уточнение"]
-    payload = {"source": source, "registry": [{k:r[k] for k in ("id","statement","status","assessment","evidence")}
-                                               for r in registry],
+    # The full source is already included. Send the line once and retain explanations for disputed items.
+    index = [{"id": r["id"], "statement": r["statement"], "line": r["evidence"]["line"]} for r in registry]
+    for entry, item in zip(index, registry):
+        if item["status"] == "нужно уточнение":
+            entry["assessment"] = item["assessment"]
+    payload = {"source": source, "registry": index,
                "local_flags": flags, "candidates": [dict(c, id=i) for i, c in enumerate(candidates["conflicts"], 1)]}
+
+    def verify_whole(result):
+        check_whole(result, registry, candidates["conflicts"], source)
+        check_critical_sources(result, candidates["conflicts"])
+
     whole, events = call_stage("Весь документ", GLOBAL, payload, WHOLE,
-                               lambda r: check_whole(r, registry, candidates["conflicts"], source),
+                               verify_whole,
                                model, checkpoint, digest)
     for i, item in enumerate(whole["findings"], 1):
         item["id"] = f"D-{i:02d}"

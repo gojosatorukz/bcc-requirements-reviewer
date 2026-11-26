@@ -4,11 +4,27 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from reviewer.full import AXES, analyze, check_batch, original_id
+from reviewer.full import AXES, analyze, check_batch, check_critical_sources, local_batches, original_id
 from reviewer.render import render_report
 
 
 class FullReviewTest(unittest.TestCase):
+    def test_balancing_preserves_order_and_handles_oversize_sections(self):
+        blocks = [{"start": i, "end": i} for i in range(1, 124)]
+        source = {i: "x" * (4000 if i == 42 else 35) for i in range(1, 124)}
+        groups = list(local_batches(blocks, source))
+        self.assertEqual([b for group in groups for b in group], blocks)
+        self.assertTrue(all(0 < len(group) <= 26 for group in groups))
+        self.assertEqual(list(local_batches([], {})), [])
+
+    def test_critical_candidate_requires_both_source_lines(self):
+        candidate = {"first": {"source": {"line": 2}}, "second": {"source": {"line": 4}}}
+        f = {"priority": "критический", "candidates": [1], "evidence": [{"line": 2}]}
+        with self.assertRaisesRegex(ValueError, "2, 4"):
+            check_critical_sources({"findings": [f]}, [candidate])
+        f["evidence"].append({"line": 4})
+        check_critical_sources({"findings": [f]}, [candidate])
+
     def test_missing_block_and_empty_api_example_are_rejected(self):
         b = [{"start": 1, "end": 3, "kind": "пример json"}]
         with self.assertRaises(ValueError):

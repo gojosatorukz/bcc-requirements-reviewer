@@ -78,6 +78,8 @@ def main():
     parser.add_argument("document", type=Path)
     parser.add_argument("report", type=Path, help="Выходной файл JSON, HTML или PDF")
     parser.add_argument("--model", default=os.environ.get("REVIEW_MODEL", "gpt-6.2-astra"))
+    parser.add_argument("--workers", type=int, choices=range(1, 9), default=6, metavar="1..8",
+                        help="Максимум параллельных запросов полного ревью (по умолчанию 6)")
     parser.add_argument("--conflicts-only", action="store_true", help="Быстрый поиск поведенческих конфликтов (формат v1)")
     parser.add_argument("--checkpoint-dir", type=Path, help="Папка для возобновления проверенных стадий полного прогона")
     args = parser.parse_args()
@@ -99,7 +101,7 @@ def main():
             result, attempts = review_document(prompt, args.model, lines)
         else:
             from .full import analyze
-            result, attempts = analyze(blocks, lines, args.model, args.checkpoint_dir, digest)
+            result, attempts = analyze(blocks, lines, args.model, args.checkpoint_dir, digest, args.workers)
         usage = None
         if all(isinstance(attempt["usage"], dict) for attempt in attempts):
             usage = {}
@@ -111,6 +113,8 @@ def main():
                "provider": "codex-cli", "model": args.model, "agent_version": revision, "engine_sha256": digest,
                "input_name": args.document.name, "input_sha256": input_hash, **input_metadata,
                "input_lines": len(lines), "usage": usage, "attempts": attempts}
+        if not args.conflicts_only:
+            run["max_workers"] = args.workers
         scope = "Проверка поведенческих противоречий" if args.conflicts_only else "Полное ревью требований"
         report = {"schema_version": 1 if args.conflicts_only else 2, "scope": scope, "run": run,
                   "source": blocks, **result}

@@ -97,6 +97,8 @@ def render_source(lines, backlinks, pages=()):
 
 def render_passport(run, schema_version):
     fields = [(label, run[key]) for key, label in RUN_FIELDS.items()]
+    if "max_workers" in run:
+        fields.append(("Лимит параллельных запросов", run["max_workers"]))
     if "engine_sha256" in run:
         fields.append(("SHA-256 проверяющего кода", run["engine_sha256"]))
     fields.append(("Версия формата JSON", schema_version))
@@ -126,10 +128,11 @@ def render_attempts(attempts):
         status = attempt["status"]
         stage = safe(attempt["stage"]) + " · " if "stage" in attempt else ""
         restored = " · из контрольной точки" if attempt.get("restored") else ""
+        duration = f" · {safe(attempt['seconds'])} с" if "seconds" in attempt else ""
         reason = f"<p>{safe(attempt['reason'])}</p>" if "reason" in attempt else ""
         items.append(f"""
         <li>
-          <p><strong>{stage}{safe(ATTEMPT_STATUS.get(status, status))}{restored}</strong></p>{reason}
+          <p><strong>{stage}{safe(ATTEMPT_STATUS.get(status, status))}{duration}{restored}</strong></p>{reason}
           {render_usage(attempt['usage'])}
         </li>""")
     return f"""
