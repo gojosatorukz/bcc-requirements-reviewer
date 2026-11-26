@@ -116,7 +116,9 @@ def check_decisions(result, findings, old, new, diff):
         evidence = row["revised_evidence"]
         if evidence or status != UNKNOWN:
             citations(evidence, new)
-        if status == PERSISTS and expected[fid]["candidates"] and len({
+        finding = expected[fid]
+        behavioral = finding["candidates"] or finding.get("triage", {}).get("witness")
+        if status == PERSISTS and behavioral and len({
             (entry["line"], normalized(entry["quote"])) for entry in evidence
         }) < 2:
             raise ValueError(f"{fid}: у сохранившегося поведенческого конфликта нужны две разные цитаты")
@@ -163,10 +165,13 @@ def recheck(previous_path, revised_path, model, selected=()):
     digest = engine_digest("recheck.py", "full.py", "full_render.py", "input.py", "segments.py", "priority.py")
     diff = make_diff(old, new)
     matches = revised_hash == old_run["input_sha256"]
-    if matches and (old != new or old_run["input_lines"] != len(revised)):
+    same_lines = old == new and old_run["input_lines"] == len(revised)
+    if matches and not same_lines:
         raise ValueError("Хеш совпадает, но сохранённый источник прежнего отчёта отличается")
+    plain_text = {".md", ".txt"}
+    text_inputs = revised_path.suffix.lower() in plain_text and Path(old_run["input_name"]).suffix.lower() in plain_text
     attempts = []
-    if findings and not matches:
+    if findings and not (matches or (text_inputs and same_lines)):
         payload = {"revised_source": new, "diff": diff, "prior_issues": issues}
         result, attempts = call_stage(
             "Повторная проверка", TASK, payload, DECISIONS,
@@ -178,13 +183,15 @@ def recheck(previous_path, revised_path, model, selected=()):
         for issue in issues:
             finding = issue["finding"]
             evidence = list(finding["evidence"])
-            for candidate in issue["candidates"]:
+            for candidate in [*issue["candidates"], *finding.get("triage", {}).get("witness", [])]:
                 for side in ("first", "second"):
                     cite = candidate[side]["source"]
                     if cite not in evidence:
                         evidence.append(cite)
             decisions.append({"id": finding["id"], "status": PERSISTS,
-                              "reason": "Хеш документа совпадает.", "revised_evidence": evidence,
+                              "reason": ("Хеш документа совпадает." if matches else
+                                         "Текст и номера проверяемых строк совпадают с базовым отчётом."),
+                              "revised_evidence": evidence,
                               "diff_hunks": []})
         result = {"checks": decisions}
         check_decisions(result, findings, old, new, diff)
@@ -197,6 +204,7 @@ def recheck(previous_path, revised_path, model, selected=()):
         "previous_input_name": old_run["input_name"], "previous_input_sha256": old_run["input_sha256"],
         "previous_agent_version": old_run["agent_version"], "input_name": revised_path.name,
         "input_sha256": revised_hash, "input_lines": len(revised), **input_metadata, "source_unchanged": matches,
+        "review_text_unchanged": same_lines,
         "provider": "codex-cli" if attempts else None, "model": model if attempts else None,
         "started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
         "agent_version": revision, "engine_sha256": digest,

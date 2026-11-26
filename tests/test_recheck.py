@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from reviewer.full import AXES
-from reviewer.recheck import CHANGED, PERSISTS, RESOLVED, UNKNOWN, recheck, render_html
+from reviewer.recheck import CHANGED, PERSISTS, RESOLVED, UNKNOWN, check_decisions, recheck, render_html
 from reviewer.segments import segment
 
 
@@ -118,6 +118,24 @@ class RecheckTest(unittest.TestCase):
         self.assertEqual(report["run"]["usage"], {})
         self.assertEqual(report["diff"], [])
         self.assertEqual([(row["id"], row["status"]) for row in report["checks"]], [("D-03", PERSISTS)])
+
+    @patch("reviewer.full.codex_provider.complete")
+    def test_reencoding_plain_text_reuses_proof_without_inference(self, complete):
+        self.revised.write_bytes(b"\xef\xbb\xbf" + self.document(OLD).replace(b"\n", b"\r\n"))
+        report = recheck(self.previous, self.revised, "mock", ["D-02"])
+        complete.assert_not_called()
+        self.assertFalse(report["run"]["source_unchanged"])
+        self.assertTrue(report["run"]["review_text_unchanged"])
+        self.assertEqual(report["checks"][0]["status"], PERSISTS)
+        self.assertEqual(len(report["checks"][0]["revised_evidence"]), 2)
+        self.assertIn("Текст и номера", render_html(report))
+
+    def test_a_conflict_with_a_direct_witness_still_requires_both_sources(self):
+        issue = dict(self.report["whole"]["findings"][1], candidates=[], triage={"witness": self.report["conflicts"]})
+        lines = dict(enumerate(NEW, start=1))
+        result = {"checks": [decision(issue["id"], PERSISTS, [cite(3, NEW[2])])]}
+        with self.assertRaisesRegex(ValueError, "две разные цитаты"):
+            check_decisions(result, [issue], lines, lines, [])
 
     @patch("reviewer.full.codex_provider.complete")
     def test_retries_duplicate_or_missing_ids_and_sums_usage(self, complete):
