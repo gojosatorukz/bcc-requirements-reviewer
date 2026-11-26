@@ -1,0 +1,104 @@
+.execution {
+  --proof-ink: #251d26;
+  --proof-muted: #665859;
+  --proof-line: #c4b8b3;
+  --proof-paper: #fffaf0;
+  min-width: 0;
+  padding: clamp(1rem, 2.1vw, 1.65rem);
+  background: var(--proof-paper);
+  color: var(--proof-ink);
+  border: 2px solid var(--proof-ink);
+  border-radius: .95rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.execution p, .execution dl, .execution dd, .execution h4 {margin: 0}
+.execution p.execution-caption {
+  margin: 0 0 .32rem;
+  font-size: .76rem;
+  font-weight: 760;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.execution h4 {font-size: clamp(1.22rem, 2.5vw, 1.85rem); letter-spacing: -.035em; line-height: 1.12}
+.execution dl.execution-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: .85rem 0;
+  border: 1.5px solid var(--proof-ink);
+  border-radius: .65rem;
+  overflow: hidden;
+}
+.execution-side {min-width: 0; padding: .7rem .85rem; background: #ffdbba}
+.execution-side + .execution-side {border-left: 1.5px solid var(--proof-ink); background: #e4dafa}
+.execution-side dt {font-size: .78rem; font-weight: 650}
+.execution a {color: inherit; text-decoration: underline; text-underline-offset: .18em}
+.execution .execution-side dd {
+  margin: .35rem 0 0;
+  font-size: clamp(1.15rem, 2.6vw, 2.3rem);
+  font-weight: 790;
+  letter-spacing: -.045em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.07;
+}
+.execution-break {display: grid; gap: .12rem}
+.execution-break b {font-size: .8rem; color: var(--proof-muted)}
+.execution-break span {font-size: 1rem; font-weight: 670}
+.execution dl.execution-values {display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin: .35rem 0 .6rem}
+.execution-values div {display: inline; min-width: 0}
+.execution-values dt, .execution-values dd {display: inline; font-size: .85rem}
+.execution-values dt {color: var(--proof-muted)}
+.execution-values dt::after {content: " · "}
+.execution-values dd {font-weight: 660; font-variant-numeric: tabular-nums}
+.execution details {border-top: 1px solid var(--proof-line)}
+.execution details:first-of-type {margin-top: .9rem}
+.execution details > summary {
+  padding: .56rem .15rem;
+  font-size: .9rem;
+  font-weight: 690;
+  cursor: pointer;
+}
+.execution details[open] > summary {margin-bottom: .2rem}
+.execution .execution-subtitle {margin: .28rem 0; font-size: .8rem; font-weight: 720}
+.execution-step {margin: .65rem 0; padding: .15rem .65rem .4rem; border-left: 3px solid var(--proof-line)}
+.execution-step.differs {border-color: #bf4c24}
+.execution .execution-step-title {margin: .15rem 0; font-size: .91rem; font-weight: 720}
+.execution-step-title span {display: block; margin-bottom: .12rem; font-size: .75rem; color: var(--proof-muted)}
+.execution .execution-difference-note {margin: .22rem 0; color: #853818; font-size: .77rem; font-weight: 650}
+.execution table.execution-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: .4rem 0 .2rem;
+  font-size: .81rem;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.execution .execution-table caption {text-align: left; margin-bottom: .25rem; color: var(--proof-muted)}
+.execution .execution-table th, .execution .execution-table td {
+  padding: .3rem;
+  border-bottom: 1px solid var(--proof-line);
+  background: transparent;
+  text-align: left;
+  vertical-align: baseline;
+}
+.execution .execution-table th:first-child {width: 45%}
+.execution .execution-table tbody th {font-weight: 540}
+.execution .execution-sources blockquote {
+  margin: .25rem 0 .7rem;
+  padding: .15rem 0 .15rem .65rem;
+  border-left: 3px solid var(--proof-line);
+  color: var(--proof-ink);
+  font-size: .9rem;
+  white-space: pre-wrap;
+}
+.execution .execution-sources blockquote span {display: block; font-size: .76rem; font-weight: 720}
+.execution-unavailable {border-color: var(--proof-line); box-shadow: none}
+.execution-unavailable h4 {margin-bottom: .35rem; font-size: 1.08rem}
+.full .finding > .execution {margin: .85rem 0; max-width: 58rem}
+@media print {
+  .execution {padding: .55rem; break-inside: auto; border: 1px solid #888}
+  .execution .execution-comparison {break-inside: avoid}
+  .execution details:not([open]) {display: none}
+  .execution .execution-side dd {font-size: 14pt}
+}

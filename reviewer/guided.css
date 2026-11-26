@@ -68,3 +68,18 @@
 #guided-review .guide-record{margin-top:.85rem;padding:.65rem .8rem;background:#f5ead8;border-left:3px solid #ff7045}
 #guided-review .guide-record p{margin:0 0 .45rem}
 #guided-review .guide-record button{margin:.25rem .55rem .25rem 0}
+#guided-review .guide-grid.with-calculation {
+  grid-template-columns: minmax(0, .98fr) minmax(0, 1.02fr);
+  align-items: start;
+}
+#guided-review .guide-calculation {min-width: 0}
+#guided-review .guide-calculation > .execution {box-shadow: 0 5px 0 var(--g-ink)}
+#guided-review .guide-calculation[aria-busy="true"] {
+  border: 1.5px dashed var(--g-ink);
+  border-radius: 12px;
+  padding: 1.2rem;
+}
+#guided-review .guide-sheet > .guide-back {margin: .6rem .65rem 0 0; display: inline-block}
+@container (max-width: 720px) {
+  #guided-review .guide-grid.with-calculation {grid-template-columns: minmax(0, 1fr)}
+}

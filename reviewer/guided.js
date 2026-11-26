@@ -12,6 +12,7 @@
   let pages = [];
   let decisionKey, decisions = {};
   let conversationIds = new Set();
+  let executionIds = new Set(), panels = new Map(), panelRequest, panelError = '';
 
   function readCases(report) {
     const result = [];
@@ -72,6 +73,59 @@
     }).join("")}</aside>`;
   }
 
+  function displayPanel() {
+    const slot = root.querySelector('.guide-calculation');
+    if (!slot) return;
+    const panel = panels.get(cases[index].finding.id);
+    if (panel) {
+      slot.removeAttribute('aria-busy');
+      slot.replaceChildren(panel);
+    } else if (panelError) {
+      slot.removeAttribute('aria-busy');
+      slot.textContent = panelError;
+    }
+  }
+
+  async function loadPanels(key) {
+    const match = /^(demo|[0-9a-f]{32}):([0-9a-f]{64})$/.exec(key ?? '');
+    if (!match) {
+      panelError = 'Для проверки расчёта нужен полный отчёт с идентификатором версии.';
+      displayPanel();
+      return;
+    }
+    const ownRequest = new AbortController();
+    panelRequest = ownRequest;
+    try {
+      const response = await fetch('/reports/' + match[1] + '/executions/' + match[2],
+        {cache:'no-store', signal:ownRequest.signal});
+      if (!response.ok) throw new Error();
+      const saved = await response.json();
+      if (panelRequest !== ownRequest) return;
+      if (saved.sha256 !== match[2]) throw new Error();
+      const fresh = new Map();
+      for (const fid of executionIds) {
+        // This same-origin endpoint renders escaped, replay-validated report data with
+        // the offline HTML renderer. Links should open the matching standalone source.
+        const template = document.createElement('template');
+        if (typeof saved.items?.[fid] !== 'string') throw new Error();
+        template.innerHTML = saved.items[fid];
+        const panel = template.content.firstElementChild;
+        if (panel?.id !== 'execution-' + fid) throw new Error();
+        for (const link of panel.querySelectorAll('a[href^="#source-line-"]')) {
+          link.setAttribute('href', reportUrl + link.getAttribute('href'));
+          link.target = '_blank';
+          link.rel = 'noopener';
+        }
+        fresh.set(fid, panel);
+      }
+      panels = fresh;
+    } catch {
+      if (panelRequest !== ownRequest) return;
+      panelError = 'Не удалось проверить расчёт для текущей версии отчёта. Обновите страницу.';
+    }
+    displayPanel();
+  }
+
   function render(focus = false) {
     const {finding, witness, canRecord} = cases[index];
     const state = positions[index];
@@ -106,9 +160,16 @@
     if (decisionKey) {
       body += `<button type="button" class="guide-back" data-act="answer">${hasDialogue ? "Открыть переписку с владельцем" : "Ответить своими словами"}</button>`;
     }
+    const execution = executionIds.has(finding.id);
+    if (execution && stage > 0) {
+      body += `<a class="guide-back" href="${escape(reportUrl)}#execution-${escape(finding.id)}" target="_blank" rel="noopener">Открыть расчёт</a>`;
+    }
     root.innerHTML = `<div class="guide-wrap"><div class="guide-bar"><ol aria-label="Шаги согласования">${stages.map((label,i) =>
       `<li ${i === stage ? 'aria-current="step"' : ""} class="${i <= stage ? "reached" : ""}"><span>${label}</span></li>`).join("")}</ol>${selector}</div>
-      <div class="guide-grid"><article class="guide-sheet" data-stage="${stage}">${body}</article>${evidence(witness)}</div></div>`;
+      <div class="guide-grid${execution && stage === 0 ? ' with-calculation' : ''}"><article class="guide-sheet" data-stage="${stage}">${body}</article>${
+        execution && stage === 0 ? '<div class="guide-calculation" aria-busy="true">Проверяем сохранённый расчёт…</div>' : evidence(witness)
+      }</div></div>`;
+    displayPanel();
     function highlightSource() {
       root.querySelectorAll(".guide-evidence figure").forEach((card, i) => {
         card.classList.toggle("selected", stage > 0 && state.side === i);
@@ -155,6 +216,11 @@
     reportIdentity = identity;
     reportUrl = url;
     decisionKey = key;
+    panelRequest?.abort();
+    panelRequest = null;
+    panelError = '';
+    executionIds = new Set((report.executables?.items ?? []).map(item => item.finding_id));
+    panels = new Map();
     conversationIds = new Set();
     decisions = {...detail.decisions};
     pages = report.run?.pages ?? [];
@@ -171,6 +237,7 @@
     index = 0;
     root.hidden = !cases.length;
     if (cases.length) render(); else root.replaceChildren();
+    if (cases.length && executionIds.size) loadPanels(key);
   });
 
   window.addEventListener("review:dialogue", ({detail}) => {

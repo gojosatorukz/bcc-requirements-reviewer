@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from .contract import source_lines, validate_review, validate_shape
+from .execution_view import render_execution
 from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
 from .json_examples import check_findings, verify_saved_checks
 from . import priority
@@ -57,6 +58,9 @@ def validate_report(report):
     for i, f in enumerate(whole["findings"], 1):
         if f["id"] != f"D-{i:02d}":
             raise ValueError("Неверная нумерация замечаний")
+    if "executables" in report:
+        from .executable import validate_saved
+        validate_saved(report, lines)
     return lines
 
 
@@ -179,6 +183,8 @@ def render_full(report):
     related = defaultdict(list)
     decisions = {}
     findings = []
+    executions = {item["finding_id"]: render_execution(item)
+                  for item in report.get("executables", {}).get("items", [])}
     page_by_line = {n: page["page"] for page in run.get("pages", [])
                     for n in range(page["start"], page["end"] + 1)}
     for f in whole["findings"]:
@@ -202,6 +208,7 @@ def render_full(report):
                      f'<p>{safe(priority.RULES[triage["rule"]][1])}</p>{"".join(proof)}</details>')
         findings.append(f'''<article id="{fid}" class="finding"><small>{fid} · {safe(f['category'])} · {safe(f['priority'])}</small>
 <h3>{safe(f['title'])}</h3><p>{safe(f['criterion'])}. {safe(f['reason'])}</p><p><b>Последствие.</b> {safe(f['impact'])}</p>
+{executions.get(fid, '')}
 {evidence(f['evidence'])}<p><b>{safe(f['owner'])}.</b> {safe(f['question'])}</p>
 <p><b>Исправление.</b> {safe(f['action'])}</p><p>{refs}</p>
 {finding_download(f, run, page_by_line)}
@@ -250,6 +257,8 @@ def render_full(report):
                f'{roles["пример контракта"]} примеров контракта')
     crit_list = "".join(f'<li>{link(f["id"],f["id"]+" · "+f["title"])}</li>' for f in critical)
     styles = Path(__file__).with_name("render.css").read_text(encoding="utf-8")
+    if executions:
+        styles += Path(__file__).with_name("execution.css").read_text(encoding="utf-8")
     styles += """
 .full nav{margin:1rem 0}.metrics,.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13em),1fr));gap:.8rem;margin:1rem 0}
 .metrics>div,.gates>article{padding:1rem;background:var(--green);border:1px solid var(--line)}

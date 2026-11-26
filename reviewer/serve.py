@@ -24,6 +24,7 @@ REPORT_FILES = {"review.html": "text/html; charset=utf-8", "review.json": "appli
 STATIC_FILES = {
     "/reviewer/guided.css": "text/css; charset=utf-8",
     "/reviewer/guided.js": "text/javascript; charset=utf-8",
+    "/reviewer/execution.css": "text/css; charset=utf-8",
     "/design/concepts/index.html": "text/html; charset=utf-8",
     "/design/concepts/gallery.css": "text/css; charset=utf-8",
     "/design/concepts/case.js": "text/javascript; charset=utf-8",
@@ -197,6 +198,22 @@ class Workbench:
         self.dialogue_report(baseline, sha)
         with self.lock:
             return [item for key, item in self.dialogues.items() if key[:2] == (baseline, sha)]
+
+    def execution_panels(self, baseline, sha):
+        from .execution_view import render_execution
+        from .full_render import validate_report
+
+        raw = (self.reports(baseline, baseline=True) / "review.json").read_bytes()
+        if sha256(raw).hexdigest() != sha:
+            raise WorkbenchError(HTTPStatus.CONFLICT, "Версия отчёта изменилась. Обновите страницу.")
+        try:
+            report = json.loads(raw)
+            validate_report(report)
+            items = {item["finding_id"]: render_execution(item)
+                     for item in report.get("executables", {}).get("items", [])}
+        except (ValueError, KeyError, TypeError) as exc:
+            raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Расчёт из отчёта не прошёл проверку.") from exc
+        return {"sha256": sha, "items": items}
 
     def answer(self, baseline, sha, payload):
         from .clarify import MAX_ANSWER, MAX_TURNS, clarify, next_question
@@ -457,6 +474,10 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             if status:
                 self.json(HTTPStatus.OK, app.status(status[1]))
                 return
+            executions = re.fullmatch(rf"/reports/(demo|{JOB_ID})/executions/([0-9a-f]{{64}})", route.path)
+            if executions:
+                self.json(HTTPStatus.OK, app.execution_panels(*executions.groups()))
+                return
             dialogue = re.fullmatch(DIALOGUE_ROUTE, route.path)
             if dialogue:
                 self.json(HTTPStatus.OK, {"entries": app.conversations(*dialogue.groups())})
@@ -491,6 +512,24 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             route = self.route(write=True)
+            simulation = re.fullmatch(rf"/api/simulate/(demo|{JOB_ID})/([0-9a-f]{{64}})/({FINDING_ID})", route.path)
+            if simulation:
+                from .executable import simulate
+                if route.query or self.headers.get_content_type() != "application/json":
+                    raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Нужен JSON с входными значениями примера.")
+                baseline, digest, fid = simulation.groups()
+                raw = (self.server.app.reports(baseline, baseline=True) / "review.json").read_bytes()
+                if sha256(raw).hexdigest() != digest:
+                    raise WorkbenchError(HTTPStatus.CONFLICT, "Базовый отчёт изменился. Обновите страницу.")
+                try:
+                    data = json.loads(self.rfile.read(self.body_size(64_000)))
+                    if type(data) is not dict or set(data) != {"case"}:
+                        raise ValueError("Укажите только начальные значения и события в поле case")
+                    trace = simulate(json.loads(raw), fid, data["case"])
+                except (ValueError, KeyError, TypeError, RecursionError) as exc:
+                    raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, f"Не удалось рассчитать пример. {str(exc)[:240]}") from exc
+                self.json(HTTPStatus.OK, {"trace": trace})
+                return
             dialogue = re.fullmatch(DIALOGUE_ROUTE, route.path)
             if dialogue:
                 if self.headers.get_content_type() != "application/json":
