@@ -9,6 +9,32 @@ from .segments import FENCE
 TOKENS = re.compile(r'"(?:\\.|[^"\\])*"|(?P<constant>NaN|-?Infinity)')
 
 
+def canonical_diagnostic(item, lines):
+    # Python 3.14 reports a trailing comma at the comma. Earlier decoders report
+    # it at the closing delimiter. Keep one source location in portable reports.
+    trailing = {"Illegal trailing comma before end of object": ("}", "Expecting property name enclosed in double quotes"),
+                "Illegal trailing comma before end of array": ("]", "Expecting value")}
+    if not isinstance(item, dict) or not isinstance(item.get("diagnostic"), str):
+        return item
+    rule = trailing.get(item["diagnostic"])
+    if not rule:
+        return item
+    line, column, end = (item.get(key) for key in ("line", "column", "end"))
+    if not all(type(x) is int for x in (line, column, end)) or not 1 <= line <= end <= len(lines):
+        return item
+    if not 1 <= column <= len(lines[line - 1]) or lines[line - 1][column - 1] != ",":
+        return item
+    closing, message = rule
+    for n in range(line, end + 1):
+        start = column if n == line else 0
+        for pos, char in enumerate(lines[n - 1][start:], start + 1):
+            if char not in " \t\r\n":
+                if char == closing:
+                    return dict(item, line=n, column=pos, diagnostic=message)
+                return item
+    return item
+
+
 def inspect_examples(lines, segments):
     results = []
     for block in segments:
@@ -33,8 +59,17 @@ def inspect_examples(lines, segments):
             item.update(status="invalid", line=line, column=exc.colno, diagnostic=exc.msg)
         except RecursionError:
             item.update(status="unchecked", line=start, diagnostic="Превышена глубина вложенности парсера")
-        results.append(item)
+        results.append(canonical_diagnostic(item, lines))
     return {"version": 1, "examples": results}
+
+
+def verify_saved_checks(saved, lines, segments):
+    expected = inspect_examples(lines, segments)
+    if isinstance(saved, dict) and isinstance(saved.get("examples"), list):
+        saved = dict(saved, examples=[canonical_diagnostic(item, lines) for item in saved["examples"]])
+    if saved != expected:
+        raise ValueError("Результат проверки JSON расходится с исходником")
+    return expected
 
 
 def check_findings(checks, findings):

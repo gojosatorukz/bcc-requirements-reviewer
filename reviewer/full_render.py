@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .contract import source_lines, validate_review, validate_shape
 from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
-from .json_examples import check_findings, inspect_examples
+from .json_examples import check_findings, verify_saved_checks
 from . import priority
 from .render import render_conflict, render_passport, render_source, safe
 from .segments import segment
@@ -19,9 +19,7 @@ def validate_report(report):
     expected = segment(raw_lines)
     segments, registry, whole = report["segments"], report["registry"], report["whole"]
     if "json_checks" in report:
-        checks = inspect_examples(raw_lines, expected)
-        if checks != report["json_checks"]:
-            raise ValueError("Результат проверки JSON расходится с исходником")
+        checks = verify_saved_checks(report["json_checks"], raw_lines, expected)
         check_findings(checks, whole["findings"])
     if len(segments) != len(expected):
         raise ValueError("Число исходных блоков изменилось")

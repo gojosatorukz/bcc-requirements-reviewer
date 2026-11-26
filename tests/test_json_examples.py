@@ -3,7 +3,7 @@ from pathlib import Path
 import unittest
 
 from reviewer.full_render import render_json_checks, validate_report
-from reviewer.json_examples import check_findings, inspect_examples
+from reviewer.json_examples import check_findings, inspect_examples, verify_saved_checks
 from reviewer.segments import segment
 
 
@@ -67,3 +67,16 @@ class JsonExampleTests(unittest.TestCase):
         checks["examples"][0]["status"] = "invalid"
         with self.assertRaisesRegex(ValueError, "расходится"):
             validate_report(report)
+
+    def test_legacy_python_314_comma_position_replays_across_decoders(self):
+        for body, comma_column, kind in (('{"fee": 0,', 10, "object"), ('[0,', 3, "array")):
+            lines = ["~~~json", body, "", "}" if kind == "object" else "]", "~~~"]
+            expected = inspect(lines)
+            self.assertEqual(expected["examples"][0]["line"], 4)
+            saved_item = dict(expected["examples"][0], line=2, column=comma_column,
+                              diagnostic=f"Illegal trailing comma before end of {kind}")
+            saved = dict(expected, examples=[saved_item])
+            self.assertEqual(verify_saved_checks(saved, lines, segment(lines)), expected)
+            saved_item["column"] -= 1
+            with self.assertRaisesRegex(ValueError, "расходится"):
+                verify_saved_checks(saved, lines, segment(lines))
