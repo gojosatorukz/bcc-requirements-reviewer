@@ -171,6 +171,22 @@ def simulate(report, finding_id, case):
     return witness_vm.simulate(item["program"], lines, case, targets(report)[finding_id])
 
 
+def verify_source(report, path):
+    """Check original bytes, extracted lines and PDF page boundaries against the saved report."""
+    from .input import load_document
+
+    lines, digest, metadata = load_document(path)
+    run = report["run"]
+    if run["input_sha256"] != digest:
+        raise ValueError("SHA-256 переданного ТЗ отличается от входного файла прогона")
+    expected = [{"line": i, "text": text} for i, text in enumerate(lines, 1) if text.strip()]
+    if run["input_lines"] != len(lines) or expected != report["source"]:
+        raise ValueError("Извлечённые строки оригинального ТЗ расходятся с источником отчёта")
+    if any(run.get(key) != metadata.get(key) for key in ("page_count", "pages")):
+        raise ValueError("Привязка исходных страниц отчёта отличается от оригинального ТЗ")
+    return digest
+
+
 def main():
     from .__main__ import engine_digest, run_usage, version, write_report
     from .full_render import validate_report
@@ -179,6 +195,7 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     replay = commands.add_parser("replay", help="Проверить и повторить расчёты из JSON без модели")
     replay.add_argument("report", type=Path)
+    replay.add_argument("--source", type=Path, help="Сверить байты, строки и PDF-страницы с исходным ТЗ")
     explore = commands.add_parser("simulate", help="Посчитать результаты на других входных значениях")
     explore.add_argument("report", type=Path)
     explore.add_argument("--finding", required=True, metavar="D-ID")
@@ -199,6 +216,9 @@ def main():
             print(json.dumps(trace, ensure_ascii=False, indent=2))
             return
         lines = validate_report(report)
+        if args.command == "replay" and args.source:
+            digest = verify_source(report, args.source)
+            print(f"Исходный документ подтверждён · SHA-256 {digest}")
         if args.command == "build":
             if args.output.resolve() == args.report.resolve() or args.output.suffix.lower() != ".json":
                 raise ValueError("Укажите отдельный выходной файл JSON")

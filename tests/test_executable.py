@@ -1,4 +1,7 @@
 from copy import deepcopy
+from hashlib import sha256
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -77,3 +80,17 @@ class ExecutableStageTests(TestCase):
         self.assertEqual(section["items"], [])
         self.assertEqual(attempts, [])
         provider.assert_not_called()
+
+    def test_source_verification_compares_bytes_and_saved_extraction(self):
+        with TemporaryDirectory() as directory:
+            source = Path(directory) / "акт.md"
+            source.write_bytes("Строка\n\nДругая строка\n".encode())
+            report = {"run": {"input_lines": 3, "input_sha256": sha256(source.read_bytes()).hexdigest()},
+                      "source": [{"line": 1, "text": "Строка"}, {"line": 3, "text": "Другая строка"}]}
+            self.assertEqual(executable.verify_source(report, source), report["run"]["input_sha256"])
+            report["source"][1]["text"] = "Иная строка"
+            with self.assertRaisesRegex(ValueError, "строки оригинального"):
+                executable.verify_source(report, source)
+            source.write_text("Новая версия")
+            with self.assertRaisesRegex(ValueError, "SHA-256"):
+                executable.verify_source(report, source)
