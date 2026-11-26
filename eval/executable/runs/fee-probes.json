@@ -1,0 +1,40 @@
+{
+  "report_sha256": "eb66cdb3518c7fc5704882848ac2884b948f4f591d6e978e6d1ff3b927d4a792",
+  "preregistered_examples": [
+    {
+      "payments_tiyin": [
+        399,
+        401
+      ],
+      "round_each": 9,
+      "round_daily_total": 10,
+      "first_difference": {
+        "step": 3,
+        "field": "fee",
+        "first": 9,
+        "second": 10
+      }
+    },
+    {
+      "payments_tiyin": [
+        399,
+        400
+      ],
+      "round_each": 9,
+      "round_daily_total": 9,
+      "first_difference": null
+    },
+    {
+      "payments_tiyin": [
+        400,
+        400
+      ],
+      "round_each": 10,
+      "round_daily_total": 10,
+      "first_difference": null
+    }
+  ],
+  "positive_pairs_covering_all_remainders_modulo_80": 6400,
+  "total": 6403,
+  "different_at_day_close": 3161
+}
