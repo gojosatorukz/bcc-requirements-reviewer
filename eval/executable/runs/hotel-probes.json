@@ -1,0 +1,74 @@
+{
+  "report_sha256": "de5daf391965f4a8509908ccfcf0c486b95bebcc641460ede37f4e7cda23f7ab",
+  "preregistered_examples": [
+    {
+      "book": 71900,
+      "authorization": 28600,
+      "capture": 17400,
+      "first_difference": {
+        "step": 2,
+        "field": "available",
+        "first": 43300,
+        "second": 54500
+      },
+      "final": {
+        "first": {
+          "available": 43300,
+          "balance": 54500,
+          "held": 11200
+        },
+        "second": {
+          "available": 54500,
+          "balance": 54500,
+          "held": 0
+        }
+      }
+    },
+    {
+      "book": 71900,
+      "authorization": 28600,
+      "capture": 28599,
+      "first_difference": {
+        "step": 2,
+        "field": "available",
+        "first": 43300,
+        "second": 43301
+      },
+      "final": {
+        "first": {
+          "available": 43300,
+          "balance": 43301,
+          "held": 1
+        },
+        "second": {
+          "available": 43301,
+          "balance": 43301,
+          "held": 0
+        }
+      }
+    },
+    {
+      "book": 71900,
+      "authorization": 28600,
+      "capture": 28600,
+      "first_difference": null,
+      "final": {
+        "first": {
+          "available": 43300,
+          "balance": 43300,
+          "held": 0
+        },
+        "second": {
+          "available": 43300,
+          "balance": 43300,
+          "held": 0
+        }
+      }
+    }
+  ],
+  "all_valid_triples_up_to_balance_20": 1540,
+  "seeded_cases": 256,
+  "seed": 20261127,
+  "total": 1799,
+  "cases_with_equal_final_results": 211
+}
