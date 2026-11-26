@@ -89,6 +89,17 @@ class NamedDomainTests(TestCase):
             with self.assertRaises(ValueError):
                 execute(p, LINES)
 
+    def test_numeric_condition_can_select_a_grounded_named_result(self):
+        p = program()
+        p["domains"].pop()
+        p["inputs"] = [{"key": "stock", "label": "Доступный остаток", "unit": "шт."}]
+        for case, stock in (("scenario", 1), ("control", 0)):
+            p[case]["events"][0]["values"] = [{"key": "stock", "value": stock}]
+        for side, cutoff in (("first", 1), ("second", 0)):
+            p[side]["rules"][0]["updates"][0]["expr"] = f"'HELD' if stock > {cutoff} else 'WAIT'"
+        trace = execute(p, LINES)
+        self.assertEqual(trace["scenario"]["final"], {"first": {"status": "WAIT"}, "second": {"status": "HELD"}})
+
     def test_json_type_union_distinguishes_boolean_and_numeric_fields_stay_numeric(self):
         scalar = {"type": ["integer", "string"]}
         for value in (1, "READY"):

@@ -114,10 +114,13 @@ def _cites_option(value, ref, lines):
     line = lines.get(ref["line"], "")
     quote = ref["quote"]
     # Test the word boundary in the full source. The citation itself may end mid-token.
-    for candidate in re.finditer(re.escape(value), quote):
-        pattern = (re.escape(quote[:candidate.start()]) + r"(?<![\w-])" + re.escape(value) +
-                   r"(?![\w-])" + re.escape(quote[candidate.end():]))
-        if re.search(pattern, line):
+    if value not in quote or quote not in line:
+        return False
+    token = r"(?<![\w-])" + re.escape(value) + r"(?![\w-])"
+    for match in re.finditer(token, line):
+        # An exact occurrence of the full quote must enclose this particular token.
+        earliest = max(0, match.end() - len(quote))
+        if line.find(quote, earliest, match.start() + len(quote)) >= 0:
             return True
     return False
 
