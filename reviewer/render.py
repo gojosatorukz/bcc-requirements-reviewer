@@ -144,8 +144,11 @@ def render_fields(fields):
 
 def render_report(report):
     version = report.get("schema_version") if isinstance(report, dict) else None
+    if type(version) is int and version == 2:
+        from .full_render import render_full
+        return render_full(report)
     if type(version) is not int or version != 1:
-        raise ValueError("Поддерживается только версия 1 формата отчёта")
+        raise ValueError("Поддерживаются версии 1 и 2 формата отчёта")
     conflicts = report["conflicts"]
     validate_shape({"conflicts": conflicts}, REVIEW, "review")
     lines = source_lines(report)
