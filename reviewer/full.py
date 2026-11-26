@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 import json
+import re
 from pathlib import Path
 import sys
 from tempfile import NamedTemporaryFile
@@ -107,8 +108,16 @@ def check_batch(response, blocks, lines):
         raise ValueError("Нужен один результат для каждого start: " + str(list(by_start)))
     for row in response["rows"]:
         block = by_start[row["start"]]
-        if block["kind"] == "пример json" and not row["items"]:
-            raise ValueError(f"Не проверен пример JSON в блоке {row['start']}")
+        header = lines.get(block.get("header"), "")
+        source = lines.get(block["start"], "")
+        contract_table = re.search(r"ожидаемый результат|expected result|\bparameter\b|параметр", header, re.I)
+        named = original_id(source, header)
+        content_row = bool(source.strip(" |"))
+        if not row["items"] and (block["kind"] == "пример json" or (
+            content_row and block["kind"] in {"текст", "строка таблицы"}
+            and (contract_table or (named != "—" and not named.isdecimal()))
+        )):
+            raise ValueError(f"В блоке {row['start']} отсутствует проверка явно обозначенного требования или примера")
         for item in row["items"]:
             cite = item["evidence"]
             if not block["start"] <= cite["line"] <= block["end"]:
@@ -205,7 +214,7 @@ def analyze(blocks, lines, model, checkpoint, digest):
         for item in row["items"] if row else []:
             rid = f"R-{len(registry)+1:03d}"
             b["requirements"].append(rid)
-            registry.append(dict(item, id=rid, start=b["start"], original_id=original_id(source[b["start"]])))
+            registry.append(dict(item, id=rid, start=b["start"], original_id=original_id(source[b["start"]], source.get(b.get("header"), ""))))
     flags = [r["id"] for r in registry if r["status"] == "нужно уточнение"]
     payload = {"source": source, "registry": [{k:r[k] for k in ("id","statement","status","assessment","evidence")}
                                                for r in registry],
@@ -218,8 +227,13 @@ def analyze(blocks, lines, model, checkpoint, digest):
     return {"segments": segments, "registry": registry, "whole": whole, **candidates}, attempts + events
 
 
-def original_id(text):
-    import re
+def original_id(text, header=""):
+    if header:
+        labels = [cell.strip().lower() for cell in header.strip().strip("|").split("|")]
+        cells = [cell.strip().strip("*` ") for cell in text.strip().strip("|").split("|")]
+        for label, value in zip(labels, cells):
+            if label in {"id", "req id", "requirement id", "идентификатор", "id требования", "номер требования"} and value:
+                return value
     match = re.match(r"^\s*(?:[-*]\s+)?(?:\*\*)?([\w]+[-–]\d+(?:\.\d+)*)\b", text)
     if not match:
         match = re.match(r"^\s*(\d+)\.(?=\s)", text)

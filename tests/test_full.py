@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from reviewer.full import AXES, analyze, check_batch
+from reviewer.full import AXES, analyze, check_batch, original_id
 from reviewer.render import render_report
 
 
@@ -59,6 +59,13 @@ class FullReviewTest(unittest.TestCase):
         damaged["whole"]["findings"].clear()
         with self.assertRaisesRegex(ValueError, "без решения"):
             render_report(damaged)
+
+    def test_table_identity_and_missing_parameter_review(self):
+        lines = {1: "| Parameter | Type |", 3: "| amount | integer |"}
+        self.assertEqual(original_id("| Transfer | PAY-20 |", "| Name | Requirement ID |"), "PAY-20")
+        with self.assertRaises(ValueError):
+            check_batch({"rows": [{"start": 3, "items": []}]},
+                        [{"start": 3, "end": 3, "header": 1, "kind": "строка таблицы"}], lines)
 
     def test_fabricated_anchor_is_rejected_even_with_correct_start(self):
         row = {"start": 1, "items": [{"evidence": {"line": 1, "quote": "нет"}}]}

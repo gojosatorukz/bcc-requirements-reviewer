@@ -124,10 +124,12 @@ def render_attempts(attempts):
     items = []
     for attempt in attempts:
         status = attempt["status"]
+        stage = safe(attempt["stage"]) + " · " if "stage" in attempt else ""
+        restored = " · из контрольной точки" if attempt.get("restored") else ""
         reason = f"<p>{safe(attempt['reason'])}</p>" if "reason" in attempt else ""
         items.append(f"""
         <li>
-          <p><strong>{safe(ATTEMPT_STATUS.get(status, status))}</strong></p>
+          <p><strong>{stage}{safe(ATTEMPT_STATUS.get(status, status))}{restored}</strong></p>
           {reason}
           {render_usage(attempt['usage'])}
         </li>""")
