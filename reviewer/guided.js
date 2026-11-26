@@ -17,13 +17,15 @@
   function readCases(report) {
     const result = [];
     for (const finding of report.whole?.findings ?? []) {
-      if (finding.priority !== "критический" || finding.category !== "нарушение") continue;
+      const critical = finding.priority === "критический";
+      const executed = executions.get(finding.id)?.status === 'executed';
+      if (finding.category !== "нарушение" || (!critical && !executed)) continue;
       const cited = new Set(finding.evidence.map(item => item.line));
-      const witnesses = finding.triage ? (finding.triage.witness ?? []) :
+      const witnesses = critical && finding.triage ? (finding.triage.witness ?? []) :
         (finding.candidates ?? []).map(n => report.conflicts?.[n - 1]);
       for (const witness of witnesses) {
         if (witness?.scenario && [witness.first, witness.second].every(side => side?.outcome && cited.has(side.source?.line))) {
-          result.push({finding, witness, canRecord:witnesses.length === 1});
+          result.push({finding, witness, canRecord:critical && witnesses.length === 1});
         }
       }
     }
@@ -117,7 +119,7 @@
           link.rel = 'noopener';
           link.setAttribute('aria-label', link.textContent + ' · открыть полный отчёт в новой вкладке');
         }
-        window.dispatchEvent(new CustomEvent('review:execution-panel', {detail:{panel, item,
+        window.dispatchEvent(new CustomEvent('review:execution-panel', {detail:{panel, item, reportUrl,
           endpoint:'/api/simulate/' + match[1] + '/' + match[2] + '/' + fid}}));
         fresh.set(fid, panel);
       }
@@ -241,7 +243,18 @@
     index = 0;
     root.hidden = !cases.length;
     if (cases.length) render(); else root.replaceChildren();
+    window.dispatchEvent(new CustomEvent('review:guide-findings', {detail:{key, ids:cases.map(c => c.finding.id)}}));
     if (cases.length && executions.size) loadPanels(key);
+  });
+
+  window.addEventListener('review:show-finding', ({detail}) => {
+    if (detail.key !== decisionKey) return;
+    const next = cases[index]?.finding.id === detail.finding ? index : cases.findIndex(c => c.finding.id === detail.finding);
+    if (next < 0) return;
+    index = next;
+    positions[index].stage = 0;
+    render(true);
+    root.scrollIntoView({block:'start'});
   });
 
   window.addEventListener("review:dialogue", ({detail}) => {

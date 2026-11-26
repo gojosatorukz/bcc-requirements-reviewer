@@ -71,6 +71,12 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 .owner-result strong{display:block;margin-bottom:.35rem}
 .workspace .aside-cards{display:grid;gap:1.35rem;min-width:0}
 #discussion form{display:grid;gap:.65rem}
+.discussion-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:.25rem .6rem}
+#discussion-return{border:0;padding:.25rem 0;background:transparent;color:var(--accent);font:inherit;font-size:.85rem;font-weight:640;text-decoration:underline;text-underline-offset:.16rem;cursor:pointer}
+#discussion-search summary{width:fit-content;font-size:.9rem;font-weight:650;cursor:pointer}
+#discussion-search label{display:block;margin:.4rem 0 .25rem}
+#discussion-query{width:100%;padding:.52rem .65rem;border:1px solid var(--line);border-radius:.48rem;background:var(--panel);color:var(--ink);font:inherit}
+#discussion-count,#discussion-owner{font-size:.88rem;color:var(--muted)}
 #discussion label{font-weight:700}
 #discussion select,#discussion textarea{width:100%;padding:.55rem .68rem;border:1px solid var(--line);border-radius:.5rem;background:var(--paper);color:var(--ink);font:inherit}
 #discussion textarea{resize:vertical;min-height:5.5rem}
@@ -205,7 +211,7 @@ a{color:var(--accent);text-underline-offset:.18em}
         <h3>Статус проверки</h3>
         <p id="status-message" role="status" aria-atomic="true"></p>
         <div id="coverage" hidden>
-          <label id="coverage-label" for="coverage-meter"></label>
+          <label id="coverage-label" for="coverage-meter" aria-live="polite" aria-atomic="true"></label>
           <progress id="coverage-meter"></progress>
         </div>
         <ol id="run-log" aria-label="Завершённые этапы" aria-live="polite" hidden></ol>
@@ -222,11 +228,18 @@ a{color:var(--accent);text-underline-offset:.18em}
     </section>
     <div class="aside-cards">
     <section class="card" id="discussion" aria-labelledby="discussion-title" hidden>
-      <h2 id="discussion-title">Ответ владельца</h2>
+      <div class="discussion-head"><h2 id="discussion-title">Ответ владельца</h2><button type="button" id="discussion-return" hidden>Вернуться к разбору</button></div>
       <p id="discussion-baseline" class="muted"></p>
       <form id="discussion-form">
+        <details id="discussion-search" hidden>
+          <summary>Найти замечание</summary>
+          <label for="discussion-query">Номер, тема или адресат</label>
+          <input id="discussion-query" type="search" autocomplete="off" aria-controls="discussion-finding">
+          <p id="discussion-count" role="status"></p>
+        </details>
         <label for="discussion-finding">Замечание</label>
         <select id="discussion-finding"></select>
+        <p id="discussion-owner"></p>
         <p id="discussion-question"></p>
         <div id="discussion-details"></div>
         <label for="discussion-answer">Ваш ответ</label>
@@ -276,6 +289,7 @@ try { ownerDecisions = JSON.parse(sessionStorage.getItem(decisionKey)) || {}; }
 catch { ownerDecisions = {}; }
 const baselineVersions = new Map();
 let guidedBaseline = null;
+let guidedFindings = new Set();
 let discussion = null;
 const discussions = new Map();
 const discussionDrafts = new Map();
@@ -556,13 +570,18 @@ function showProgress(progress) {
 
 function showCoverage(coverage) {
   const panel = get('coverage');
-  panel.hidden = !coverage || !Number.isInteger(coverage.total) || coverage.total <= 0;
+  const examples = coverage?.phase === 'executables';
+  const checked = examples ? coverage.proofs_checked : coverage?.checked;
+  const total = examples ? coverage.proofs_total : coverage?.total;
+  panel.hidden = !Number.isInteger(checked) || !Number.isInteger(total) || total <= 0 || checked < 0 || checked > total;
   if (panel.hidden) return;
-  const {checked, total} = coverage;
-  get('coverage-label').textContent = 'Проверено групп строк: ' + checked + ' из ' + total;
+  const label = (examples ? 'Готово проверок примеров ' : 'Проверено групп строк ') + checked + ' из ' + total;
+  const heading = get('coverage-label');
+  if (heading.textContent !== label) heading.textContent = label;
   const meter = get('coverage-meter');
   meter.max = total;
   meter.value = checked;
+  meter.setAttribute('aria-valuetext', label);
 }
 
 async function request(path, options, withHash = false) {
@@ -612,17 +631,47 @@ function viewAnswers(view) {
   return discussions.get(view.key) || new Map();
 }
 
+function filterDiscussion(preferred = get('discussion-finding').value) {
+  if (!discussion) return;
+  const norm = text => text.toLocaleLowerCase('ru').replace(/ё/g, 'е').replace(/[‐‑‒–—]/g, '-');
+  const terms = norm(get('discussion-query').value).trim().split(/\s+/).filter(Boolean);
+  const matches = discussion.findings.filter(f => {
+    const text = norm([f.id, f.title, f.question, f.owner, f.priority, f.category].join(' '));
+    return terms.every(term => text.includes(term));
+  });
+  const selector = get('discussion-finding');
+  selector.replaceChildren(...matches.map(f => new Option(f.id + ' · ' + f.title, f.id)));
+  if (matches.some(f => f.id === preferred)) selector.value = preferred;
+  get('discussion-count').textContent = matches.length ? 'Найдено ' + matches.length + ' из ' + discussion.findings.length
+    : 'Совпадений нет. Измените запрос.';
+  get('discussion-state').textContent = '';
+  renderDiscussion();
+}
+
 function renderDiscussion() {
   const view = discussion;
   if (!view) return;
   const fid = get('discussion-finding').value;
   const finding = view.findings.find(item => item.id === fid);
-  if (!finding) return;
+  const back = get('discussion-return');
+  back.hidden = !finding || !guidedFindings.has(fid);
+  back.textContent = 'К разбору ' + fid + ' ↑';
+  get('discussion-query').disabled = answering;
+  get('discussion-finding').disabled = answering || !finding;
+  get('discussion-question').hidden = !finding;
+  get('discussion-owner').textContent = finding?.owner ? 'Адресат · ' + finding.owner : '';
+  if (!finding) {
+    get('discussion-details').replaceChildren();
+    get('discussion-answer').value = '';
+    get('discussion-answer').disabled = true;
+    get('discussion-submit').disabled = true;
+    get('discussion-recheck').hidden = true;
+    return;
+  }
   const entry = viewAnswers(view).get(fid);
   const record = entry?.record;
   const followUp = record?.state === 'needs_followup';
   get('discussion-question').textContent = entry?.question || finding.question;
-  get('discussion-finding').disabled = answering;
   const details = get('discussion-details');
   details.replaceChildren();
   if (record) {
@@ -678,9 +727,10 @@ async function mountDiscussion(baseline, sha, key, findings, label) {
   get('discussion').hidden = !view;
   if (!view) return;
   get('discussion-baseline').textContent = label;
-  get('discussion-finding').replaceChildren(...findings.map(f => new Option(f.id + ' · ' + f.title, f.id)));
-  get('discussion-state').textContent = '';
-  renderDiscussion();
+  get('discussion-search').hidden = findings.length < 9;
+  get('discussion-search').open = false;
+  get('discussion-query').value = '';
+  filterDiscussion(findings[0].id);
   try {
     await readDiscussion(view);
   } catch (error) {
@@ -688,6 +738,14 @@ async function mountDiscussion(baseline, sha, key, findings, label) {
   }
 }
 
+get('discussion-query').addEventListener('input', () => filterDiscussion());
+get('discussion-return').addEventListener('click', () => {
+  if (discussion) window.dispatchEvent(new CustomEvent('review:show-finding',
+    {detail:{key:discussion.key, finding:get('discussion-finding').value}}));
+});
+window.addEventListener('review:guide-findings', ({detail}) => {
+  if (detail.key === guidedBaseline?.key) guidedFindings = new Set(detail.ids);
+});
 get('discussion-finding').addEventListener('change', () => {
   get('discussion-state').textContent = '';
   renderDiscussion();
@@ -699,8 +757,8 @@ get('discussion-answer').addEventListener('input', event => {
 });
 window.addEventListener('review:write-answer', ({detail}) => {
   if (!discussion || detail.key !== discussion.key) return;
-  get('discussion-finding').value = detail.finding;
-  renderDiscussion();
+  get('discussion-query').value = '';
+  filterDiscussion(detail.finding);
   get('discussion').scrollIntoView({block:'center'});
   get('discussion-answer').focus({preventScroll:true});
 });
@@ -722,7 +780,7 @@ get('discussion-form').addEventListener('submit', async event => {
     viewAnswers(view).set(fid, entry);
     discussionDrafts.delete(view.key + ':' + fid);
     if (view === discussion) {
-      status.textContent = entry.record.state === 'ready' ? 'Правило сохранено. Загрузите исправленное ТЗ для проверки.' : 'Агент задал уточняющий вопрос.';
+      if (get('discussion-finding').value === fid) status.textContent = entry.record.state === 'ready' ? 'Правило сохранено. Загрузите исправленное ТЗ для проверки.' : 'Агент задал уточняющий вопрос.';
       if (session.last?.mode === 'recheck' && session.last.baseline === view.baseline && !busy) dismissRecheck();
       refreshDiscussionLinks(view);
     }
@@ -730,7 +788,7 @@ get('discussion-form').addEventListener('submit', async event => {
     if (error.status === 409) {
       try { await readDiscussion(view); } catch { view.loaded = false; }
     }
-    if (view === discussion) status.textContent = error.message;
+    if (view === discussion && get('discussion-finding').value === fid) status.textContent = error.message;
   } finally {
     answering = false;
     renderDiscussion();
@@ -874,7 +932,7 @@ async function poll(run) {
     showProgress(Array.isArray(status.progress) ? status.progress : []);
     showCoverage(status.coverage);
     const phase = {groups:'Проверяем группы строк и сценарии', whole:'Сопоставляем требования по всему ТЗ',
-      render:'Собираем отчёт'}[status.coverage?.phase];
+      executables:'Проверяем исполняемые примеры', render:'Собираем отчёт'}[status.coverage?.phase];
     const description = status.state === 'running' && phase ? phase : stateLabels[status.state];
     setStatus(label + ' · ' + (description || 'Ожидаем статус'), status.state === 'failed',
       status.state === 'queued' || status.state === 'running');

@@ -17,7 +17,8 @@ const root = {
 };
 const sandbox = {
   document: { getElementById() { return root; } },
-  window: { addEventListener(name, listener) {
+  CustomEvent: class { constructor(type, options) { Object.assign(this, {type}, options); } },
+  window: { dispatchEvent() {}, addEventListener(name, listener) {
     if (name === 'review:loaded') {
       const report = JSON.parse(fs.readFileSync(0, 'utf-8'));
       listener({ detail: { report, reportUrl: '/review.html' } });
