@@ -71,6 +71,13 @@ def check_protocol(name, report, pairs):
         for anchors, _ in pairs:
             require(not (anchors.intersection(range(30, 38)) and anchors.intersection(range(40, 47))),
                     "ledger: правила разных версий представлены как один критический конфликт")
+    if name in ("named-state", "named-state-aligned"):
+        items = [item for anchors, item in pairs if anchors == {13, 22}]
+        require(len(items) == int(name == "named-state"),
+                f"{name}: неверное число подтверждённых пар об ответе GET после временной недоступности")
+        if items and items[0]["status"] == "unsupported":
+            require(all(x in items[0]["reason"] for x in ("AWAITING_SIGNATURE", "MANUAL_REVIEW")),
+                    "named-state: при отказе потеряны исходные значения поля")
     if name in ("sdk-original", "sdk-fixed"):
         target = []
         for finding in report["whole"]["findings"]:
