@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import sys
 import tempfile
 import time
 
@@ -38,6 +37,25 @@ def write_report(path, value):
             Path(name).unlink(missing_ok=True)
 
 
+def review_document(prompt, model, lines):
+    """Allow one fresh attempt to repair an invalid model response."""
+    attempts = []
+    next_prompt = prompt
+    for attempt in range(2):
+        result, usage = codex_provider.complete(next_prompt, model)
+        try:
+            validate_review(result, lines)
+        except ValueError as exc:
+            if attempt:
+                raise
+            attempts.append({"status": "rejected", "reason": str(exc), "usage": usage})
+            next_prompt = (prompt + "\n\nПредыдущая попытка отклонена при проверке структуры или цитаты: "
+                           + str(exc) + ". Повторно проверь документ и составь полный ответ заново.")
+        else:
+            attempts.append({"status": "accepted", "usage": usage})
+            return result, attempts
+
+
 def main():
     parser = argparse.ArgumentParser(description="Поиск смысловых противоречий в требованиях")
     parser.add_argument("document", type=Path)
@@ -49,22 +67,30 @@ def main():
             raise ValueError("Пути документа и отчёта должны различаться")
         if args.document.suffix.lower() not in {".md", ".txt"} or args.report.suffix.lower() != ".json":
             raise ValueError("Ожидаются вход .md/.txt и выход .json")
-        raw = args.document.read_bytes()
+        with args.document.open("rb") as stream:
+            raw = stream.read(120_001)
+        if len(raw) > 120_000:
+            raise ValueError("Этот режим принимает до 120 000 байт за один запрос")
         lines = raw.decode("utf-8-sig").splitlines()
         blocks = [{"line": n, "text": line} for n, line in enumerate(lines, 1) if line.strip()]
         if not blocks:
             raise ValueError("Документ пуст")
-        if len(raw) > 120_000:
-            raise ValueError("Этот режим принимает до 120 000 байт за один запрос")
+        revision = version()
         started = datetime.now(timezone.utc).isoformat()
         clock = time.monotonic()
         prompt = INSTRUCTIONS + "\n\nДокумент:\n" + json.dumps(blocks, ensure_ascii=False)
-        result, usage = codex_provider.complete(prompt, args.model)
-        validate_review(result, lines)
+        result, attempts = review_document(prompt, args.model, lines)
+        usage = None
+        if all(isinstance(attempt["usage"], dict) for attempt in attempts):
+            usage = {}
+            for attempt in attempts:
+                for key, value in attempt["usage"].items():
+                    if type(value) is int:
+                        usage[key] = usage.get(key, 0) + value
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
-               "provider": "codex-cli", "model": args.model, "agent_version": version(),
+               "provider": "codex-cli", "model": args.model, "agent_version": revision,
                "input_name": args.document.name, "input_sha256": hashlib.sha256(raw).hexdigest(),
-               "input_lines": len(lines), "usage": usage}
+               "input_lines": len(lines), "usage": usage, "attempts": attempts}
         report = {"schema_version": 1, "scope": "Проверка поведенческих противоречий",
                   "run": run, "source": blocks, "conflicts": result["conflicts"]}
         write_report(args.report, report)
