@@ -43,13 +43,14 @@ def validate_report(report):
         check_batch(batch, [base], lines)
     if seen != list(records):
         raise ValueError("Реестр пропускает или дублирует пункты")
-    validate_review({"conflicts": report["conflicts"]}, lines)
+    http_status_policy = report.get("http_status_policy")
+    validate_review({"conflicts": report["conflicts"]}, lines, http_status_policy=http_status_policy)
     clean = dict(whole, findings=[{k:v for k,v in f.items() if k != "id"} for f in whole["findings"]])
     policy = report.get("priority_policy")
     if policy is not None and policy != priority.POLICY:
         raise ValueError("Неизвестная версия шкалы приоритетов")
     validate_shape(clean, RANKED_WHOLE if policy else WHOLE, "whole")
-    check_whole(whole, registry, report["conflicts"], lines)
+    check_whole(whole, registry, report["conflicts"], lines, http_status_policy=http_status_policy)
     if policy:
         check_critical_sources(whole, report["conflicts"])
         for f in whole["findings"]:

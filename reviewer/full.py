@@ -10,7 +10,10 @@ from tempfile import NamedTemporaryFile
 from time import monotonic
 
 from . import codex_provider, priority
-from .contract import EVIDENCE, INSTRUCTIONS, REVIEW, TEXT, record, validate_review, validate_shape
+from .contract import (
+    EVIDENCE, HTTP_STATUS_INSTRUCTIONS, HTTP_STATUS_POLICY, INSTRUCTIONS, REVIEW, TEXT,
+    record, source_http_statuses, validate_review, validate_shape, validate_witness_http,
+)
 from .json_examples import check_findings, inspect_examples
 from .segments import segment
 
@@ -147,7 +150,7 @@ def check_batch(response, blocks, lines):
             citations([cite], lines)
 
 
-def check_whole(result, registry, candidates, lines):
+def check_whole(result, registry, candidates, lines, *, http_status_policy=None):
     if sorted(d["criterion"] for d in result["dimensions"]) != sorted(AXES):
         raise ValueError("Нужна отдельная оценка каждой из пяти осей")
     known = {r["id"] for r in registry}
@@ -165,9 +168,12 @@ def check_whole(result, registry, candidates, lines):
         raise ValueError("Локальные замечания без решения: " + str(sorted(flags - reviewed)))
     if sorted(adjudicated) != list(range(1, len(candidates) + 1)):
         raise ValueError("Нужно распределить по одному разу номера кандидатов: " + str(list(range(1, len(candidates)+1))))
-    for finding in result["findings"]:
+    statuses = source_http_statuses(lines, http_status_policy)
+    for number, finding in enumerate(result["findings"], 1):
         if finding["category"] == "открытый вопрос" and finding["priority"] == "критический":
             raise ValueError("Критическое нарушение требует доказанного дефекта")
+        for witness in finding.get("triage", {}).get("witness", ()):
+            validate_witness_http(witness, statuses, f"Замечание {number}, свидетельство")
     for row in [*result["dimensions"], result["development"], result["testing"]]:
         citations(row["evidence"], lines)
 
@@ -266,7 +272,8 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6):
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         behavioral = pool.submit(call_stage, "Сценарии", INSTRUCTIONS, blocks, REVIEW,
-                                 lambda r: validate_review(r, source), model, checkpoint, digest)
+                                 lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
+                                 model, checkpoint, digest)
         local_results = list(pool.map(local, chunks))
         candidates, attempts = behavioral.result()
     marks = {}
@@ -291,7 +298,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6):
     payload = {"source": source, "registry": index,
                "local_flags": flags, "candidates": [dict(c, id=i) for i, c in enumerate(candidates["conflicts"], 1)]}
     invalid_examples = [e for e in json_checks["examples"] if e["status"] == "invalid"]
-    instruction = GLOBAL + priority.INSTRUCTIONS
+    instruction = GLOBAL + priority.INSTRUCTIONS + HTTP_STATUS_INSTRUCTIONS
     if invalid_examples:
         payload["invalid_json_examples"] = invalid_examples
         instruction += ("\nПарсер отклонил перечисленные JSON-примеры. Для каждого отрази нарушение "
@@ -300,7 +307,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6):
 
     def verify_whole(result):
         ranked = materialize(result)
-        check_whole(ranked, registry, candidates["conflicts"], source)
+        check_whole(ranked, registry, candidates["conflicts"], source, http_status_policy=HTTP_STATUS_POLICY)
         check_critical_sources(ranked, candidates["conflicts"])
         check_findings(json_checks, ranked["findings"])
 

@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import tempfile
 
-from .contract import REVIEW, source_lines, validate_shape
+from .contract import REVIEW, source_lines, validate_review, validate_shape
 
 
 RUN_FIELDS = {
@@ -165,8 +165,11 @@ def render_report(report):
     if type(version) is not int or version != 1:
         raise ValueError("Поддерживаются версии 1 и 2 формата отчёта")
     conflicts = report["conflicts"]
-    validate_shape({"conflicts": conflicts}, REVIEW, "review")
     lines = source_lines(report)
+    if (policy := report.get("http_status_policy")) is not None:
+        validate_review({"conflicts": conflicts}, lines, http_status_policy=policy)
+    else:
+        validate_shape({"conflicts": conflicts}, REVIEW, "review")
     backlinks = defaultdict(list)
     if conflicts:
         review = "".join(render_conflict(n, item, lines, backlinks) for n, item in enumerate(conflicts, 1))

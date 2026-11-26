@@ -9,7 +9,7 @@ import tempfile
 import time
 
 from . import codex_provider
-from .contract import INSTRUCTIONS, validate_review
+from .contract import HTTP_STATUS_POLICY, INSTRUCTIONS, validate_review
 from .input import load_document
 
 
@@ -61,12 +61,12 @@ def review_document(prompt, model, lines):
     for attempt in range(2):
         result, usage = codex_provider.complete(next_prompt, model)
         try:
-            validate_review(result, lines)
+            validate_review(result, lines, http_status_policy=HTTP_STATUS_POLICY)
         except ValueError as exc:
             if attempt:
                 raise
             attempts.append({"status": "rejected", "reason": str(exc), "usage": usage})
-            next_prompt = (prompt + "\n\nПредыдущая попытка отклонена при проверке структуры или цитаты: "
+            next_prompt = (prompt + "\n\nПредыдущая попытка отклонена при проверке ответа: "
                            + str(exc) + ". Повторно проверь документ и составь полный ответ заново.")
         else:
             attempts.append({"status": "accepted", "usage": usage})
@@ -128,6 +128,7 @@ def main():
             run["max_workers"] = args.workers
         scope = "Проверка поведенческих противоречий" if args.conflicts_only else "Полное ревью требований"
         report = {"schema_version": 1 if args.conflicts_only else 2, "scope": scope, "run": run,
+                  "http_status_policy": HTTP_STATUS_POLICY,
                   "source": blocks, **result}
         write_report(args.report, report)
     except (OSError, ValueError) as exc:
