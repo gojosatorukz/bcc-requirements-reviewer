@@ -104,7 +104,7 @@ def render_passport(run, schema_version):
       {render_fields(fields)}
       <h3 class="tokens-heading">Токены</h3>
       {render_usage(run['usage'])}
-      {render_attempts(run.get('attempts'))}
+{render_attempts(run.get('attempts'))}
     </section>"""
 
 
@@ -192,14 +192,14 @@ def render_report(report):
         </nav>
       </div>
     </div>
-    {review}
+{review}
     <section class="report-section" aria-labelledby="source">
       <h2 id="source" tabindex="-1">Текст ТЗ</h2>
       <p class="section-note">Непустые строки из снимка прогона с исходными номерами.</p>
       <ol class="source-list" role="list">{render_source(lines, backlinks)}
       </ol>
     </section>
-    {render_passport(report['run'], version)}
+{render_passport(report['run'], version)}
   </main>
 </body>
 </html>
