@@ -15,7 +15,7 @@ from .__main__ import engine_digest, run_usage, version, write_report
 from .contract import EVIDENCE, TEXT, record, source_lines, validate_shape
 from .full import array, call_stage, choice, citations
 from .full_render import validate_report
-from .input import load_document
+from .input import INPUT_LIMITS, load_document
 from . import clarification_check, owner_decision
 
 
@@ -246,7 +246,7 @@ def recheck(previous_path, revised_path, model, selected=(), *, decisions=(), ba
     findings = [issue["finding"] for issue in issues]
     old_run = previous["run"]
     revision = version()
-    digest = engine_digest("recheck.py", "full.py", "full_render.py", "input.py", "segments.py",
+    digest = engine_digest("recheck.py", "full.py", "full_render.py", "input.py", "word_input.py", "segments.py",
                            "json_examples.py", "priority.py", "owner_decision.py", "clarification_check.py",
                            *(["clarify.py"] if dialogues else []))
     diff = make_diff(old, new)
@@ -450,7 +450,7 @@ revealLine();
 def main():
     parser = argparse.ArgumentParser(description="Повторная проверка замечаний по новой версии документа")
     parser.add_argument("previous_report", type=Path, help="JSON полного ревью")
-    parser.add_argument("revised_document", type=Path, help="Новая версия .md, .txt или .pdf")
+    parser.add_argument("revised_document", type=Path, help="Новая версия .md, .txt, .pdf или .docx")
     parser.add_argument("output", type=Path, help="Новый отчёт JSON или HTML")
     parser.add_argument("--model", default=os.environ.get("REVIEW_MODEL", "gpt-6.2-astra"))
     parser.add_argument("--finding", action="append", default=[], metavar="D-ID",
@@ -463,9 +463,9 @@ def main():
     args = parser.parse_args()
     try:
         if (args.previous_report.suffix.lower() != ".json"
-                or args.revised_document.suffix.lower() not in {".md", ".txt", ".pdf"}
+                or args.revised_document.suffix.lower() not in INPUT_LIMITS
                 or args.output.suffix.lower() not in {".json", ".html"}):
-            raise ValueError("Ожидаются JSON полного ревью, новая версия .md/.txt/.pdf и выходной .json/.html")
+            raise ValueError("Ожидаются JSON полного ревью, новая версия .md/.txt/.pdf/.docx и выходной .json/.html")
         if args.output.resolve() in {p.resolve() for p in [args.previous_report, args.revised_document, *args.clarification]}:
             raise ValueError("Выходной файл должен отличаться от входных")
         report = recheck(args.previous_report, args.revised_document, args.model, args.finding,

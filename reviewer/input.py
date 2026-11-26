@@ -3,6 +3,11 @@
 from hashlib import sha256
 from io import BytesIO
 
+from .word_input import docx_lines
+
+
+INPUT_LIMITS = {".md": 120_000, ".txt": 120_000, ".pdf": 16_000_000, ".docx": 16_000_000}
+
 
 def table_text(rows):
     width = max((len(row) for row in rows), default=0)
@@ -63,14 +68,14 @@ def pdf_lines(raw):
 
 
 def load_document(path):
-    pdf = path.suffix.lower() == ".pdf"
-    limit = 16_000_000 if pdf else 120_000
+    suffix = path.suffix.lower()
+    limit = INPUT_LIMITS.get(suffix, 120_000)
     with path.open("rb") as stream:
         raw = stream.read(limit + 1)
     if len(raw) > limit:
         raise ValueError(f"Превышен предел размера входного файла: {limit} байт")
-    if pdf:
-        lines, metadata = pdf_lines(raw)
+    if suffix in {".pdf", ".docx"}:
+        lines, metadata = (pdf_lines if suffix == ".pdf" else docx_lines)(raw)
         if len("\n".join(lines).encode()) > 120_000:
             raise ValueError("Извлечённый текст превышает 120 000 байт")
     else:

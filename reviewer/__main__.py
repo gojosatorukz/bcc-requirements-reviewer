@@ -10,7 +10,7 @@ import time
 
 from . import codex_provider
 from .contract import HTTP_STATUS_POLICY, INSTRUCTIONS, validate_review
-from .input import load_document
+from .input import INPUT_LIMITS, load_document
 
 
 def version():
@@ -103,15 +103,15 @@ def main():
     try:
         if args.document.resolve() == args.report.resolve():
             raise ValueError("Пути документа и отчёта должны различаться")
-        if args.document.suffix.lower() not in {".md", ".txt", ".pdf"} or args.report.suffix.lower() not in {".json", ".html", ".pdf"}:
-            raise ValueError("Ожидаются вход .md/.txt/.pdf и выход .json/.html/.pdf")
+        if args.document.suffix.lower() not in INPUT_LIMITS or args.report.suffix.lower() not in {".json", ".html", ".pdf"}:
+            raise ValueError("Ожидаются вход .md/.txt/.pdf/.docx и выход .json/.html/.pdf")
         lines, input_hash, input_metadata = load_document(args.document)
         blocks = [{"line": n, "text": line} for n, line in enumerate(lines, 1) if line.strip()]
         if not blocks:
             raise ValueError("Документ пуст")
         revision = version()
-        digest = engine_digest("input.py") if args.conflicts_only else engine_digest(
-            "input.py", "segments.py", "json_examples.py", "full.py", "priority.py", "executable.py", "witness_vm.py")
+        digest = engine_digest("input.py", "word_input.py") if args.conflicts_only else engine_digest(
+            "input.py", "word_input.py", "segments.py", "json_examples.py", "full.py", "priority.py", "executable.py", "witness_vm.py")
         started = datetime.now(timezone.utc).isoformat()
         clock = time.monotonic()
         if args.conflicts_only:

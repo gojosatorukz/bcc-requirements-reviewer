@@ -183,6 +183,18 @@ def source_lines(report):
     if type(line_count) is not int or line_count < 1:
         raise ValueError("run.input_lines: ожидалось положительное число строк")
 
+    previous_end = 0
+    locations = report["run"].get("locations", [])
+    if not isinstance(locations, list):
+        raise ValueError("run.locations: ожидались адреса строк Word")
+    for location in locations:
+        if (not isinstance(location, dict) or set(location) != {"start", "end", "label"}
+                or any(type(location[key]) is not int for key in ("start", "end"))
+                or not previous_end < location["start"] <= location["end"] <= line_count
+                or not isinstance(location["label"], str) or not location["label"].strip()):
+            raise ValueError("run.locations: неверный адрес строки Word")
+        previous_end = location["end"]
+
     lines = {}
     for row in report["source"]:
         number = row["line"]

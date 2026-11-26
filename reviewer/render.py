@@ -80,17 +80,19 @@ def render_conflict(number, conflict, lines, backlinks):
     </article>"""
 
 
-def render_source(lines, backlinks, pages=()):
+def render_source(lines, backlinks, pages=(), locations=()):
+    word_addresses = {n: item["label"] for item in locations for n in range(item["start"], item["end"]+1)}
     page_by_line = {n: p["page"] for p in pages for n in range(p["start"], p["end"]+1)}
     rows = []
     for line, content in sorted(lines.items()):
         page = f' · с. {int(page_by_line[line])}' if line in page_by_line else ""
+        address = f'<small class="source-origin">{safe(word_addresses[line])}</small>' if line in word_addresses else ""
         links = "".join(f'<a href="#{target}">↑ {label}</a>' for target, label in backlinks[line])
         references = f'<div class="backlinks">{links}</div>' if links else ""
         rows.append(f"""
         <li class="source-row" id="source-line-{line}" value="{line}" tabindex="-1">
           <span class="line-number"><span class="sr-only">Строка </span>{line}{page}</span>
-          <span class="source-text">{safe(content)}</span>{references}
+          <span class="source-text">{address}{safe(content)}</span>{references}
         </li>""")
     return "".join(rows)
 
@@ -217,7 +219,7 @@ def render_report(report):
     <section class="report-section" aria-labelledby="source">
       <h2 id="source" tabindex="-1">Текст ТЗ</h2>
       <p class="section-note">Непустые строки из снимка прогона с исходными номерами.</p>
-      <ol class="source-list" role="list">{render_source(lines, backlinks, report['run'].get('pages', []))}
+      <ol class="source-list" role="list">{render_source(lines, backlinks, report['run'].get('pages', []), report['run'].get('locations', []))}
       </ol>
     </section>
 {render_passport(report['run'], version)}

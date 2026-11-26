@@ -18,6 +18,9 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from uuid import uuid4
 
 
+from .input import INPUT_LIMITS
+
+
 ROOT = Path(__file__).resolve().parent.parent
 PAGE = ROOT / "reviewer" / "workbench.html"
 REPORT_FILES = {"review.html": "text/html; charset=utf-8", "review.json": "application/json; charset=utf-8"}
@@ -32,7 +35,6 @@ STATIC_FILES = {
     "/design/concepts/gallery.js": "text/javascript; charset=utf-8",
     **{f"/runs/bcc-final/{name}": kind for name, kind in REPORT_FILES.items()},
 }
-LIMITS = {".md": 120_000, ".txt": 120_000, ".pdf": 16_000_000}
 JOB_ID = r"[0-9a-f]{32}"
 FINDING_ID = r"D-(?:0[1-9]|[1-9][0-9]+)"
 DIALOGUE_ROUTE = rf"/api/clarifications/(demo|{JOB_ID})/([0-9a-f]{{64}})"
@@ -41,6 +43,9 @@ PROGRESS = re.compile(r"(?:Сценарии|Блоки [0-9]+–[0-9]+|Весь 
 PLAN = re.compile(r"План проверки · групп строк: ([0-9]{1,6})")
 CROSS_CHECK = "Сверка требований · начата"
 SAFE_FAILURES = {
+    "DOCX содержит": "В Word-файле есть элементы, которые требуют экспорта в PDF с текстовым слоем.",
+    "DOCX повреждён": "Word-файл повреждён или защищён паролем.",
+    "DOCX не содержит": "В Word-файле нет доступного основного текста.",
     "Документ пуст": "Документ пуст.",
     "Новая версия документа пуста": "Новая версия документа пуста.",
     "нет текстового слоя": "В PDF отсутствует текстовый слой. Загрузите версию после OCR.",
@@ -110,8 +115,8 @@ def upload_name(header):
     if (len(name.encode("utf-8")) > 240 or name.startswith(".") or name != name.strip()
             or any(char in "/\\:" or not char.isprintable() for char in name)):
         raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Недопустимое имя файла.")
-    if Path(name).suffix.lower() not in LIMITS:
-        raise WorkbenchError(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "Поддерживаются файлы .md, .txt и .pdf.")
+    if Path(name).suffix.lower() not in INPUT_LIMITS:
+        raise WorkbenchError(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "Поддерживаются файлы .md, .txt, .pdf и .docx.")
     return name
 
 
@@ -573,7 +578,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             if len(names) != 1:
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Укажите одно имя файла в X-File-Name.")
             name = upload_name(names[0])
-            size = self.body_size(LIMITS[Path(name).suffix.lower()])
+            size = self.body_size(INPUT_LIMITS[Path(name).suffix.lower()])
             decision_options = ({"decisions": decisions, "dialogue_tokens": tokens, "baseline_sha256": hashes[0],
                                  "dialogue_snapshot": bool(snapshot)} if hashes else {})
             identifier = self.server.app.start(modes[0], baseline, name, size, self.rfile, findings, **decision_options)

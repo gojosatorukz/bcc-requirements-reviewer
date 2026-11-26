@@ -182,8 +182,8 @@ def verify_source(report, path):
     expected = [{"line": i, "text": text} for i, text in enumerate(lines, 1) if text.strip()]
     if run["input_lines"] != len(lines) or expected != report["source"]:
         raise ValueError("Извлечённые строки оригинального ТЗ расходятся с источником отчёта")
-    if any(run.get(key) != metadata.get(key) for key in ("page_count", "pages")):
-        raise ValueError("Привязка исходных страниц отчёта отличается от оригинального ТЗ")
+    if any(run.get(key) != metadata.get(key) for key in ("page_count", "pages", "locations")):
+        raise ValueError("Привязка исходных страниц или абзацев отчёта отличается от оригинального ТЗ")
     return digest
 
 

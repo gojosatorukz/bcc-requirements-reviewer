@@ -307,3 +307,5 @@ blockquote {
     column-gap: .5rem;
   }
 }
+
+.source-origin{display:block;font:600 .78em/1.45 system-ui,sans-serif;color:#52625b}
