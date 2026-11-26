@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Разбор ТЗ · Выбор расчётного месяца</title>
+<style>
+  :root{color-scheme:light;--paper:#f7f7f3;--ink:#202e2b;--muted:#52625b;--line:#c9d2ca;--deep:#123e34;--em:#b6f08a;--warm:#fbe9d7}
+  *{box-sizing:border-box}
+  body{margin:0;background:#e7ece6;color:var(--ink);font:16px/1.5 "Inter","Helvetica Neue",Arial,sans-serif}
+  a{color:#205a48;text-decoration-thickness:1px;text-underline-offset:3px}
+  :focus-visible{outline:3px solid #8c5020;outline-offset:4px}
+  header{background:var(--deep);color:white;display:flex;align-items:center;justify-content:space-between;padding:14px max(5vw,20px)}
+  header strong{font-size:21px;letter-spacing:-.04em} header span{font-size:13px;color:#d0dfd3}
+  main{max-width:1180px;margin:28px auto 36px;background:var(--paper);border:1px solid var(--line);padding:clamp(20px,3.3vw,48px)}
+  .context,.eyebrow,dt{font-size:12px;font-weight:650;letter-spacing:.045em;color:var(--muted)}
+  .context{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.context b{background:var(--warm);color:#663a17;padding:3px 9px;border-radius:3px}
+  h1{font:550 clamp(32px,4.5vw,58px)/1.06 "Instrument Serif",Georgia,serif;letter-spacing:-.04em;margin:16px 0 10px;max-width:880px}
+  .intro{max-width:75ch;margin:0 0 25px;color:var(--muted)}
+  .event{display:grid;grid-template-columns:repeat(3,1fr);padding:18px 0;background:#e5ece5;border-block:1px solid #becbc1;margin:0}
+  .event div{padding:0 clamp(10px,2vw,30px)}.event div+div{border-left:1px solid #bbc9bc}dd{margin:3px 0 0;font-size:clamp(16px,2vw,24px);line-height:1.2;font-weight:600;letter-spacing:-.035em}
+  .columns{display:grid;grid-template-columns:minmax(0,1.36fr) minmax(0,1fr);gap:clamp(20px,4vw,56px);margin-top:26px}
+  h2{font-size:19px;letter-spacing:-.025em;margin:0 0 12px}h3{font-size:17px;margin:2px 0 5px}
+  .evidence{border-top:1px solid var(--line);padding:13px 0}.evidence p{margin:5px 0 6px}.evidence a{font-size:13px}
+  aside{border:1px solid var(--line);padding:20px;background:white;align-self:start}
+  fieldset{margin:0;padding:0;border:0}legend{margin-bottom:10px;font-weight:650}
+  label{display:block;padding:9px 11px;border:1px solid var(--line);margin:6px 0;cursor:pointer;border-radius:3px}
+  label:has(:checked){border-color:var(--deep);background:#e8f4e3}input{accent-color:var(--deep)}
+  .preview{background:var(--deep);color:white;padding:16px;margin-top:14px;border-radius:3px}
+  .preview .eyebrow{color:var(--em)}.preview p{margin:5px 0 0;font-size:15px}
+  footer{margin-top:24px;border-top:1px solid var(--line);padding-top:12px;color:var(--muted);font-size:12px}
+  @media(max-width:760px){.columns{grid-template-columns:1fr;gap:16px}main{margin:12px 8px;padding:18px}header{padding:10px 16px}.event{grid-template-columns:1fr 1fr;gap:12px}.event div:last-child{grid-column:1/-1;border:0}.event dd{font-size:16px}.intro{margin-bottom:18px}}
+</style>
+<header><strong>Разбор ТЗ</strong><span>Исследовательский макет</span></header>
+<main>
+  <div class="context"><b>Требуется решение</b><span>Уведомление о расходах по карте</span></div>
+  <h1>В какой месяц войдёт покупка?</h1>
+  <p class="intro">Правило расчёта и пример приёмки относят одну операцию к разным месяцам. От выбора зависит сумма расходов, которую увидит держатель карты.</p>
+  <dl class="event">
+    <div><dt>Покупка · Алматы</dt><dd>31 января, 23:58</dd></div>
+    <div><dt>Проведение · Алматы</dt><dd>1 февраля, 00:03</dd></div>
+    <div><dt>Сумма</dt><dd>4 000 ₸</dd></div>
+  </dl>
+  <div class="columns">
+    <section aria-label="Доказательства">
+      <h2>Как расходятся правила</h2>
+      <article class="evidence"><span class="eyebrow">Часть A · Ф-2</span><h3>Январский счётчик +4 000 ₸</h3><p>Месяц определяется датой покупки. Проведение подтверждает, что операция учитывается.</p><a href="https://github.com/BCC-HUB/ai-requirements-validator-task/blob/928c1aa364265426105b69ba7a3444eac11b22db/docs/requirements.md#L38">Открыть правило, строка 38 ↗</a></article>
+      <article class="evidence"><span class="eyebrow">Часть A · Приёмка</span><h3>Февральский счётчик +4 000 ₸</h3><p>В примере приёмки ожидается увеличение расходов за февраль после проведения покупки.</p><a href="https://github.com/BCC-HUB/ai-requirements-validator-task/blob/928c1aa364265426105b69ba7a3444eac11b22db/docs/requirements.md#L64">Открыть пример, строка 64 ↗</a></article>
+    </section>
+    <aside>
+      <h2>Решение владельца продукта</h2>
+      <fieldset><legend>По какой дате учитывать покупку?</legend>
+        <label><input type="radio" name="policy" value="purchase"> По дате покупки</label>
+        <label><input type="radio" name="policy" value="posting"> По дате проведения</label>
+        <label><input type="radio" name="policy" value="open" checked> Оставить вопрос открытым</label>
+      </fieldset>
+      <div class="preview" aria-live="polite"><div class="eyebrow" id="state">Открытый вопрос</div><p id="impact">До выбора правила у QA два разных ожидаемых результата для одной операции.</p></div>
+    </aside>
+  </div>
+  <footer>Макет для обсуждения интерфейса. Показан вручную разобранный пример. Выбор меняет предпросмотр приёмки и действует только на этой странице.</footer>
+</main>
+<script>
+  const outcomes = {
+    purchase: ['Предпросмотр приёмки · январь', 'При проведении добавить 4 000 ₸ к январю. Изменить ожидаемый счётчик в строке 64. Сохранить правило Ф-2.'],
+    posting: ['Предпросмотр приёмки · февраль', 'При проведении добавить 4 000 ₸ к февралю. Уточнить Ф-2 и отдельно согласовать месяц учёта возврата.'],
+    open: ['Открытый вопрос', 'До выбора правила у QA два разных ожидаемых результата для одной операции.']
+  };
+  document.querySelector('fieldset').addEventListener('change', event => {
+    const [state, impact] = outcomes[event.target.value];
+    document.getElementById('state').textContent = state;
+    document.getElementById('impact').textContent = impact;
+  });
+</script>
+</html>
