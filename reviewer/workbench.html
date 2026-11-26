@@ -251,6 +251,7 @@ let findingLoad = null;
 let recheckLoad = null;
 let reuseCheck = null;
 let reuseOffer = null;
+const reportFingerprints = new Map();
 
 function save() {
   try { sessionStorage.setItem(storageKey, JSON.stringify(session)); } catch { /* Storage can be blocked. */ }
@@ -298,6 +299,7 @@ async function loadFindings(id) {
     const report = await request('/reports/' + id + '/review.json', {signal: controller.signal});
     if (findingLoad !== controller) return;
     if (!isFullReport(report)) throw new Error('Нужен полный отчёт.');
+    rememberReportFingerprint(id, report);
     for (const finding of report.whole.findings) {
       const label = document.createElement('label');
       const input = document.createElement('input');
@@ -363,11 +365,24 @@ function clearReportReuse() {
   get('reuse-report-link').removeAttribute('href');
 }
 
-async function readReusableReport(id, hash, signal) {
+function rememberReportFingerprint(id, report) {
+  const run = report?.run;
+  if (!report || !isFullReport(report) || typeof run?.input_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(run.input_sha256)) {
+    reportFingerprints.delete(id);
+    return null;
+  }
+  const fingerprint = {input_sha256:run.input_sha256, started_utc:run.started_utc,
+    agent_version:run.agent_version, input_name:run.input_name};
+  reportFingerprints.set(id, fingerprint);
+  return fingerprint;
+}
+
+async function fetchReportFingerprint(id, signal) {
   try {
     const report = await request('/reports/' + id + '/review.json', {signal});
-    return isFullReport(report) && report.run?.input_sha256 === hash ? report.run : null;
-  } catch {
+    return signal.aborted ? null : rememberReportFingerprint(id, report);
+  } catch (error) {
+    if (!signal.aborted && error.status === 404) reportFingerprints.delete(id);
     return null;
   }
 }
@@ -386,9 +401,9 @@ async function checkReportReuse() {
     const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
     for (const id of [...session.full.map(item => item.id), 'demo']) {
       if (controller.signal.aborted) return;
-      const run = await readReusableReport(id, hash, controller.signal);
+      const run = reportFingerprints.get(id) ?? await fetchReportFingerprint(id, controller.signal);
       if (controller.signal.aborted) return;
-      if (!run) continue;
+      if (run?.input_sha256 !== hash) continue;
       reuseOffer = {id, hash};
       const date = new Date(run.started_utc);
       const when = Number.isNaN(date.getTime()) ? 'дата не указана' :
@@ -413,9 +428,9 @@ get('reuse-report-link').addEventListener('click', async event => {
   event.preventDefault();
   const offer = reuseOffer;
   const controller = reuseCheck;
-  const run = await readReusableReport(offer.id, offer.hash, controller.signal);
+  const run = await fetchReportFingerprint(offer.id, controller.signal);
   if (controller.signal.aborted || offer !== reuseOffer) return;
-  if (run) location.assign('/reports/' + offer.id + '/review.html');
+  if (run?.input_sha256 === offer.hash) location.assign('/reports/' + offer.id + '/review.html');
   else clearReportReuse();
 });
 
@@ -463,6 +478,7 @@ async function request(path, options) {
 }
 
 function forget(id) {
+  reportFingerprints.delete(id);
   session.full = session.full.filter(item => item.id !== id);
   if (session.last?.id === id) session.last = null;
   save();
@@ -711,6 +727,7 @@ function isFullReport(report) {
 }
 
 function publishReport(report, id) {
+  rememberReportFingerprint(id, report);
   const reportUrl = '/reports/' + id + '/review.html';
   const name = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
   get('review-document').textContent = [id === 'demo' ? 'Демо' : 'Полное ревью', name].filter(Boolean).join(' · ');
