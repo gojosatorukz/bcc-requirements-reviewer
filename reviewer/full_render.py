@@ -4,7 +4,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from .contract import source_lines, validate_review, validate_shape
-from .full import BATCH, WHOLE, check_batch, check_whole
+from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
+from . import priority
 from .render import render_conflict, render_passport, render_source, safe
 from .segments import segment
 
@@ -36,8 +37,16 @@ def validate_report(report):
         raise ValueError("Реестр пропускает или дублирует пункты")
     validate_review({"conflicts": report["conflicts"]}, lines)
     clean = dict(whole, findings=[{k:v for k,v in f.items() if k != "id"} for f in whole["findings"]])
-    validate_shape(clean, WHOLE, "whole")
+    policy = report.get("priority_policy")
+    if policy is not None and policy != priority.POLICY:
+        raise ValueError("Неизвестная версия шкалы приоритетов")
+    validate_shape(clean, RANKED_WHOLE if policy else WHOLE, "whole")
     check_whole(whole, registry, report["conflicts"], lines)
+    if policy:
+        check_critical_sources(whole, report["conflicts"])
+        for f in whole["findings"]:
+            if priority.derive_priority(f, lines) != f["priority"]:
+                raise ValueError(f"{f['id']}: приоритет расходится с правилом {policy}")
     for i, f in enumerate(whole["findings"], 1):
         if f["id"] != f"D-{i:02d}":
             raise ValueError("Неверная нумерация замечаний")
@@ -114,11 +123,21 @@ def render_full(report):
         refs = " · ".join(link(rid, rid) for rid in f["requirements"])
         for src in f["evidence"]:
             backlinks[src["line"]].append((fid, fid))
+        basis = ""
+        if "triage" in f:
+            triage = f["triage"]
+            proof = []
+            for case in triage["witness"]:
+                proof.append(f'<p>{safe(case["scenario"])}</p>')
+                for side in (case["first"], case["second"]):
+                    proof.append(f'<p>{safe(side["outcome"])} · {line_link(side["source"]["line"])}</p>')
+            basis = (f'<details><summary>Основание приоритета · {safe(report["priority_policy"])}</summary>'
+                     f'<p>{safe(priority.RULES[triage["rule"]][1])}</p>{"".join(proof)}</details>')
         findings.append(f'''<article id="{fid}" class="finding"><small>{fid} · {safe(f['category'])} · {safe(f['priority'])}</small>
 <h3>{safe(f['title'])}</h3><p>{safe(f['criterion'])}. {safe(f['reason'])}</p><p><b>Последствие.</b> {safe(f['impact'])}</p>
 {evidence(f['evidence'])}<p><b>{safe(f['owner'])}.</b> {safe(f['question'])}</p>
 <p><b>Исправление.</b> {safe(f['action'])}</p><p>{refs}</p>
-{render_decision_drafts(f, report['conflicts'])}</article>''')
+{basis}{render_decision_drafts(f, report['conflicts'])}</article>''')
     closed = []
     for i, item in enumerate(whole["reconciled"], 1):
         key = f"resolution-{i}"

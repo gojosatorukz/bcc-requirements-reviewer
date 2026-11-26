@@ -43,7 +43,8 @@ class FullReviewTest(unittest.TestCase):
         gate = {"status": "можно частично", "rationale": "Требуется условие ответа.", "evidence": [ref]}
         whole = {"dimensions": [{"criterion": axis, "assessment": "Оценён ответ сервиса.", "evidence": [ref]}
                                 for axis in AXES], "development": gate, "testing": gate, "reconciled": [],
-                 "findings": [{"title": "Условие", "category": "нарушение", "priority": "существенный",
+                 "findings": [{"title": "Условие", "category": "нарушение",
+                               "triage": {"rule": "implementation_or_contract", "witness": []},
                                "criterion": "полнота", "reason": "Не задано событие.", "impact": "Сценарий не определён.",
                                "owner": "Аналитик", "question": "Когда вернуть OK?", "action": "Уточнить событие.",
                                "requirements": ["R-001"], "candidates": [], "evidence": [ref]}]}
@@ -65,6 +66,12 @@ class FullReviewTest(unittest.TestCase):
                    provider="test", model="test", elapsed_seconds=1, agent_version="test", usage={}, attempts=attempts)
         report = dict(schema_version=2, scope="Проверка", run=run, source=source, **result)
         html = render_report(report)
+        self.assertIn("Основание приоритета", html)
+        self.assertEqual(report["whole"]["findings"][0]["priority"], "существенный")
+        changed = deepcopy(report)
+        changed["whole"]["findings"][0]["priority"] = "редакционный"
+        with self.assertRaisesRegex(ValueError, "приоритет расходится"):
+            render_report(changed)
         for anchor in ["R-001","D-01","source-line-2","quality","register","coverage"]:
             self.assertIn('id="' + anchor + '"', html)
         damaged = deepcopy(report)

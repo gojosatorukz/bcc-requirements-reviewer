@@ -160,7 +160,7 @@ def recheck(previous_path, revised_path, model, selected=()):
     findings = [issue["finding"] for issue in issues]
     old_run = previous["run"]
     revision = version()
-    digest = engine_digest("recheck.py", "full.py", "full_render.py", "input.py", "segments.py")
+    digest = engine_digest("recheck.py", "full.py", "full_render.py", "input.py", "segments.py", "priority.py")
     diff = make_diff(old, new)
     matches = revised_hash == old_run["input_sha256"]
     if matches and (old != new or old_run["input_lines"] != len(revised)):
