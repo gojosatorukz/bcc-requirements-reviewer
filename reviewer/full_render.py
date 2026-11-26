@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from .contract import source_lines, validate_review, validate_shape
-from .execution_view import render_executions
+from .execution_view import quantity, render_executions
 from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
 from .json_examples import check_findings, verify_saved_checks
 from . import priority
@@ -151,6 +151,40 @@ def finding_download(finding, run, page_by_line, execution=None):
     fid = safe(finding["id"])
     return (f'<a class="finding-export" download="{fid}.md" aria-label="Скачать карточку {fid} в Markdown" '
             f'href="data:text/markdown;charset=utf-8;base64,{payload}">Скачать карточку (.md)</a>')
+
+
+def decision_brief(report):
+    items = {row["finding_id"]: row for row in report.get("executables", {}).get("items", [])
+             if row["status"] == "executed"}
+    if not items:
+        return ""
+    cards = []
+    for finding in report["whole"]["findings"]:
+        item = items.get(finding["id"])
+        if not item:
+            continue
+        program = item["program"]
+        split = item["result"]["scenario"]["first_difference"]
+        field = next(s for s in program["states"] if s["key"] == split["field"])
+        amounts = " или ".join(quantity(split[side], field["unit"]) for side in ("first", "second"))
+        sources = []
+        for side in ("first", "second"):
+            ref = program[side]["source"]
+            quote = ref["quote"]
+            if len(quote) > 180:
+                quote = quote[:180].rsplit(" ", 1)[0] + "…"
+            sources.append(f'<li>{line_link(ref["line"])} · {safe(quote)}</li>')
+        cards.append(f'<article><small>{link(finding["id"], finding["id"])} · {safe(finding["owner"])}</small>'
+                     f'<h3>{safe(field["label"])}</h3><strong>{amounts}</strong>'
+                     f'<p>{safe(finding["question"])}</p><ul>{"".join(sources)}</ul><p>'
+                     f'{link("execution-" + finding["id"], "Посмотреть расчёт")}</p></article>')
+        if len(cards) == 3:
+            break
+    statuses = " · ".join(label + " — " + safe(report["whole"][key]["status"])
+                           for key, label in (("development", "Разработка"), ("testing", "Тестирование")))
+    return ('<section class="decision-brief" aria-labelledby="brief-title">'
+            '<h2 id="brief-title">Что согласовать с владельцем</h2><p>' + statuses
+            + '</p>' + "".join(cards) + '</section>')
 
 
 def render_json_checks(checks, lines):
@@ -302,6 +336,9 @@ def render_full(report):
 .metrics>div,.gates>article{padding:1rem;background:var(--green);border:1px solid var(--line)}
 .metrics strong{font-size:1.65rem;display:block}.full h3{font-size:1.05rem;margin:.35rem 0}
 .full section{margin:1.6rem 0}.finding{border-top:1px solid var(--line);padding:1rem 0}
+.decision-brief article{border-left:3px solid #c65b31;background:#fff9ed;padding:.7rem 1rem;margin:.65rem 0}
+.decision-brief article>strong{font-size:1.4rem;color:#302026}.decision-brief article p{margin:.45rem 0}
+.decision-brief article{break-inside:avoid}.decision-brief ul{margin:.45rem 0;padding-left:1.2rem}.decision-brief li{margin:.22rem 0}
 .finding p+p{margin-top:.45rem}.full small{color:var(--muted)}.full blockquote{margin:.45rem 0}
 .finding-export{display:inline-block;margin:.45rem 0;padding:.25rem .5rem;border:1px solid var(--line);border-radius:3px;font-size:.9rem}
 .finding-export:hover{background:var(--green)}
@@ -329,6 +366,7 @@ def render_full(report):
  main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
  .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
  .full h2,.full h3{break-after:avoid}.full section{margin:9pt 0}.full section>h2{padding-top:7pt}
+ .decision-brief{break-after:page}.decision-brief article{padding:7pt 10pt}
  .metrics{grid-template-columns:repeat(3,1fr)}.gates{grid-template-columns:repeat(2,1fr)}
  .full .registry{table-layout:fixed}.full .registry th:first-child{width:10%}.full .registry th:nth-child(2){width:49%}
  .full .registry thead{display:table-header-group}.full .registry tr{display:table-row}.full .registry td{display:table-cell}
@@ -347,7 +385,7 @@ def render_full(report):
 <main class="full" id="report"><small>{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {safe(run['model'])}</small>
 <h1>{safe(title)}</h1><nav>{nav}</nav>
 <div class="metrics"><div><strong>{len(registry)}</strong>пунктов в реестре</div><div><strong>{len(defects)}</strong>нарушений, включая {len(critical)} критических</div><div><strong>{questions}</strong>открытых вопросов</div></div>
-<p>{summary}.</p><div class="gates">{''.join(verdicts)}</div>
+<p>{summary}.</p>{decision_brief(report)}<div class="gates">{''.join(verdicts)}</div>
 <h2>Критические дефекты</h2>{'<ol>'+crit_list+'</ol>' if critical else '<p>Критические дефекты не выявлены.</p>'}
 <section id="actions"><h2>Что исправить в первую очередь</h2><p>Замечания в порядке приоритета. У каждого есть адресат, основание и предлагаемое изменение.</p>
 {''.join(findings) or '<p>Замечаний не выявлено.</p>'}</section>
