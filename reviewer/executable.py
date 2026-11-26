@@ -7,6 +7,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import sys
 import time
 
 from . import witness_vm
@@ -134,10 +135,14 @@ def build_one(fid, witness, source, model, checkpoint, digest):
 def build(report, lines, model, checkpoint, digest, workers):
     witnesses = targets(report, VERSION)
     items, attempts = [], []
+    print(f"План расчётов · примеров: {len(witnesses)}", file=sys.stderr, flush=True)
 
     def construct(item):
         fid, witness = item
-        return build_one(fid, witness, lines, model, checkpoint, digest)
+        result, events = build_one(fid, witness, lines, model, checkpoint, digest)
+        status = "подтверждён" if result["status"] == "executed" else "не подтверждён"
+        print(f"Исполняемый пример {fid} · {status}", file=sys.stderr, flush=True)
+        return result, events
 
     if witnesses:
         with ThreadPoolExecutor(max_workers=workers) as pool:

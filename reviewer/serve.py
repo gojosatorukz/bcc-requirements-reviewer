@@ -40,6 +40,8 @@ FINDING_ID = r"D-(?:0[1-9]|[1-9][0-9]+)"
 DIALOGUE_ROUTE = rf"/api/clarifications/(demo|{JOB_ID})/([0-9a-f]{{64}})"
 PROGRESS = re.compile(r"(?:Сценарии|Блоки [0-9]+–[0-9]+|Весь документ|Повторная проверка) · "
                       r"(?:проверено|проверена сохранённая стадия)")
+PROOF_PLAN = re.compile(r"План расчётов · примеров: ([0-9]{1,6})")
+PROOF_DONE = re.compile(rf"Исполняемый пример ({FINDING_ID}) · (?:подтверждён|не подтверждён)")
 PLAN = re.compile(r"План проверки · групп строк: ([0-9]{1,6})")
 CROSS_CHECK = "Сверка требований · начата"
 SAFE_FAILURES = {
@@ -79,12 +81,24 @@ class Run:
     group_total: int | None = None
     checked_groups: set = field(default_factory=set)
     phase: str = "groups"
+    proof_total: int | None = None
+    checked_proofs: set = field(default_factory=set)
 
     def record(self, line):
         plan = PLAN.fullmatch(line)
         if plan:
             self.group_total = int(plan[1])
             return
+        proof_plan = PROOF_PLAN.fullmatch(line)
+        if proof_plan:
+            self.proof_total = int(proof_plan[1])
+            self.phase = "executables" if self.proof_total else "render"
+            return
+        proof = PROOF_DONE.fullmatch(line)
+        if proof:
+            self.checked_proofs.add(proof[1])
+            if len(self.checked_proofs) == self.proof_total:
+                self.phase = "render"
         if line == CROSS_CHECK:
             self.phase = "whole"
             return
@@ -131,7 +145,8 @@ def execute(command, progress, failure):
         def read_output():
             while chunk := process.stdout.readline(4096):
                 line = chunk.decode("utf-8", errors="replace").strip()
-                if PROGRESS.fullmatch(line) or PLAN.fullmatch(line) or line == CROSS_CHECK:
+                if (PROGRESS.fullmatch(line) or PLAN.fullmatch(line) or line == CROSS_CHECK
+                        or PROOF_PLAN.fullmatch(line) or PROOF_DONE.fullmatch(line)):
                     progress(line)
                 elif not known_failure:
                     for fragment, message in SAFE_FAILURES.items():
@@ -269,6 +284,8 @@ class Workbench:
             status = {"state": run.state, "progress": list(run.progress), "error": run.error, "mode": run.mode}
             if run.group_total is not None:
                 status["coverage"] = {"checked": len(run.checked_groups), "total": run.group_total, "phase": run.phase}
+                if run.proof_total is not None:
+                    status["coverage"].update(proofs_checked=len(run.checked_proofs), proofs_total=run.proof_total)
             return status
 
     def reports(self, identifier, baseline=False):
