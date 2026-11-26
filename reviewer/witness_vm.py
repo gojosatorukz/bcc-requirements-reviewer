@@ -2,6 +2,7 @@
 
 import ast
 from dataclasses import dataclass
+import keyword
 import operator
 import re
 
@@ -39,6 +40,7 @@ abs(a), x if условие else y. Сравнения == != < <= > >=, усло
 вызовов функций, кроме min, max, abs. Корректно учитывай единицы. Например при when
 «spent < limit and spent + amount >= limit» обновление «count + 1» считает пересечение.
 Денежные результаты должны вычисляться из суммы во входе; не вшивай конкретный итог.
+Если событие по правилу снимает блокировку целиком или обнуляет счётчик, допустимо обновление 0.
 Укажи observe — одинаковые для обеих сторон измеримые поля состояния. scenario приводит к
 расхождению, control — соседний пример, в котором расхождения нет НИ НА ОДНОМ шаге.
 Используй те же виды событий в том же порядке и тот же набор входов в каждом событии
@@ -77,7 +79,7 @@ def _short_text(text, maximum, name):
 
 
 def _key(text):
-    if not _KEY.fullmatch(text) or text in {*_FUNCTIONS, "if", "else", "and", "or", "not"}:
+    if not _KEY.fullmatch(text) or keyword.iskeyword(text) or text in _FUNCTIONS:
         raise ValueError(f"Недопустимое имя: {text[:40]}")
     return text
 
@@ -256,8 +258,9 @@ def _compile(side, event_fields, states, inputs):
                 raise ValueError(f"Некорректное или повторное назначение {target}")
             targets.add(target)
             expression = _parse(assignment["expr"], fields, states[target])
-            if not any(isinstance(n, ast.Name) and n.id in fields
-                       for subtree in (condition, expression) for n in ast.walk(subtree)):
+            reset = isinstance(expression, ast.Constant) and type(expression.value) is int and expression.value == 0
+            if not reset and not any(isinstance(n, ast.Name) and n.id in fields
+                                     for subtree in (condition, expression) for n in ast.walk(subtree)):
                 raise ValueError(f"{target}: безусловный готовый ответ нельзя выдать за вычисление")
             updates.append((target, expression))
         rules.setdefault(kind, []).append(_Rule(condition, updates))
@@ -312,8 +315,7 @@ def _run(case, sides, observe):
     return {"initial": start, "steps": trace, "first_difference": first_difference, "final": snapshot}
 
 
-def execute(program, lines, witness=None):
-    """Compute both traces or raise ValueError when this is not a supported witness."""
+def _evaluate(program, lines, witness, sample):
     validate_shape(program, PROGRAM, "Исполняемый пример")
     states = _fields(program["states"], "Состояния", 1)
     inputs = _fields(program["inputs"], "Входы", 0)
@@ -347,4 +349,19 @@ def execute(program, lines, witness=None):
         raise ValueError("В общем сценарии наблюдаемые результаты совпадают на всех шагах")
     if replay["control"]["first_difference"] is not None:
         raise ValueError("На контрольном примере наблюдаемые результаты тоже расходятся")
+    if sample is not None:
+        if [event["kind"] for event in sample["events"]] != [event[0] for event in scenario[1]]:
+            raise ValueError("При повторном исполнении нужны прежние виды событий в том же порядке")
+        return _run(_case(sample, states, inputs, event_fields), sides, observe)
     return replay
+
+
+def execute(program, lines, witness=None):
+    """Compute the witness and control. A valid witness must diverge and its control must agree."""
+    return _evaluate(program, lines, witness, None)
+
+
+def simulate(program, lines, case, witness=None):
+    """Revalidate the original witness, then replay its rules on new inputs, including ones that agree."""
+    validate_shape(case, CASE, "Тестовые входы")
+    return _evaluate(program, lines, witness, case)

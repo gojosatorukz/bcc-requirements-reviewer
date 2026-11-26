@@ -3,7 +3,7 @@ import json
 import random
 import unittest
 
-from reviewer.witness_vm import execute
+from reviewer.witness_vm import execute, simulate
 
 
 PURCHASE = "Месяц определяется по дате совершения покупки."
@@ -96,6 +96,43 @@ class ExecutableWitnessTests(unittest.TestCase):
         swapped["first"]["rules"].reverse()
         swapped["second"]["rules"].reverse()
         self.assertEqual(execute(swapped, LINES), trace)
+
+    def test_same_program_replays_both_sides_of_boundary_and_on_boundary(self):
+        program = threshold_program()
+        for amount, expected in ((4999, None), (5000, 2), (5001, 2)):
+            case = deepcopy(program["scenario"])
+            case["events"][1]["values"] = values(amount=amount)
+            trace = simulate(program, LINES, case, WITNESS)
+            self.assertEqual(trace["first_difference"] and trace["first_difference"]["step"], expected)
+            self.assertEqual(trace["final"]["first"]["count"], 1)
+            self.assertEqual(trace["final"]["second"]["count"], 1 + int(amount >= 5000))
+
+    def test_mutations_cannot_modify_rules_events_or_readouts(self):
+        p = ledgers()
+        for mutator in (
+                lambda c: c.update(first=p["second"]),
+                lambda c: c["events"][0].update(kind="missing"),
+                lambda c: c["events"].append(c["events"][0]),
+                lambda c: c["events"][0]["values"].append({"key": "override", "value": 2}),
+                lambda c: c["initial"].pop(),
+                lambda c: c["events"][0]["values"][0].update(value=2**53)):
+            case = deepcopy(p["scenario"])
+            mutator(case)
+            with self.assertRaises(ValueError):
+                simulate(p, LINES, case)
+        # A new sample cannot rehabilitate a false original certificate.
+        p["scenario"] = deepcopy(p["control"])
+        with self.assertRaises(ValueError):
+            simulate(p, LINES, ledgers()["scenario"])
+
+    def test_reset_to_zero_on_an_event_is_a_real_transition(self):
+        p = {"states": fields(held="₸"), "inputs": fields(capture="₸"), "observe": ["held"],
+             "scenario": {"initial": values(held=9400), "events": [event("clear", capture=1700)]},
+             "control": {"initial": values(held=9400), "events": [event("clear", capture=9400)]},
+             "first": {"source": SOURCES["first"], "rules": [update("clear", "held", "held - capture")]},
+             "second": {"source": SOURCES["second"], "rules": [update("clear", "held", "0")]}}
+        self.assertEqual(execute(p, LINES)["scenario"]["first_difference"],
+                         {"step": 1, "field": "held", "first": 7700, "second": 0})
 
     def test_an_intermediate_difference_is_reported_even_after_reconvergence(self):
         program = ledgers()
