@@ -214,6 +214,10 @@ def main():
     from .__main__ import engine_digest, run_usage, version, write_report
     from .full_render import validate_report
 
+    # Preserve redirected reports on a terminal that cannot represent KZT or
+    # other source characters. JSON artifacts on disk are always UTF-8.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="backslashreplace")
     parser = argparse.ArgumentParser(description="Исполнение двух трактовок требований")
     commands = parser.add_subparsers(dest="command", required=True)
     replay = commands.add_parser("replay", help="Проверить и повторить расчёты из JSON без модели")
@@ -265,8 +269,15 @@ def main():
                 continue
             divergence = row["result"]["scenario"]["first_difference"]
             label = next(s for s in row["program"]["states"] if s["key"] == divergence["field"])
+            unit = label["unit"]
+            if unit == "₸":
+                try:
+                    unit.encode(getattr(sys.stdout, "encoding", None) or "utf-8")
+                except UnicodeEncodeError:
+                    unit = "KZT"
+            suffix = "" if unit == "1" or unit.startswith("enum:") else " " + unit
             print(f"{row['finding_id']} · шаг {divergence['step']} · {label['label']}: "
-                  f"{divergence['first']} / {divergence['second']} {label['unit']} · на контроле совпадают")
+                  f"{divergence['first']} / {divergence['second']}{suffix} · на контроле совпадают")
         if not report["executables"]["items"]:
             print("В отчёте нет подтверждённых пар для исполнения.")
     except (OSError, ValueError, TypeError, KeyError) as exc:
