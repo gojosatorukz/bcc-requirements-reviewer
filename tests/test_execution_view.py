@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from xml.etree import ElementTree
 
-from reviewer.execution_view import render_execution
+from reviewer.execution_view import render_execution, render_explanation
 from reviewer.serve import Workbench, WorkbenchError
 
 
@@ -14,6 +14,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExecutionViewTests(TestCase):
+    def test_explanation_displays_actual_guard_reads_and_preserved_value(self):
+        row = {"when": "amount < 10", "matched": False, "reads": {"amount": 12},
+               "updates": [{"target": "total", "before": 1, "after": 1, "applied": False,
+                            "expr": "total + amount", "reads": {}}]}
+        explanation = {"step": 2, "first": [row], "second": []}
+        defs = {"amount": {"label": "Начисление", "unit": "₸"}, "total": {"label": "Итог", "unit": "₸"}}
+        sources = {key: {"source": {"line": n}} for key, n in (("first", 2), ("second", 3))}
+        html = render_explanation(explanation, sources, defs)
+        self.assertIn("Почему разошлись на шаге 2", html)
+        self.assertIn("amount &lt; 10", html)
+        self.assertIn("12 ₸", html)
+        self.assertIn("Осталось 1 ₸", html)
+        self.assertNotIn("total + amount", html)
+        self.assertIn("сохраняет прежнее значение", html)
+
     def test_trace_identifies_first_difference_even_if_the_final_values_converge(self):
         initial = [{"key": "balance", "value": 0}]
         def step(number, first, second):

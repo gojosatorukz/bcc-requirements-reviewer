@@ -3,15 +3,29 @@
 from .render import safe
 
 
+def render_executions(report, lines):
+    from .witness_vm import explain_step
+
+    panels = {}
+    for item in report.get("executables", {}).get("items", []):
+        why = explain_step(item["program"], lines) if item["status"] == "executed" else None
+        panels[item["finding_id"]] = render_execution(item, why)
+    return panels
+
+
 def quantity(value, unit):
     digits = f"{value:,}".replace(",", "\u202f").replace("-", "−")
     return digits if unit == "1" else f"{digits} {safe(unit)}"
 
 
-def values_list(values, definitions):
-    return "".join(f'<div><dt>{safe(definitions[key]["label"])}</dt>'
-                   f'<dd>{quantity(number, definitions[key]["unit"])}</dd></div>'
-                   for key, number in values.items())
+def values_list(values, definitions, *, keys=False):
+    rows = []
+    for key, number in values.items():
+        field = definitions[key]
+        identifier = f' (<code>{safe(key)}</code>)' if keys else ''
+        rows.append(f'<div><dt>{safe(field["label"])}{identifier}</dt>'
+                    f'<dd>{quantity(number, field["unit"])}</dd></div>')
+    return "".join(rows)
 
 
 def results_table(fields, states, first, second, caption):
@@ -46,7 +60,34 @@ def trace(program, name, outcome, states, inputs):
     return initial + "".join(rows)
 
 
-def render_execution(item):
+def render_explanation(explanation, program, definitions):
+    if not explanation:
+        return ""
+    bodies = []
+    for name, letter in (("first", "А"), ("second", "Б")):
+        line = program[name]["source"]["line"]
+        rows = []
+        for rule in explanation[name]:
+            title = "Условие выполнено" if rule["matched"] else "Условие не выполнено"
+            rows.append(f'<p><b>{title}</b> · <code>{safe(rule["when"])}</code></p>')
+            if rule["reads"]:
+                rows.append(f'<dl class="execution-values">{values_list(rule["reads"], definitions, keys=True)}</dl>')
+            for update in rule["updates"]:
+                unit = definitions[update["target"]]["unit"]
+                if update["applied"]:
+                    rows.append(f'<p><code>{safe(update["target"])} = {safe(update["expr"])}</code></p>')
+                    if update["reads"]:
+                        rows.append(f'<dl class="execution-values">{values_list(update["reads"], definitions, keys=True)}</dl>')
+                    rows.append(f'<p>Было {quantity(update["before"], unit)} · стало {quantity(update["after"], unit)}.</p>')
+                else:
+                    rows.append(f'<p>Обновление пропущено. Осталось {quantity(update["before"], unit)}.</p>')
+        bodies.append(f'<div><h5>Правило {letter} · <a href="#source-line-{line}">строка {line}</a></h5>'
+                      + ("".join(rows) if rows else '<p>На этом событии правило сохраняет прежнее значение.</p>') + '</div>')
+    return (f'<details class="execution-logic"><summary>Почему разошлись на шаге {explanation["step"]}</summary>'
+            + "".join(bodies) + '</details>')
+
+
+def render_execution(item, explanation=None):
     fid = safe(item["finding_id"])
     if item["status"] == "unsupported":
         return (f'<div id="execution-{fid}" class="execution execution-unavailable">'
@@ -66,10 +107,15 @@ def render_execution(item):
             f'<div class="execution-side"><dt>Правило {letter} · '
             f'<a href="#source-line-{line}">строка {line}</a></dt>'
             f'<dd>{quantity(difference[side], definition["unit"])}</dd></div>')
-    rules = "".join(
-        f'<blockquote><span>Правило {letter} · <a href="#source-line-{side["source"]["line"]}">'
-        f'строка {side["source"]["line"]}</a></span>{safe(side["source"]["quote"])}</blockquote>'
-        for side, letter in ((program["first"], "А"), (program["second"], "Б")))
+    rules = ""
+    for key, letter in (("first", "А"), ("second", "Б")):
+        source = program[key]["source"]
+        line = source["line"]
+        rules += (f'<blockquote><span>Правило {letter} · <a href="#source-line-{line}">строка {line}</a></span>'
+                  f'{safe(source["quote"])}</blockquote>')
+        reading = item.get("audit", {}).get(key + "_rule")
+        if reading:
+            rules += f'<p class="execution-reading">{safe(reading)}</p>'
     full_trace = trace(program, "scenario", example, states, inputs)
     control = trace(program, "control", result["control"], states, inputs)
     event_inputs = values_list(step["inputs"], inputs)
@@ -85,6 +131,7 @@ def render_execution(item):
             + (f'<dl class="execution-values execution-shared" aria-label="Общий вход этого шага">{event_inputs}</dl>'
                if event_inputs else "")
             + final
+            + render_explanation(explanation, program, {**states, **inputs})
             + f'<details class="execution-trace"><summary>Входные данные и шаги расчёта</summary>{full_trace}</details>'
             f'<details class="execution-sources"><summary>Две цитаты из ТЗ</summary>{rules}</details>'
             f'<details class="execution-control"><summary>Контрольный пример · исходы совпали</summary>{control}</details>'

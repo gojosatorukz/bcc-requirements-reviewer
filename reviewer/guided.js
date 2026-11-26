@@ -12,7 +12,7 @@
   let pages = [];
   let decisionKey, decisions = {};
   let conversationIds = new Set();
-  let executionIds = new Set(), panels = new Map(), panelRequest, panelError = '';
+  let executions = new Map(), panels = new Map(), panelRequest, panelError = '';
 
   function readCases(report) {
     const result = [];
@@ -103,7 +103,7 @@
       if (panelRequest !== ownRequest) return;
       if (saved.sha256 !== match[2]) throw new Error();
       const fresh = new Map();
-      for (const fid of executionIds) {
+      for (const [fid, item] of executions) {
         // This same-origin endpoint renders escaped, replay-validated report data with
         // the offline HTML renderer. Links should open the matching standalone source.
         const template = document.createElement('template');
@@ -116,6 +116,8 @@
           link.target = '_blank';
           link.rel = 'noopener';
         }
+        window.dispatchEvent(new CustomEvent('review:execution-panel', {detail:{panel, item,
+          endpoint:'/api/simulate/' + match[1] + '/' + match[2] + '/' + fid}}));
         fresh.set(fid, panel);
       }
       panels = fresh;
@@ -160,7 +162,7 @@
     if (decisionKey) {
       body += `<button type="button" class="guide-back" data-act="answer">${hasDialogue ? "Открыть переписку с владельцем" : "Ответить своими словами"}</button>`;
     }
-    const execution = executionIds.has(finding.id);
+    const execution = executions.has(finding.id);
     if (execution && stage > 0) {
       body += `<a class="guide-back" href="${escape(reportUrl)}#execution-${escape(finding.id)}" target="_blank" rel="noopener">Открыть расчёт</a>`;
     }
@@ -219,7 +221,7 @@
     panelRequest?.abort();
     panelRequest = null;
     panelError = '';
-    executionIds = new Set((report.executables?.items ?? []).map(item => item.finding_id));
+    executions = new Map((report.executables?.items ?? []).map(item => [item.finding_id, item]));
     panels = new Map();
     conversationIds = new Set();
     decisions = {...detail.decisions};
@@ -237,7 +239,7 @@
     index = 0;
     root.hidden = !cases.length;
     if (cases.length) render(); else root.replaceChildren();
-    if (cases.length && executionIds.size) loadPanels(key);
+    if (cases.length && executions.size) loadPanels(key);
   });
 
   window.addEventListener("review:dialogue", ({detail}) => {

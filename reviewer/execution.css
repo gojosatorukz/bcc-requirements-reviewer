@@ -93,9 +93,86 @@
   white-space: pre-wrap;
 }
 .execution .execution-sources blockquote span {display: block; font-size: .76rem; font-weight: 720}
+.execution .execution-reading {margin: .2rem 0 .75rem; font-size: .84rem; color: var(--proof-muted)}
+.execution-logic > div {padding: .3rem .55rem .55rem; border-left: 3px solid #f2aa76; margin: 0 0 .65rem}
+.execution-logic > div + div {border-color: #b29bcf}
+.execution-logic h5 {font-size: .86rem; margin: 0 0 .28rem}
+.execution-logic p {font-size: .84rem}
+.execution code {font-size: .92em; overflow-wrap: anywhere}
 .execution-unavailable {border-color: var(--proof-line); box-shadow: none}
 .execution-unavailable h4 {margin-bottom: .35rem; font-size: 1.08rem}
 .full .finding > .execution {margin: .85rem 0; max-width: 58rem}
+.execution-edit, .lab-dialog button {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  border: 1.5px solid var(--proof-ink);
+  border-radius: .5rem;
+  padding: .46rem .72rem;
+  color: var(--proof-ink);
+  background: var(--proof-paper);
+  font: 675 .9rem/1.35 system-ui, sans-serif;
+  cursor: pointer;
+}
+.execution-edit {margin: .5rem 0 .1rem; background: #ffe092}
+.execution-edit:enabled:hover, .lab-dialog button:enabled:hover {box-shadow: 0 2px 0 currentColor}
+.execution.lab-dialog {
+  width: min(41rem, calc(100% - 1rem));
+  max-height: min(90dvh, 57rem);
+  margin: auto;
+  padding: clamp(1rem, 3vw, 1.75rem);
+  box-shadow: .3rem .45rem 0 #251d26;
+  overscroll-behavior: contain;
+}
+.lab-dialog::backdrop {background: #251d269e}
+.lab-head {display: flex; align-items: start; justify-content: space-between; gap: .4rem}
+.lab-dialog h2 {margin: 0; font-size: clamp(1.3rem, 3vw, 1.82rem); line-height: 1.1}
+.lab-dialog .lab-head + p {margin: .65rem 0; font-size: .92rem; color: var(--proof-muted)}
+.lab-dialog .lab-close {border-color: transparent; text-decoration: underline}
+.lab-presets {display: flex; flex-wrap: wrap; gap: .4rem}
+.lab-presets [aria-pressed="true"] {background: #251d26; color: #fffaf0}
+.lab-output {margin: .9rem 0; color: var(--proof-ink)}
+.lab-result {
+  padding: .65rem .8rem;
+  background: #f6ead4;
+  border-radius: .5rem;
+  border-left: 3px solid #a43b1a;
+}
+.lab-result .lab-origin {font-size: .75rem; color: var(--proof-muted); font-weight: 680}
+.lab-result h3 {margin: .25rem 0; font-size: 1.08rem}
+.lab-result p {font-size: .88rem}
+.lab-dialog .execution-table caption {font-size: .78rem}
+.lab-fields {display: grid; gap: .75rem}
+.lab-fields fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: .4rem 0 .75rem;
+  border: 0;
+  border-bottom: 1px solid var(--proof-line);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+  align-items: end;
+  gap: .55rem .95rem;
+}
+.lab-fields legend {padding: 0; font-weight: 720; font-size: .88rem}
+.lab-fields label {display: grid; gap: .2rem; font-size: .84rem; color: var(--proof-muted)}
+.lab-fields input {
+  width: 100%;
+  min-width: 0;
+  padding: .42rem .56rem;
+  border: 1px solid #8e7885;
+  border-radius: .43rem;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--proof-ink);
+  background: #fffdfa;
+}
+.lab-dialog .lab-submit {margin-top: .9rem; background: var(--proof-ink); color: #fffaf0}
+.lab-dialog .lab-submit:disabled {opacity: .65; cursor: wait}
+@media (prefers-reduced-motion: no-preference) {
+  .lab-dialog[open] {animation: lab-enter .18s ease-out both}
+  @keyframes lab-enter {from {opacity: .3; transform: translateY(.45rem)} to {opacity: 1; transform: none}}
+}
 @media print {
   .execution {padding: .55rem; break-inside: auto; border: 1px solid #888}
   .execution .execution-comparison {break-inside: avoid}

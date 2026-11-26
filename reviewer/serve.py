@@ -25,6 +25,7 @@ STATIC_FILES = {
     "/reviewer/guided.css": "text/css; charset=utf-8",
     "/reviewer/guided.js": "text/javascript; charset=utf-8",
     "/reviewer/execution.css": "text/css; charset=utf-8",
+    "/reviewer/explorer.js": "text/javascript; charset=utf-8",
     "/design/concepts/index.html": "text/html; charset=utf-8",
     "/design/concepts/gallery.css": "text/css; charset=utf-8",
     "/design/concepts/case.js": "text/javascript; charset=utf-8",
@@ -200,7 +201,7 @@ class Workbench:
             return [item for key, item in self.dialogues.items() if key[:2] == (baseline, sha)]
 
     def execution_panels(self, baseline, sha):
-        from .execution_view import render_execution
+        from .execution_view import render_executions
         from .full_render import validate_report
 
         raw = (self.reports(baseline, baseline=True) / "review.json").read_bytes()
@@ -208,9 +209,8 @@ class Workbench:
             raise WorkbenchError(HTTPStatus.CONFLICT, "Версия отчёта изменилась. Обновите страницу.")
         try:
             report = json.loads(raw)
-            validate_report(report)
-            items = {item["finding_id"]: render_execution(item)
-                     for item in report.get("executables", {}).get("items", [])}
+            lines = validate_report(report)
+            items = render_executions(report, lines)
         except (ValueError, KeyError, TypeError) as exc:
             raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Расчёт из отчёта не прошёл проверку.") from exc
         return {"sha256": sha, "items": items}

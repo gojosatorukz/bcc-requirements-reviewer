@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from .contract import source_lines, validate_review, validate_shape
-from .execution_view import render_execution
+from .execution_view import render_executions
 from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
 from .json_examples import check_findings, verify_saved_checks
 from . import priority
@@ -183,8 +183,7 @@ def render_full(report):
     related = defaultdict(list)
     decisions = {}
     findings = []
-    executions = {item["finding_id"]: render_execution(item)
-                  for item in report.get("executables", {}).get("items", [])}
+    executions = render_executions(report, lines)
     page_by_line = {n: page["page"] for page in run.get("pages", [])
                     for n in range(page["start"], page["end"] + 1)}
     for f in whole["findings"]:
