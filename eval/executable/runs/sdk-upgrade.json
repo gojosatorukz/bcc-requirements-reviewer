@@ -1,0 +1,365 @@
+{
+  "execution_run": {
+    "started_utc": "2026-11-26T20:13:28.025029+00:00",
+    "elapsed_seconds": 45.32,
+    "base_report_sha256": "1351d1d83a5299ff0cd1dd14afa9da29e8657f0d3cffff40442a7d9c7e67812f",
+    "agent_version": "b98a4f39dfaa",
+    "engine_sha256": "45956a11fb97ab2ea0ef47e4654ae041bbc515c50b3da2bcddea9db42611d5bb",
+    "model": "gpt-6.2-astra",
+    "provider": "codex-cli",
+    "usage": {
+      "input_tokens": 29687,
+      "cached_input_tokens": 10624,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1778,
+      "reasoning_output_tokens": 21
+    },
+    "current_usage": {
+      "input_tokens": 29687,
+      "cached_input_tokens": 10624,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1778,
+      "reasoning_output_tokens": 21
+    },
+    "fresh_calls": 2,
+    "restored_attempts": 0,
+    "attempts": [
+      {
+        "stage": "Построение примера D-02",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 15082,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 940,
+          "reasoning_output_tokens": 21
+        },
+        "seconds": 23.31
+      },
+      {
+        "stage": "Проверка смысла D-02",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 14605,
+          "cached_input_tokens": 10624,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 838,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 21.99
+      }
+    ]
+  },
+  "executables": {
+    "version": "witness-v2",
+    "items": [
+      {
+        "finding_id": "D-02",
+        "status": "executed",
+        "program": {
+          "states": [
+            {
+              "key": "pending",
+              "label": "Ожидающая сумма к списанию со счёта 101",
+              "unit": "денежная единица"
+            }
+          ],
+          "inputs": [
+            {
+              "key": "amount",
+              "label": "Сумма перевода со счёта 101 на счёт 102",
+              "unit": "денежная единица"
+            },
+            {
+              "key": "pending_flag",
+              "label": "Флаг Pending при создании перевода (1 — включён, 0 — выключен, остальные флаги выключены)",
+              "unit": "1"
+            }
+          ],
+          "observe": [
+            "pending"
+          ],
+          "first": {
+            "source": {
+              "line": 44,
+              "quote": "Two-phase transfers are supported natively by toggling the appropriate"
+            },
+            "rules": [
+              {
+                "event": "create_transfer",
+                "when": "pending_flag == 1",
+                "updates": [
+                  {
+                    "target": "pending",
+                    "expr": "pending + amount"
+                  }
+                ]
+              },
+              {
+                "event": "post_full",
+                "when": "pending > 0",
+                "updates": [
+                  {
+                    "target": "pending",
+                    "expr": "0"
+                  }
+                ]
+              }
+            ]
+          },
+          "second": {
+            "source": {
+              "line": 66,
+              "quote": "Flags:           0,"
+            },
+            "rules": [
+              {
+                "event": "create_transfer",
+                "when": "pending_flag == 1 or (pending_flag == 0 and amount == 10 and pending == 0)",
+                "updates": [
+                  {
+                    "target": "pending",
+                    "expr": "pending + amount"
+                  }
+                ]
+              },
+              {
+                "event": "post_full",
+                "when": "pending > 0",
+                "updates": [
+                  {
+                    "target": "pending",
+                    "expr": "0"
+                  }
+                ]
+              }
+            ]
+          },
+          "scenario": {
+            "initial": [
+              {
+                "key": "pending",
+                "value": 0
+              }
+            ],
+            "events": [
+              {
+                "kind": "create_transfer",
+                "label": "Создать перевод 6 со счёта 101 на счёт 102",
+                "values": [
+                  {
+                    "key": "amount",
+                    "value": 10
+                  },
+                  {
+                    "key": "pending_flag",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "kind": "post_full",
+                "label": "Отправить перевод 7 с PostPendingTransfer, ссылкой на перевод 6 и указанием провести всю ожидающую сумму (AmountMax)",
+                "values": []
+              }
+            ]
+          },
+          "control": {
+            "initial": [
+              {
+                "key": "pending",
+                "value": 0
+              }
+            ],
+            "events": [
+              {
+                "kind": "create_transfer",
+                "label": "Создать перевод 6 со счёта 101 на счёт 102",
+                "values": [
+                  {
+                    "key": "amount",
+                    "value": 10
+                  },
+                  {
+                    "key": "pending_flag",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "kind": "post_full",
+                "label": "Отправить перевод 7 с PostPendingTransfer, ссылкой на перевод 6 и указанием провести всю ожидающую сумму (AmountMax)",
+                "values": []
+              }
+            ]
+          }
+        },
+        "result": {
+          "version": "witness-v1",
+          "scenario": {
+            "initial": {
+              "pending": 0
+            },
+            "steps": [
+              {
+                "step": 1,
+                "kind": "create_transfer",
+                "label": "Создать перевод 6 со счёта 101 на счёт 102",
+                "inputs": {
+                  "amount": 10,
+                  "pending_flag": 0
+                },
+                "first": {
+                  "pending": 0
+                },
+                "second": {
+                  "pending": 10
+                },
+                "different": [
+                  "pending"
+                ]
+              },
+              {
+                "step": 2,
+                "kind": "post_full",
+                "label": "Отправить перевод 7 с PostPendingTransfer, ссылкой на перевод 6 и указанием провести всю ожидающую сумму (AmountMax)",
+                "inputs": {},
+                "first": {
+                  "pending": 0
+                },
+                "second": {
+                  "pending": 0
+                },
+                "different": []
+              }
+            ],
+            "first_difference": {
+              "step": 1,
+              "field": "pending",
+              "first": 0,
+              "second": 10
+            },
+            "final": {
+              "first": {
+                "pending": 0
+              },
+              "second": {
+                "pending": 0
+              }
+            }
+          },
+          "control": {
+            "initial": {
+              "pending": 0
+            },
+            "steps": [
+              {
+                "step": 1,
+                "kind": "create_transfer",
+                "label": "Создать перевод 6 со счёта 101 на счёт 102",
+                "inputs": {
+                  "amount": 10,
+                  "pending_flag": 1
+                },
+                "first": {
+                  "pending": 10
+                },
+                "second": {
+                  "pending": 10
+                },
+                "different": []
+              },
+              {
+                "step": 2,
+                "kind": "post_full",
+                "label": "Отправить перевод 7 с PostPendingTransfer, ссылкой на перевод 6 и указанием провести всю ожидающую сумму (AmountMax)",
+                "inputs": {},
+                "first": {
+                  "pending": 0
+                },
+                "second": {
+                  "pending": 0
+                },
+                "different": []
+              }
+            ],
+            "first_difference": null,
+            "final": {
+              "first": {
+                "pending": 0
+              },
+              "second": {
+                "pending": 0
+              }
+            }
+          }
+        },
+        "audit": {
+          "verdict": "accepted",
+          "first_rule": "Строка 44 связывает двухфазный перевод с включением соответствующего флага, а строка 12 показывает, как задать Pending. При Flags = 0 этот флаг выключен. Поэтому создание перевода 6 оставляет debits_pending счёта 101 равным нулю. При последующем запросе на проводку по PendingID = 6 освобождать ожидающую сумму нечего.",
+          "second_rule": "Строка 66 задаёт Flags = 0 для перевода 6, а строки 74–77 предписывают провести всю его ожидающую сумму. Если читать пример как успешную проводку, то непосредственно перед ней по переводу 6 должны ожидать 10 единиц. Переход модели прибавляет сумму перевода к начальному нулю. Условия amount == 10 и pending == 0 ограничивают эту трактовку данным примером. Источник не устанавливает особого правила для переводов на 10 единиц.",
+          "scenario": "Из общего начального нуля клиент сначала создаёт перевод 6 на 10 единиц со счёта 101 на счёт 102, затем отдельным вызовом отправляет перевод 7 с PostPendingTransfer, PendingID = 6 и AmountMax. Расхождение доступно клиенту при чтении debits_pending счёта 101 между вызовами: 0 по первой трактовке и 10 по второй. После второго вызова обе модели показывают 0. В первой ожидающая сумма всё время равнялась нулю, во второй проводка сняла все 10 единиц. Одного поля достаточно для этого наблюдения. Результат самого вызова пример не показывает.",
+          "control": "Контроль меняет только флаг создания на Pending = true. Обе трактовки тогда резервируют одну и ту же сумму: debits_pending счёта 101 возрастает с 0 до 10, а проводка всей суммы возвращает его к 0. Это согласуется с описанным в строках 53–56 переносом 10 единиц из ожидающих в проведённые на соответствующих сторонах обоих счетов. Модель проверяет ожидающую дебетовую сторону этого перехода.",
+          "evidence": [
+            {
+              "line": 12,
+              "quote": "* `TransferFlags{Pending: true}.ToUint16()`"
+            },
+            {
+              "line": 44,
+              "quote": "Two-phase transfers are supported natively by toggling the appropriate"
+            },
+            {
+              "line": 45,
+              "quote": "flag. TigerBeetle will then adjust the `credits_pending` and"
+            },
+            {
+              "line": 46,
+              "quote": "`debits_pending` fields of the appropriate accounts. A corresponding"
+            },
+            {
+              "line": 53,
+              "quote": "TigerBeetle will post the transfer. TigerBeetle will atomically roll"
+            },
+            {
+              "line": 54,
+              "quote": "back the changes to `debits_pending` and `credits_pending` of the"
+            },
+            {
+              "line": 55,
+              "quote": "appropriate accounts and apply them to the `debits_posted` and"
+            },
+            {
+              "line": 56,
+              "quote": "`credits_posted` balances."
+            },
+            {
+              "line": 63,
+              "quote": "\tAmount:          ToUint128(10),"
+            },
+            {
+              "line": 66,
+              "quote": "\tFlags:           0,"
+            },
+            {
+              "line": 74,
+              "quote": "\t// Post the entire pending amount."
+            },
+            {
+              "line": 75,
+              "quote": "\tAmount:    AmountMax,"
+            },
+            {
+              "line": 76,
+              "quote": "\tPendingID: ToUint128(6),"
+            },
+            {
+              "line": 77,
+              "quote": "\tFlags:     TransferFlags{PostPendingTransfer: true}.ToUint16(),"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

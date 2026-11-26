@@ -1,0 +1,1500 @@
+{
+  "schema_version": 2,
+  "scope": "Полное ревью требований",
+  "run": {
+    "started_utc": "2026-11-26T20:13:17.105740+00:00",
+    "elapsed_seconds": 125.24,
+    "provider": "codex-cli",
+    "model": "gpt-6.2-astra",
+    "agent_version": "b98a4f39dfaa",
+    "engine_sha256": "114b80bc078025024163645f946cb9a9450c6920c623b0e6b0e2366be4965f62",
+    "input_name": "sdk-fixed.md",
+    "input_sha256": "0b21941de1b1a761178e7b4510e321f47efa45cb7ad8061e8d37e8f3f1603198",
+    "input_lines": 82,
+    "usage": {
+      "input_tokens": 58523,
+      "cached_input_tokens": 32512,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 8130,
+      "reasoning_output_tokens": 12
+    },
+    "current_usage": {
+      "input_tokens": 58523,
+      "cached_input_tokens": 32512,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 8130,
+      "reasoning_output_tokens": 12
+    },
+    "fresh_calls": 4,
+    "restored_attempts": 0,
+    "attempts": [
+      {
+        "stage": "Сценарии",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 13775,
+          "cached_input_tokens": 10752,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 15,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 7.5
+      },
+      {
+        "stage": "Блоки 1–42",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 13932,
+          "cached_input_tokens": 10880,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2410,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 53.9
+      },
+      {
+        "stage": "Блоки 44–82",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 13906,
+          "cached_input_tokens": 10880,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2619,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 57.9
+      },
+      {
+        "stage": "Весь документ",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 16910,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3086,
+          "reasoning_output_tokens": 12
+        },
+        "seconds": 67.3
+      }
+    ],
+    "max_workers": 3
+  },
+  "http_status_policy": "explicit-http-v1",
+  "source": [
+    {
+      "line": 1,
+      "text": "## Transfer Flags"
+    },
+    {
+      "line": 3,
+      "text": "The transfer `flags` value is a bitfield. See details for these flags in"
+    },
+    {
+      "line": 4,
+      "text": "the [Transfers"
+    },
+    {
+      "line": 5,
+      "text": "reference](https://docs.tigerbeetle.com/reference/transfer#flags)."
+    },
+    {
+      "line": 7,
+      "text": "To toggle behavior for an account, use the `types.TransferFlags` struct"
+    },
+    {
+      "line": 8,
+      "text": "to combine enum values and generate a `uint16`. Here are a"
+    },
+    {
+      "line": 9,
+      "text": "few examples:"
+    },
+    {
+      "line": 11,
+      "text": "* `TransferFlags{Linked: true}.ToUint16()`"
+    },
+    {
+      "line": 12,
+      "text": "* `TransferFlags{Pending: true}.ToUint16()`"
+    },
+    {
+      "line": 13,
+      "text": "* `TransferFlags{PostPendingTransfer: true}.ToUint16()`"
+    },
+    {
+      "line": 14,
+      "text": "* `TransferFlags{VoidPendingTransfer: true}.ToUint16()`"
+    },
+    {
+      "line": 16,
+      "text": "For example, to link `transfer0` and `transfer1`:"
+    },
+    {
+      "line": 18,
+      "text": "```go"
+    },
+    {
+      "line": 19,
+      "text": "transfer0 := Transfer{"
+    },
+    {
+      "line": 20,
+      "text": "\tID:              ToUint128(4),"
+    },
+    {
+      "line": 21,
+      "text": "\tDebitAccountID:  ToUint128(101),"
+    },
+    {
+      "line": 22,
+      "text": "\tCreditAccountID: ToUint128(102),"
+    },
+    {
+      "line": 23,
+      "text": "\tAmount:          ToUint128(10),"
+    },
+    {
+      "line": 24,
+      "text": "\tLedger:          1,"
+    },
+    {
+      "line": 25,
+      "text": "\tCode:            1,"
+    },
+    {
+      "line": 26,
+      "text": "\tFlags:           TransferFlags{Linked: true}.ToUint16(),"
+    },
+    {
+      "line": 27,
+      "text": "}"
+    },
+    {
+      "line": 28,
+      "text": "transfer1 := Transfer{"
+    },
+    {
+      "line": 29,
+      "text": "\tID:              ToUint128(5),"
+    },
+    {
+      "line": 30,
+      "text": "\tDebitAccountID:  ToUint128(101),"
+    },
+    {
+      "line": 31,
+      "text": "\tCreditAccountID: ToUint128(102),"
+    },
+    {
+      "line": 32,
+      "text": "\tAmount:          ToUint128(10),"
+    },
+    {
+      "line": 33,
+      "text": "\tLedger:          1,"
+    },
+    {
+      "line": 34,
+      "text": "\tCode:            1,"
+    },
+    {
+      "line": 35,
+      "text": "\tFlags:           0,"
+    },
+    {
+      "line": 36,
+      "text": "}"
+    },
+    {
+      "line": 38,
+      "text": "transferResults, err := client.CreateTransfers([]Transfer{transfer0, transfer1})"
+    },
+    {
+      "line": 39,
+      "text": "// Results handling omitted."
+    },
+    {
+      "line": 40,
+      "text": "```"
+    },
+    {
+      "line": 42,
+      "text": "### Two-Phase Transfers"
+    },
+    {
+      "line": 44,
+      "text": "Two-phase transfers are supported natively by toggling the appropriate"
+    },
+    {
+      "line": 45,
+      "text": "flag. TigerBeetle will then adjust the `credits_pending` and"
+    },
+    {
+      "line": 46,
+      "text": "`debits_pending` fields of the appropriate accounts. A corresponding"
+    },
+    {
+      "line": 47,
+      "text": "post pending transfer then needs to be sent to post or void the"
+    },
+    {
+      "line": 48,
+      "text": "transfer."
+    },
+    {
+      "line": 50,
+      "text": "#### Post a Pending Transfer"
+    },
+    {
+      "line": 52,
+      "text": "With `flags` set to `post_pending_transfer`,"
+    },
+    {
+      "line": 53,
+      "text": "TigerBeetle will post the transfer. TigerBeetle will atomically roll"
+    },
+    {
+      "line": 54,
+      "text": "back the changes to `debits_pending` and `credits_pending` of the"
+    },
+    {
+      "line": 55,
+      "text": "appropriate accounts and apply them to the `debits_posted` and"
+    },
+    {
+      "line": 56,
+      "text": "`credits_posted` balances."
+    },
+    {
+      "line": 58,
+      "text": "```go"
+    },
+    {
+      "line": 59,
+      "text": "transfer0 := Transfer{"
+    },
+    {
+      "line": 60,
+      "text": "\tID:              ToUint128(6),"
+    },
+    {
+      "line": 61,
+      "text": "\tDebitAccountID:  ToUint128(101),"
+    },
+    {
+      "line": 62,
+      "text": "\tCreditAccountID: ToUint128(102),"
+    },
+    {
+      "line": 63,
+      "text": "\tAmount:          ToUint128(10),"
+    },
+    {
+      "line": 64,
+      "text": "\tLedger:          1,"
+    },
+    {
+      "line": 65,
+      "text": "\tCode:            1,"
+    },
+    {
+      "line": 66,
+      "text": "\tFlags:           TransferFlags{Pending: true}.ToUint16(),"
+    },
+    {
+      "line": 67,
+      "text": "}"
+    },
+    {
+      "line": 69,
+      "text": "transferResults, err := client.CreateTransfers([]Transfer{transfer0})"
+    },
+    {
+      "line": 70,
+      "text": "// Results handling omitted."
+    },
+    {
+      "line": 72,
+      "text": "transfer1 := Transfer{"
+    },
+    {
+      "line": 73,
+      "text": "\tID: ToUint128(7),"
+    },
+    {
+      "line": 74,
+      "text": "\t// Post the entire pending amount."
+    },
+    {
+      "line": 75,
+      "text": "\tAmount:    AmountMax,"
+    },
+    {
+      "line": 76,
+      "text": "\tPendingID: ToUint128(6),"
+    },
+    {
+      "line": 77,
+      "text": "\tFlags:     TransferFlags{PostPendingTransfer: true}.ToUint16(),"
+    },
+    {
+      "line": 78,
+      "text": "}"
+    },
+    {
+      "line": 80,
+      "text": "transferResults, err = client.CreateTransfers([]Transfer{transfer1})"
+    },
+    {
+      "line": 81,
+      "text": "// Results handling omitted."
+    },
+    {
+      "line": 82,
+      "text": "```"
+    }
+  ],
+  "segments": [
+    {
+      "start": 1,
+      "end": 1,
+      "kind": "заголовок",
+      "section": "Transfer Flags",
+      "note": "Заголовок раздела о флагах перевода.",
+      "requirements": []
+    },
+    {
+      "start": 3,
+      "end": 3,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Задаёт представление флагов перевода.",
+      "requirements": [
+        "R-001"
+      ]
+    },
+    {
+      "start": 4,
+      "end": 4,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Начало текста ссылки на справочник переводов.",
+      "requirements": []
+    },
+    {
+      "start": 5,
+      "end": 5,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Завершает ссылку на описание флагов.",
+      "requirements": []
+    },
+    {
+      "start": 7,
+      "end": 7,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Указывает структуру Go для задания флагов.",
+      "requirements": [
+        "R-002"
+      ]
+    },
+    {
+      "start": 8,
+      "end": 8,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Описывает объединение флагов и тип результата.",
+      "requirements": [
+        "R-003",
+        "R-004"
+      ]
+    },
+    {
+      "start": 9,
+      "end": 9,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Вводит перечень примеров.",
+      "requirements": []
+    },
+    {
+      "start": 11,
+      "end": 11,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Пример маски для связывания переводов.",
+      "requirements": [
+        "R-005"
+      ]
+    },
+    {
+      "start": 12,
+      "end": 12,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Пример маски для создания ожидающего перевода.",
+      "requirements": [
+        "R-006"
+      ]
+    },
+    {
+      "start": 13,
+      "end": 13,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Пример маски для проведения ожидающего перевода.",
+      "requirements": [
+        "R-007"
+      ]
+    },
+    {
+      "start": 14,
+      "end": 14,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Пример маски для отмены ожидающего перевода.",
+      "requirements": [
+        "R-008"
+      ]
+    },
+    {
+      "start": 16,
+      "end": 16,
+      "kind": "текст",
+      "section": "Transfer Flags",
+      "note": "Задаёт ожидаемый результат следующего примера.",
+      "requirements": [
+        "R-009"
+      ]
+    },
+    {
+      "start": 18,
+      "end": 40,
+      "kind": "пример go",
+      "section": "Transfer Flags",
+      "note": "Пример задаёт данные двух переводов и показывает их отправку одним вызовом. Числа относятся к этому примеру.",
+      "requirements": [
+        "R-010",
+        "R-011",
+        "R-012",
+        "R-013",
+        "R-014",
+        "R-015",
+        "R-016",
+        "R-017",
+        "R-018",
+        "R-019"
+      ]
+    },
+    {
+      "start": 42,
+      "end": 42,
+      "kind": "заголовок",
+      "section": "Transfer Flags / Two-Phase Transfers",
+      "note": "Заголовок раздела о двухфазных переводах.",
+      "requirements": []
+    },
+    {
+      "start": 44,
+      "end": 44,
+      "kind": "текст",
+      "section": "Transfer Flags / Two-Phase Transfers",
+      "note": "Включение двухфазного перевода.",
+      "requirements": [
+        "R-020"
+      ]
+    },
+    {
+      "start": 45,
+      "end": 45,
+      "kind": "текст",
+      "section": "Transfer Flags / Two-Phase Transfers",
+      "note": "Учёт ожидающей суммы на стороне кредита.",
+      "requirements": [
+        "R-021"
+      ]
+    },
+    {
+      "start": 46,
+      "end": 46,
+      "kind": "текст",
+      "section": "Transfer Flags / Two-Phase Transfers",
+      "note": "Учёт ожидающей суммы на стороне дебета.",
+      "requirements": [
+        "R-022"
+      ]
+    },
+    {
+      "start": 47,
+      "end": 47,
+      "kind": "текст",
+      "section": "Transfer Flags / Two-Phase Transfers",
+      "note": "Клиентская операция для каждого из двух способов завершения.",
+      "requirements": [
+        "R-023",
+        "R-024"
+      ]
+    },
+    {
+      "start": 48,
+      "end": 48,
+      "kind": "текст",
+      "section": "Transfer Flags / Two-Phase Transfers",
+      "note": "Последнее слово предложения указывает на перевод, который проводят или отменяют.",
+      "requirements": []
+    },
+    {
+      "start": 50,
+      "end": 50,
+      "kind": "заголовок",
+      "section": "Transfer Flags / Two-Phase Transfers / Post a Pending Transfer",
+      "note": "Заголовок раздела о проведении ожидающего перевода.",
+      "requirements": []
+    },
+    {
+      "start": 52,
+      "end": 52,
+      "kind": "текст",
+      "section": "Transfer Flags / Two-Phase Transfers / Post a Pending Transfer",
+      "note": "Условие проведения, результат которого указан в следующей строке.",
+      "requirements": [
+        "R-025"
+      ]
+    },
+    {
+      "start": 53,
+      "end": 53,
+      "kind": "текст",
+      "section": "Transfer Flags / Two-Phase Transfers / Post a Pending Transfer",
+      "note": "Гарантия атомарности при проведении.",
+      "requirements": [
+        "R-026"
+      ]
+    },
+    {
+      "start": 54,
+      "end": 54,
+      "kind": "текст",
+      "section": "Transfer Flags / Two-Phase Transfers / Post a Pending Transfer",
+      "note": "Два изменения ожидающих балансов при проведении.",
+      "requirements": [
+        "R-027",
+        "R-028"
+      ]
+    },
+    {
+      "start": 55,
+      "end": 55,
+      "kind": "текст",
+      "section": "Transfer Flags / Two-Phase Transfers / Post a Pending Transfer",
+      "note": "Проведённый баланс дебетуемого счёта.",
+      "requirements": [
+        "R-029"
+      ]
+    },
+    {
+      "start": 56,
+      "end": 56,
+      "kind": "текст",
+      "section": "Transfer Flags / Two-Phase Transfers / Post a Pending Transfer",
+      "note": "Проведённый баланс кредитуемого счёта.",
+      "requirements": [
+        "R-030"
+      ]
+    },
+    {
+      "start": 58,
+      "end": 82,
+      "kind": "пример go",
+      "section": "Transfer Flags / Two-Phase Transfers / Post a Pending Transfer",
+      "note": "Пример Go задаёт данные двух запросов и связывает их через PendingID. Конкретные идентификаторы и суммы относятся к примеру.",
+      "requirements": [
+        "R-031",
+        "R-032",
+        "R-033",
+        "R-034",
+        "R-035",
+        "R-036",
+        "R-037",
+        "R-038"
+      ]
+    }
+  ],
+  "registry": [
+    {
+      "role": "требование",
+      "statement": "Поле `flags` перевода представляет собой битовое поле.",
+      "evidence": {
+        "line": 3,
+        "quote": "The transfer `flags` value is a bitfield."
+      },
+      "status": "проверяемо",
+      "assessment": "Выставить два флага по отдельности и вместе. Совместная маска должна равняться побитовому ИЛИ одиночных масок.",
+      "id": "R-001",
+      "start": 3,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Для задания флагов через Go API используется структура `types.TransferFlags`.",
+      "evidence": {
+        "line": 7,
+        "quote": "use the `types.TransferFlags` struct"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить, что из `types.TransferFlags` можно получить значение для поля `Flags` объекта `Transfer`, как показано в строке 26.",
+      "id": "R-002",
+      "start": 7,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "`types.TransferFlags` позволяет объединить несколько значений флагов в одну маску.",
+      "evidence": {
+        "line": 8,
+        "quote": "combine enum values"
+      },
+      "status": "проверяемо",
+      "assessment": "Задать два флага в одной структуре и проверить наличие обоих битов в полученной маске.",
+      "id": "R-003",
+      "start": 8,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Преобразование структуры флагов возвращает значение типа `uint16`.",
+      "evidence": {
+        "line": 8,
+        "quote": "generate a `uint16`"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить статический тип результата `ToUint16()`.",
+      "id": "R-004",
+      "start": 8,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "`TransferFlags{Linked: true}.ToUint16()` формирует маску с флагом `Linked`.",
+      "evidence": {
+        "line": 11,
+        "quote": "TransferFlags{Linked: true}.ToUint16()"
+      },
+      "status": "проверяемо",
+      "assessment": "Декодировать результат и проверить, что выставлен только `Linked`.",
+      "id": "R-005",
+      "start": 11,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "`TransferFlags{Pending: true}.ToUint16()` формирует маску с флагом `Pending`.",
+      "evidence": {
+        "line": 12,
+        "quote": "TransferFlags{Pending: true}.ToUint16()"
+      },
+      "status": "проверяемо",
+      "assessment": "Декодировать результат и проверить, что выставлен только `Pending`.",
+      "id": "R-006",
+      "start": 12,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "`TransferFlags{PostPendingTransfer: true}.ToUint16()` формирует маску с флагом `PostPendingTransfer`.",
+      "evidence": {
+        "line": 13,
+        "quote": "TransferFlags{PostPendingTransfer: true}.ToUint16()"
+      },
+      "status": "проверяемо",
+      "assessment": "Декодировать результат и проверить, что выставлен только `PostPendingTransfer`.",
+      "id": "R-007",
+      "start": 13,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "`TransferFlags{VoidPendingTransfer: true}.ToUint16()` формирует маску с флагом `VoidPendingTransfer`.",
+      "evidence": {
+        "line": 14,
+        "quote": "TransferFlags{VoidPendingTransfer: true}.ToUint16()"
+      },
+      "status": "проверяемо",
+      "assessment": "Декодировать результат и проверить, что выставлен только `VoidPendingTransfer`.",
+      "id": "R-008",
+      "start": 14,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "В показанном пакете флаг `Linked` у `transfer0` связывает его со следующим переводом `transfer1`.",
+      "evidence": {
+        "line": 16,
+        "quote": "to link `transfer0` and `transfer1`"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить последовательность в строках 26, 35 и 38. У `transfer0` выставлен `Linked`, а `transfer1` следует сразу за ним и завершает пару.",
+      "id": "R-009",
+      "start": 16,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "`ID` первого перевода равен `ToUint128(4)`, второго — `ToUint128(5)`.",
+      "evidence": {
+        "line": 29,
+        "quote": "ID:              ToUint128(5),"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить оба идентификатора в порядке отправки.",
+      "id": "R-010",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "В обоих переводах `DebitAccountID` равен `ToUint128(101)`.",
+      "evidence": {
+        "line": 21,
+        "quote": "DebitAccountID:  ToUint128(101),"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить поле дебетуемого счёта у обоих элементов пакета.",
+      "id": "R-011",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "В обоих переводах `CreditAccountID` равен `ToUint128(102)`.",
+      "evidence": {
+        "line": 22,
+        "quote": "CreditAccountID: ToUint128(102),"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить поле кредитуемого счёта у обоих элементов пакета.",
+      "id": "R-012",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "В каждом переводе `Amount` равен `ToUint128(10)`.",
+      "evidence": {
+        "line": 23,
+        "quote": "Amount:          ToUint128(10),"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить сумму каждого элемента пакета по отдельности.",
+      "id": "R-013",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "У обоих переводов `Ledger` равен `1`.",
+      "evidence": {
+        "line": 24,
+        "quote": "Ledger:          1,"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить значение `Ledger` в обоих объектах `Transfer`.",
+      "id": "R-014",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "У обоих переводов `Code` равен `1`.",
+      "evidence": {
+        "line": 25,
+        "quote": "Code:            1,"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить значение `Code` в обоих объектах `Transfer`.",
+      "id": "R-015",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "Первому переводу присваивается маска `TransferFlags{Linked: true}.ToUint16()`.",
+      "evidence": {
+        "line": 26,
+        "quote": "Flags:           TransferFlags{Linked: true}.ToUint16(),"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить, что маска первого элемента содержит только флаг `Linked`.",
+      "id": "R-016",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "У второго, завершающего пару перевода `Flags` равен `0`.",
+      "evidence": {
+        "line": 35,
+        "quote": "Flags:           0,"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить нулевую маску у элемента с идентификатором 5.",
+      "id": "R-017",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "Клиент передаёт оба перевода в одном вызове `CreateTransfers` с аргументом типа `[]Transfer` в порядке `transfer0`, `transfer1`.",
+      "evidence": {
+        "line": 38,
+        "quote": "client.CreateTransfers([]Transfer{transfer0, transfer1})"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить число вызовов, длину среза и последовательность идентификаторов 4, 5.",
+      "id": "R-018",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "`CreateTransfers` возвращает два значения. Первое присваивается `transferResults`, второе — `err`.",
+      "evidence": {
+        "line": 38,
+        "quote": "transferResults, err := client.CreateTransfers"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить число и порядок возвращаемых значений с сигнатурой метода.",
+      "id": "R-019",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "TigerBeetle должен поддерживать создание двухфазного перевода с помощью флага Pending.",
+      "evidence": {
+        "line": 44,
+        "quote": "Two-phase transfers are supported natively by toggling the appropriate"
+      },
+      "status": "проверяемо",
+      "assessment": "Отправить перевод с Pending и проверить, что он учитывается как ожидающий до операции завершения.",
+      "id": "R-020",
+      "start": 44,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При создании ожидающего перевода TigerBeetle должен увеличить credits_pending кредитуемого счёта на сумму перевода.",
+      "evidence": {
+        "line": 45,
+        "quote": "TigerBeetle will then adjust the `credits_pending`"
+      },
+      "status": "проверяемо",
+      "assessment": "Для перевода из примера сравнить credits_pending счёта 102 до и после создания. Разница должна составить 10.",
+      "id": "R-021",
+      "start": 45,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При создании ожидающего перевода TigerBeetle должен увеличить debits_pending дебетуемого счёта на сумму перевода.",
+      "evidence": {
+        "line": 46,
+        "quote": "`debits_pending` fields of the appropriate accounts."
+      },
+      "status": "проверяемо",
+      "assessment": "Для перевода из примера сравнить debits_pending счёта 101 до и после создания. Разница должна составить 10.",
+      "id": "R-022",
+      "start": 46,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Для проведения ожидающего перевода клиент должен отправить отдельный перевод с PostPendingTransfer, указав в PendingID идентификатор исходного перевода.",
+      "evidence": {
+        "line": 47,
+        "quote": "post pending transfer then needs to be sent to post"
+      },
+      "status": "проверяемо",
+      "assessment": "Создать ожидающий перевод и отправить операцию проведения со ссылкой на его ID. Проверить проведение по балансам соответствующих счетов.",
+      "id": "R-023",
+      "start": 47,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Для отмены ожидающего перевода клиент должен отправить соответствующую операцию отмены с VoidPendingTransfer.",
+      "evidence": {
+        "line": 47,
+        "quote": "then needs to be sent to post or void the"
+      },
+      "status": "проверяемо",
+      "assessment": "Для отдельного ожидающего перевода отправить операцию с флагом отмены из строки 14 и проверить снятие ожидающей суммы без её проведения.",
+      "id": "R-024",
+      "start": 47,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Если для операции по ожидающему переводу задан флаг post_pending_transfer, TigerBeetle должен провести перевод.",
+      "evidence": {
+        "line": 52,
+        "quote": "With `flags` set to `post_pending_transfer`,"
+      },
+      "status": "проверяемо",
+      "assessment": "Для существующего ожидающего перевода отправить связанную операцию с PostPendingTransfer и проверить переход указанной суммы в проведённые балансы.",
+      "id": "R-025",
+      "start": 52,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При проведении ожидающего перевода снятие проводимой суммы с обоих ожидающих балансов и её зачисление на оба проведённых баланса должны быть атомарными.",
+      "evidence": {
+        "line": 53,
+        "quote": "TigerBeetle will atomically roll"
+      },
+      "status": "проверяемо",
+      "assessment": "При конкурентном чтении согласованных снимков обоих счетов проверять, что все четыре баланса отражают либо состояние до проведения, либо состояние после него.",
+      "id": "R-026",
+      "start": 53,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При проведении ожидающего перевода TigerBeetle должен уменьшить debits_pending дебетуемого счёта на проводимую сумму.",
+      "evidence": {
+        "line": 54,
+        "quote": "back the changes to `debits_pending`"
+      },
+      "status": "проверяемо",
+      "assessment": "При полном проведении перевода из примера debits_pending счёта 101 должен уменьшиться на 10 относительно состояния после первой фазы.",
+      "id": "R-027",
+      "start": 54,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При проведении ожидающего перевода TigerBeetle должен уменьшить credits_pending кредитуемого счёта на проводимую сумму.",
+      "evidence": {
+        "line": 54,
+        "quote": "and `credits_pending`"
+      },
+      "status": "проверяемо",
+      "assessment": "При полном проведении перевода из примера credits_pending счёта 102 должен уменьшиться на 10 относительно состояния после первой фазы.",
+      "id": "R-028",
+      "start": 54,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При проведении ожидающего перевода TigerBeetle должен увеличить debits_posted дебетуемого счёта на проводимую сумму.",
+      "evidence": {
+        "line": 55,
+        "quote": "apply them to the `debits_posted`"
+      },
+      "status": "проверяемо",
+      "assessment": "При полном проведении перевода из примера debits_posted счёта 101 должен увеличиться на 10.",
+      "id": "R-029",
+      "start": 55,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При проведении ожидающего перевода TigerBeetle должен увеличить credits_posted кредитуемого счёта на проводимую сумму.",
+      "evidence": {
+        "line": 56,
+        "quote": "`credits_posted` balances."
+      },
+      "status": "проверяемо",
+      "assessment": "При полном проведении перевода из примера credits_posted счёта 102 должен увеличиться на 10.",
+      "id": "R-030",
+      "start": 56,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "Первая запись Transfer имеет ID 6, DebitAccountID 101, CreditAccountID 102 и Amount 10. Все четыре значения заданы через ToUint128. Поля Ledger и Code равны 1.",
+      "evidence": {
+        "line": 63,
+        "quote": "Amount:          ToUint128(10),"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить значения полей первого элемента запроса, включая направление перевода со счёта 101 на счёт 102.",
+      "id": "R-031",
+      "start": 58,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "Для первой записи Flags формируется как uint16 из TransferFlags с Pending, равным true.",
+      "evidence": {
+        "line": 66,
+        "quote": "Flags:           TransferFlags{Pending: true}.ToUint16(),"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить значение Flags первого перевода после вызова ToUint16().",
+      "id": "R-032",
+      "start": 58,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "Для создания ожидающего перевода клиент вызывает CreateTransfers со срезом []Transfer из одной записи transfer0 и получает transferResults и err.",
+      "evidence": {
+        "line": 69,
+        "quote": "transferResults, err := client.CreateTransfers([]Transfer{transfer0})"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить аргумент первого вызова и присваивание двух возвращаемых значений.",
+      "id": "R-033",
+      "start": 58,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "Операция проведения представлена отдельной записью Transfer с собственным ID, заданным как ToUint128(7).",
+      "evidence": {
+        "line": 73,
+        "quote": "ID: ToUint128(7),"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить, что собственный ID второй записи равен 7, а ID исходного перевода равен 6.",
+      "id": "R-034",
+      "start": 58,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "Во второй записи PendingID задаётся как ToUint128(6) и ссылается на первую запись.",
+      "evidence": {
+        "line": 76,
+        "quote": "PendingID: ToUint128(6),"
+      },
+      "status": "проверяемо",
+      "assessment": "Сопоставить PendingID второго запроса с ID перевода, созданного первым запросом.",
+      "id": "R-035",
+      "start": 58,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "Во второй записи Flags формируется как uint16 из TransferFlags с PostPendingTransfer, равным true.",
+      "evidence": {
+        "line": 77,
+        "quote": "Flags:     TransferFlags{PostPendingTransfer: true}.ToUint16(),"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить значение Flags операции проведения после вызова ToUint16().",
+      "id": "R-036",
+      "start": 58,
+      "original_id": "—"
+    },
+    {
+      "role": "пример контракта",
+      "statement": "Для проведения второй вызов CreateTransfers получает срез []Transfer из одной записи transfer1. Результат и ошибка присваиваются переменным transferResults и err.",
+      "evidence": {
+        "line": 80,
+        "quote": "transferResults, err = client.CreateTransfers([]Transfer{transfer1})"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить порядок двух вызовов, состав второго среза и присваивание обоих возвращаемых значений.",
+      "id": "R-037",
+      "start": 58,
+      "original_id": "—"
+    },
+    {
+      "role": "приёмочный пример",
+      "statement": "Когда по переводу 6 ожидает проведения сумма 10, отправка связанного перевода 7 с PostPendingTransfer и Amount, равным AmountMax, проводит всю ожидающую сумму.",
+      "evidence": {
+        "line": 75,
+        "quote": "Amount:    AmountMax,"
+      },
+      "status": "проверяемо",
+      "assessment": "После второго вызова проверить уменьшение ожидающих и увеличение проведённых балансов на 10 по дебету счёта 101 и кредиту счёта 102.",
+      "id": "R-038",
+      "start": 58,
+      "original_id": "—"
+    }
+  ],
+  "whole": {
+    "dimensions": [
+      {
+        "criterion": "полнота",
+        "assessment": "Пример полного проведения доведён от создания ожидающего перевода до второго вызова клиента. Для заявленной отмены показано только создание маски флага. Для связанной пары показан входной пакет, но отсутствует наблюдаемый признак того, что связь сработала.",
+        "evidence": [
+          {
+            "line": 16,
+            "quote": "For example, to link `transfer0` and `transfer1`:"
+          },
+          {
+            "line": 39,
+            "quote": "// Results handling omitted."
+          },
+          {
+            "line": 14,
+            "quote": "TransferFlags{VoidPendingTransfer: true}.ToUint16()"
+          },
+          {
+            "line": 74,
+            "quote": "// Post the entire pending amount."
+          },
+          {
+            "line": 80,
+            "quote": "transferResults, err = client.CreateTransfers([]Transfer{transfer1})"
+          }
+        ]
+      },
+      {
+        "criterion": "согласованность",
+        "assessment": "Доказанного конфликта бизнес-результатов нет. Общую фразу о последующей операции можно прочитать как описание второго этапа с двумя вариантами завершения. Специальное правило однозначно связывает post_pending_transfer с проведением. Терминологию отмены нужно уточнить.",
+        "evidence": [
+          {
+            "line": 47,
+            "quote": "post pending transfer then needs to be sent to post or void the"
+          },
+          {
+            "line": 14,
+            "quote": "VoidPendingTransfer: true"
+          },
+          {
+            "line": 52,
+            "quote": "With `flags` set to `post_pending_transfer`,"
+          },
+          {
+            "line": 53,
+            "quote": "TigerBeetle will post the transfer."
+          }
+        ]
+      },
+      {
+        "criterion": "проверяемость",
+        "assessment": "Для полного проведения определён конкретный тестовый случай. Ожидающий перевод имеет сумму 10, операция проведения ссылается на него и запрашивает всю сумму через AmountMax. Можно проверять итоговые балансы. Одна проверка конечного состояния сама по себе не доказывает атомарность перехода.",
+        "evidence": [
+          {
+            "line": 63,
+            "quote": "Amount:          ToUint128(10)"
+          },
+          {
+            "line": 74,
+            "quote": "// Post the entire pending amount."
+          },
+          {
+            "line": 75,
+            "quote": "Amount:    AmountMax"
+          },
+          {
+            "line": 76,
+            "quote": "PendingID: ToUint128(6)"
+          },
+          {
+            "line": 53,
+            "quote": "TigerBeetle will atomically roll"
+          },
+          {
+            "line": 54,
+            "quote": "back the changes to `debits_pending` and `credits_pending`"
+          }
+        ]
+      },
+      {
+        "criterion": "прослеживаемость",
+        "assessment": "Ссылку между двумя операциями можно проверить непосредственно по ID 6 и PendingID 6. В других местах реестр точнее исходного текста. В частности, R-021 и R-022 задают направление и величину изменения балансов, тогда как текст говорит лишь об их корректировке.",
+        "evidence": [
+          {
+            "line": 60,
+            "quote": "ID:              ToUint128(6)"
+          },
+          {
+            "line": 76,
+            "quote": "PendingID: ToUint128(6)"
+          },
+          {
+            "line": 45,
+            "quote": "TigerBeetle will then adjust the `credits_pending` and"
+          },
+          {
+            "line": 46,
+            "quote": "`debits_pending` fields of the appropriate accounts."
+          }
+        ]
+      },
+      {
+        "criterion": "границы решения",
+        "assessment": "Фрагмент описывает флаги переводов и их применение через Go-клиент. Детали вынесены в справочник. Значения ID, счетов, суммы, Ledger и Code принадлежат примерам. Оснований считать их универсальными ограничениями или выводить HTTP-метод и статусы из имени CreateTransfers нет.",
+        "evidence": [
+          {
+            "line": 3,
+            "quote": "The transfer `flags` value is a bitfield. See details for these flags in"
+          },
+          {
+            "line": 5,
+            "quote": "reference](https://docs.tigerbeetle.com/reference/transfer#flags)."
+          },
+          {
+            "line": 16,
+            "quote": "For example, to link `transfer0` and `transfer1`:"
+          },
+          {
+            "line": 38,
+            "quote": "client.CreateTransfers([]Transfer{transfer0, transfer1})"
+          }
+        ]
+      }
+    ],
+    "findings": [
+      {
+        "title": "Для отмены ожидающего перевода отсутствует проверяемый контракт",
+        "category": "открытый вопрос",
+        "criterion": "полнота",
+        "reason": "В перечне есть VoidPendingTransfer, но общая инструкция называет последующий перевод «post pending transfer» сразу для двух действий. Поля запроса и изменение балансов раскрыты только для проведения.",
+        "impact": "Клиент может сформировать маску отмены, но по фрагменту нельзя подтвердить, что он правильно адресовал отмену и что средства учтены на нужных балансах.",
+        "owner": "Владелец контракта двухфазных переводов",
+        "question": "Как выглядит корректная операция отмены ожидающего перевода 6 на сумму 10 и какие значения балансов должны наблюдаться после её успеха?",
+        "action": "Назвать общий второй этап нейтрально и добавить для отмены пример запроса с обязательными полями и ожидаемыми изменениями балансов либо точную ссылку на соответствующий контракт.",
+        "requirements": [
+          "R-008",
+          "R-024"
+        ],
+        "candidates": [],
+        "evidence": [
+          {
+            "line": 14,
+            "quote": "TransferFlags{VoidPendingTransfer: true}.ToUint16()"
+          },
+          {
+            "line": 47,
+            "quote": "post pending transfer then needs to be sent to post or void the"
+          },
+          {
+            "line": 50,
+            "quote": "#### Post a Pending Transfer"
+          },
+          {
+            "line": 77,
+            "quote": "Flags:     TransferFlags{PostPendingTransfer: true}.ToUint16()"
+          }
+        ],
+        "triage": {
+          "rule": "implementation_or_contract",
+          "witness": []
+        },
+        "priority": "существенный",
+        "id": "D-01"
+      },
+      {
+        "title": "Для Linked показана сборка пакета, но отсутствует критерий проверки связи",
+        "category": "открытый вопрос",
+        "criterion": "проверяемость",
+        "reason": "Порядок записей и флаг первой записи заданы точно. Успех двух допустимых переводов сам по себе не показывает, повлияла ли связь на обработку пары. Исход для случая, когда одна запись не может быть выполнена, не описан.",
+        "impact": "Проверка содержимого запроса пройдёт и при реализации, которая принимает пакет, но игнорирует Linked.",
+        "owner": "Владелец контракта связанных переводов",
+        "question": "Какой результат должен наблюдать клиент для каждой записи показанной связанной пары, если вторая запись не может быть выполнена?",
+        "action": "Добавить один различающий сценарий с ожидаемым результатом вызова и состоянием обоих переводов либо сослаться на конкретное правило справочника.",
+        "requirements": [
+          "R-009",
+          "R-016",
+          "R-017",
+          "R-018",
+          "R-019"
+        ],
+        "candidates": [],
+        "evidence": [
+          {
+            "line": 16,
+            "quote": "For example, to link `transfer0` and `transfer1`:"
+          },
+          {
+            "line": 26,
+            "quote": "Flags:           TransferFlags{Linked: true}.ToUint16()"
+          },
+          {
+            "line": 35,
+            "quote": "Flags:           0"
+          },
+          {
+            "line": 38,
+            "quote": "transferResults, err := client.CreateTransfers([]Transfer{transfer0, transfer1})"
+          },
+          {
+            "line": 39,
+            "quote": "// Results handling omitted."
+          }
+        ],
+        "triage": {
+          "rule": "implementation_or_contract",
+          "witness": []
+        },
+        "priority": "существенный",
+        "id": "D-02"
+      },
+      {
+        "title": "Ожидаемые изменения балансов в реестре шире описанного сценария",
+        "category": "открытый вопрос",
+        "criterion": "прослеживаемость и проверяемость",
+        "reason": "Для создания исходник называет оба pending-поля без явных приращений. Для проведения он предписывает атомарно обратить предыдущие изменения и применить их к posted-балансам. В примере проводится вся сумма, поэтому он не различает снятие всей исходной суммы и снятие только проводимой части. Формулировки R-026–R-028 различали бы эти варианты при частичном проведении, допустимость которого фрагмент не устанавливает.",
+        "impact": "Клиент и тестировщик могут принять разные остатки средств за корректные, если перенесут ожидания из примера на другие суммы.",
+        "owner": "Владелец правил учёта переводов",
+        "question": "Каковы точные изменения балансов каждого счёта при создании и проведении для сумм, входящих в область действия этого раздела?",
+        "action": "Согласовать таблицу изменений по счетам и фазам для примера на 10 и привязать к ней утверждения реестра. Указать область применимости правила по сумме и описать частичное проведение, если оно в неё входит.",
+        "requirements": [
+          "R-021",
+          "R-022",
+          "R-026",
+          "R-027",
+          "R-028",
+          "R-029",
+          "R-030",
+          "R-038"
+        ],
+        "candidates": [],
+        "evidence": [
+          {
+            "line": 45,
+            "quote": "TigerBeetle will then adjust the `credits_pending` and"
+          },
+          {
+            "line": 46,
+            "quote": "`debits_pending` fields of the appropriate accounts."
+          },
+          {
+            "line": 54,
+            "quote": "back the changes to `debits_pending` and `credits_pending` of the"
+          },
+          {
+            "line": 55,
+            "quote": "appropriate accounts and apply them to the `debits_posted` and"
+          },
+          {
+            "line": 74,
+            "quote": "// Post the entire pending amount."
+          },
+          {
+            "line": 75,
+            "quote": "Amount:    AmountMax"
+          }
+        ],
+        "triage": {
+          "rule": "implementation_or_contract",
+          "witness": []
+        },
+        "priority": "существенный",
+        "id": "D-03"
+      },
+      {
+        "title": "В инструкции по установке флага неточно назван объект",
+        "category": "нарушение",
+        "criterion": "границы решения",
+        "reason": "Фраза «for an account» создаёт впечатление настройки счёта. Объявление поля и присваивание в примере однозначно помещают маску в запись перевода.",
+        "impact": "Читателю приходится сверяться с кодом, чтобы понять, в какой объект записать флаг.",
+        "owner": "Автор документации Go-клиента",
+        "question": "Как сформулировать вводную строку так, чтобы она прямо называла перевод носителем флага?",
+        "action": "Указать в строке 7, что types.TransferFlags задаёт поведение перевода через его поле Flags.",
+        "requirements": [
+          "R-001",
+          "R-002"
+        ],
+        "candidates": [],
+        "evidence": [
+          {
+            "line": 3,
+            "quote": "The transfer `flags` value is a bitfield."
+          },
+          {
+            "line": 7,
+            "quote": "To toggle behavior for an account"
+          },
+          {
+            "line": 19,
+            "quote": "transfer0 := Transfer{"
+          },
+          {
+            "line": 26,
+            "quote": "Flags:           TransferFlags{Linked: true}.ToUint16()"
+          }
+        ],
+        "triage": {
+          "rule": "document_only",
+          "witness": []
+        },
+        "priority": "редакционный",
+        "id": "D-04"
+      }
+    ],
+    "reconciled": [],
+    "development": {
+      "status": "можно частично",
+      "rationale": "Разработчики могут использовать Go API для формирования масок, собрать связанный пакет в указанном порядке и реализовать показанную последовательность создания и полного проведения. Для самостоятельной реализации обработки Linked, отмены и учёта сумм за пределами примера требуется уточнённый контракт или соответствующие правила из указанного справочника.",
+      "evidence": [
+        {
+          "line": 8,
+          "quote": "to combine enum values and generate a `uint16`."
+        },
+        {
+          "line": 38,
+          "quote": "client.CreateTransfers([]Transfer{transfer0, transfer1})"
+        },
+        {
+          "line": 69,
+          "quote": "client.CreateTransfers([]Transfer{transfer0})"
+        },
+        {
+          "line": 76,
+          "quote": "PendingID: ToUint128(6)"
+        },
+        {
+          "line": 77,
+          "quote": "PostPendingTransfer: true"
+        },
+        {
+          "line": 80,
+          "quote": "client.CreateTransfers([]Transfer{transfer1})"
+        }
+      ]
+    },
+    "testing": {
+      "status": "можно частично",
+      "rationale": "Можно проверить тип маски, поля и порядок запросов, ссылку на исходный перевод и проведение всей ожидающей суммы через AmountMax. Для полной приёмки нужны наблюдаемый исход ошибки в связанной паре, ожидаемый результат отмены и согласованные изменения балансов для всех сумм в заявленной области. Атомарность требует отдельной проверки возможности наблюдать промежуточное состояние.",
+      "evidence": [
+        {
+          "line": 8,
+          "quote": "generate a `uint16`"
+        },
+        {
+          "line": 38,
+          "quote": "[]Transfer{transfer0, transfer1}"
+        },
+        {
+          "line": 39,
+          "quote": "// Results handling omitted."
+        },
+        {
+          "line": 47,
+          "quote": "to post or void the"
+        },
+        {
+          "line": 53,
+          "quote": "TigerBeetle will atomically roll"
+        },
+        {
+          "line": 74,
+          "quote": "// Post the entire pending amount."
+        },
+        {
+          "line": 75,
+          "quote": "Amount:    AmountMax"
+        }
+      ]
+    }
+  },
+  "json_checks": {
+    "version": 1,
+    "examples": []
+  },
+  "priority_policy": "impact-v1",
+  "conflicts": [],
+  "executables": {
+    "version": "witness-v2",
+    "items": []
+  }
+}
