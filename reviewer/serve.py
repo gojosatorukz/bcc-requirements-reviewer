@@ -31,8 +31,11 @@ STATIC_FILES = {
 }
 LIMITS = {".md": 120_000, ".txt": 120_000, ".pdf": 16_000_000}
 JOB_ID = r"[0-9a-f]{32}"
+FINDING_ID = r"D-(?:0[1-9]|[1-9][0-9]+)"
 PROGRESS = re.compile(r"(?:Сценарии|Блоки [0-9]+–[0-9]+|Весь документ|Повторная проверка) · "
                       r"(?:проверено|проверена сохранённая стадия)")
+PLAN = re.compile(r"План проверки · групп строк: ([0-9]{1,6})")
+CROSS_CHECK = "Сверка требований · начата"
 SAFE_FAILURES = {
     "Документ пуст": "Документ пуст.",
     "Новая версия документа пуста": "Новая версия документа пуста.",
@@ -64,6 +67,25 @@ class Run:
     state: str = "queued"
     progress: list = field(default_factory=list)
     error: str = ""
+    group_total: int | None = None
+    checked_groups: set = field(default_factory=set)
+    phase: str = "groups"
+
+    def record(self, line):
+        plan = PLAN.fullmatch(line)
+        if plan:
+            self.group_total = int(plan[1])
+            return
+        if line == CROSS_CHECK:
+            self.phase = "whole"
+            return
+        stage = line.split(" · ", 1)[0]
+        if stage.startswith("Блоки "):
+            self.checked_groups.add(stage)
+        elif stage == "Весь документ":
+            self.phase = "render"
+        self.progress.append(line)
+        del self.progress[:-100]
 
 
 def demo_directory(root):
@@ -100,7 +122,7 @@ def execute(command, progress, failure):
         def read_output():
             while chunk := process.stdout.readline(4096):
                 line = chunk.decode("utf-8", errors="replace").strip()
-                if PROGRESS.fullmatch(line):
+                if PROGRESS.fullmatch(line) or PLAN.fullmatch(line) or line == CROSS_CHECK:
                     progress(line)
                 elif not known_failure:
                     for fragment, message in SAFE_FAILURES.items():
@@ -125,12 +147,14 @@ def execute(command, progress, failure):
             raise SafeWorkerError(known_failure[0] if known_failure else failure)
 
 
-def cli_worker(mode, document, baseline, json_report, html_report, model, progress):
+def cli_worker(mode, document, baseline, json_report, html_report, model, progress, findings=()):
     python = [sys.executable, "-m"]
     if mode == "full":
         command = [*python, "reviewer", str(document), str(json_report)]
     else:
         command = [*python, "reviewer.recheck", str(baseline), str(document), str(json_report)]
+        for finding in findings:
+            command.extend(["--finding", finding])
     if model:
         command.extend(["--model", model])
     execute(command, progress, "CLI завершил проверку с ошибкой. Проверьте доступность Codex и параметры модели.")
@@ -157,7 +181,10 @@ class Workbench:
             run = self.runs.get(identifier)
             if run is None:
                 raise WorkbenchError(HTTPStatus.NOT_FOUND, "Прогон не найден.")
-            return {"state": run.state, "progress": list(run.progress), "error": run.error, "mode": run.mode}
+            status = {"state": run.state, "progress": list(run.progress), "error": run.error, "mode": run.mode}
+            if run.group_total is not None:
+                status["coverage"] = {"checked": len(run.checked_groups), "total": run.group_total, "phase": run.phase}
+            return status
 
     def reports(self, identifier, baseline=False):
         if identifier == "demo":
@@ -174,7 +201,7 @@ class Workbench:
                                      else "Отчёт ещё недоступен.")
             return run.directory
 
-    def start(self, mode, baseline, name, length, stream):
+    def start(self, mode, baseline, name, length, stream, findings=()):
         if not self.upload_lock.acquire(blocking=False):
             raise WorkbenchError(HTTPStatus.CONFLICT, "Уже загружается другой документ.")
         try:
@@ -182,6 +209,8 @@ class Workbench:
                 if self.active is not None:
                     raise WorkbenchError(HTTPStatus.CONFLICT, "Дождитесь завершения текущей проверки.")
             baseline_report = self.reports(baseline, baseline=True) / "review.json" if baseline else None
+            if findings:
+                self.check_findings(baseline_report, findings)
             identifier = uuid4().hex
             directory = self.storage / identifier
             payload = stream.read(length)
@@ -195,17 +224,28 @@ class Workbench:
             with self.lock:
                 self.runs[identifier] = run
                 self.active = identifier
-                self.thread = Thread(target=self._run, args=(run, document, baseline_report), daemon=True)
+                self.thread = Thread(target=self._run, args=(run, document, baseline_report, findings), daemon=True)
                 self.thread.start()
             return identifier
         finally:
             self.upload_lock.release()
 
-    def _run(self, run, document, baseline):
+    @staticmethod
+    def check_findings(baseline_report, findings):
+        try:
+            report = json.loads(baseline_report.read_text(encoding="utf-8"))
+            if report["schema_version"] != 2 or type(report["whole"]["findings"]) is not list:
+                raise ValueError("Invalid baseline")
+            eligible = {item["id"] for item in report["whole"]["findings"]}
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise WorkbenchError(HTTPStatus.CONFLICT, "Не удалось прочитать замечания базового отчёта.") from exc
+        if any(finding not in eligible for finding in findings):
+            raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Выбрано замечание, которого нет в базовом отчёте.")
+
+    def _run(self, run, document, baseline, findings):
         def on_progress(line):
             with self.lock:
-                run.progress.append(line)
-                del run.progress[:-100]
+                run.record(line)
 
         json_report = run.directory / "review.json"
         html_report = run.directory / "review.html"
@@ -213,7 +253,8 @@ class Workbench:
             run.state = "running"
         state, error = "done", ""
         try:
-            self.worker(run.mode, document, baseline, json_report, html_report, self.model, on_progress)
+            options = {"findings": findings} if findings else {}
+            self.worker(run.mode, document, baseline, json_report, html_report, self.model, on_progress, **options)
             if not all((run.directory / name).is_file() for name in REPORT_FILES):
                 raise SafeWorkerError("Проверка не сформировала оба отчёта.")
         except SafeWorkerError as exc:
@@ -314,13 +355,16 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             query = parse_qs(route.query, keep_blank_values=True)
             modes = query.get("mode", [])
             baselines = query.get("baseline", [])
+            findings = tuple(query.get("finding", []))
             if modes == ["full"] and not baselines and set(query) == {"mode"}:
                 baseline = None
-            elif (modes == ["recheck"] and len(baselines) == 1 and set(query) == {"mode", "baseline"}
+            elif (modes == ["recheck"] and len(baselines) == 1 and set(query) <= {"mode", "baseline", "finding"}
                   and re.fullmatch(rf"demo|{JOB_ID}", baselines[0])):
                 baseline = baselines[0]
             else:
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Укажите mode=full или mode=recheck с baseline.")
+            if len(findings) != len(set(findings)) or any(not re.fullmatch(FINDING_ID, fid) for fid in findings):
+                raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Укажите уникальные идентификаторы замечаний вида D-01.")
             names = self.headers.get_all("X-File-Name", [])
             if len(names) != 1:
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Укажите одно имя файла в X-File-Name.")
@@ -333,7 +377,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Загрузите непустой файл.")
             if size > LIMITS[Path(name).suffix.lower()]:
                 raise WorkbenchError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Файл превышает допустимый размер.")
-            identifier = self.server.app.start(modes[0], baseline, name, size, self.rfile)
+            identifier = self.server.app.start(modes[0], baseline, name, size, self.rfile, findings)
             self.json(HTTPStatus.ACCEPTED, {"id": identifier})
         except WorkbenchError as exc:
             self.json(exc.code, {"error": str(exc)})

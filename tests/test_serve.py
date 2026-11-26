@@ -6,9 +6,10 @@ from tempfile import TemporaryDirectory
 from threading import Event, Thread
 import time
 import unittest
+from unittest.mock import patch
 from urllib.parse import quote
 
-from reviewer.serve import Workbench, WorkbenchServer, execute
+from reviewer.serve import CROSS_CHECK, Run, Workbench, WorkbenchServer, cli_worker, execute
 
 
 class WorkbenchTest(unittest.TestCase):
@@ -39,15 +40,15 @@ class WorkbenchTest(unittest.TestCase):
         self.addCleanup(self.release.set)
         self.origin = f"http://127.0.0.1:{self.server.server_port}"
 
-    def worker(self, mode, document, baseline, json_report, html_report, model, progress):
-        self.calls.append((mode, document.name, document.read_bytes(), baseline, model))
+    def worker(self, mode, document, baseline, json_report, html_report, model, progress, findings=()):
+        self.calls.append((mode, document.name, document.read_bytes(), baseline, model, findings))
         if document.name == "failure.md":
             raise RuntimeError("provider stderr contains secret-token")
         progress("Весь документ · проверено")
         self.entered.set()
         if not self.release.wait(2):
             raise AssertionError("Worker waited for release")
-        json_report.write_text('{"review":true}')
+        json_report.write_text('{"schema_version":2,"whole":{"findings":[{"id":"D-03"}]}}')
         html_report.write_text("<title>Report</title>")
 
     def request(self, method, path, body=None, headers=None):
@@ -121,7 +122,7 @@ class WorkbenchTest(unittest.TestCase):
         self.release.set()
         self.assertEqual(self.wait_until_done(identifier)["state"], "done")
         self.assertEqual(self.request("GET", f"/reports/{identifier}/review.json")[0], 200)
-        self.assertEqual(self.calls[0], ("full", "требования.md", b"# Document", None, "test-model"))
+        self.assertEqual(self.calls[0], ("full", "требования.md", b"# Document", None, "test-model", ()))
         for baseline in ("demo", identifier):
             code, body, _ = self.upload(f"/api/runs?mode=recheck&baseline={baseline}", name="rev.txt")
             self.assertEqual(code, 202)
@@ -129,7 +130,31 @@ class WorkbenchTest(unittest.TestCase):
             self.assertEqual(self.wait_until_done(recheck_id)["mode"], "recheck")
             path = self.demo if baseline == "demo" else self.app.storage / baseline
             self.assertEqual(self.calls[-1][3], path / "review.json")
+            self.assertEqual(self.calls[-1][-1], ())
             self.assertEqual(self.upload(f"/api/runs?mode=recheck&baseline={recheck_id}")[0], 409)
+
+    def test_selected_findings_are_validated_against_the_chosen_baseline(self):
+        (self.demo / "review.json").write_text(
+            '{"schema_version":2,"whole":{"findings":[{"id":"D-01"},{"id":"D-02"}]}}')
+        self.release.set()
+        code, body, _ = self.upload()
+        self.assertEqual(code, 202)
+        previous = json.loads(body)["id"]
+        self.assertEqual(self.wait_until_done(previous)["state"], "done")
+        demo = "/api/runs?mode=recheck&baseline=demo"
+        user = f"/api/runs?mode=recheck&baseline={previous}"
+        for path in (demo + "&finding=D-03", user + "&finding=D-01", demo + "&finding=",
+                     demo + "&finding=../../D-01", demo + "&finding=D-01&finding=D-01",
+                     "/api/runs?mode=full&finding=D-01"):
+            with self.subTest(path=path):
+                self.assertEqual(self.upload(path)[0], 400)
+        self.assertEqual(len(self.calls), 1)
+        for path, expected in ((demo + "&finding=D-02&finding=D-01", ("D-02", "D-01")),
+                               (user + "&finding=D-03", ("D-03",))):
+            code, body, _ = self.upload(path)
+            self.assertEqual(code, 202)
+            self.assertEqual(self.wait_until_done(json.loads(body)["id"])["state"], "done")
+            self.assertEqual(self.calls[-1][-1], expected)
 
     def test_validates_origin_host_names_and_size(self):
         self.assertEqual(self.upload(Origin="http://127.0.0.1.evil.invalid")[0], 403)
@@ -154,12 +179,36 @@ class WorkbenchTest(unittest.TestCase):
         self.assertEqual(self.request("GET", f"/reports/{identifier}/review.html")[0], 409)
 
 
+class FindingArgumentsTest(unittest.TestCase):
+    @patch("reviewer.serve.execute")
+    def test_recheck_passes_repeated_finding_flags_to_cli(self, execute_mock):
+        cli_worker("recheck", Path("updated.md"), Path("baseline.json"),
+                   Path("review.json"), Path("review.html"), None, lambda text: None, ("D-03", "D-01"))
+        command = execute_mock.call_args_list[0].args[0]
+        self.assertEqual(command[1:], ["-m", "reviewer.recheck", "baseline.json", "updated.md", "review.json",
+                                      "--finding", "D-03", "--finding", "D-01"])
+
+
 class CliOutputTest(unittest.TestCase):
+    def test_coverage_survives_parallel_order_duplicates_and_a_truncated_log(self):
+        run = Run("example", "full", Path("unused"))
+        run.record("План проверки · групп строк: 104")
+        for number in reversed(range(104)):
+            run.record(f"Блоки {number+1}–{number+1} · проверено")
+        run.record("Блоки 1–1 · проверена сохранённая стадия")
+        self.assertEqual(len(run.progress), 100)
+        self.assertEqual((len(run.checked_groups), run.group_total, run.phase), (104, 104, "groups"))
+        run.record(CROSS_CHECK)
+        self.assertEqual(run.phase, "whole")
+        run.record("Весь документ · проверено")
+        self.assertEqual(run.phase, "render")
+
     def test_only_fixed_cli_output_can_reach_client(self):
         progress = []
         command = [sys.executable, "-c",
-                   "print('Весь документ · проверено'); print('key=xyz'); "
+                   "print('План проверки · групп строк: 3'); print('План проверки · групп строк: secret'); "
+                   "print('Сверка требований · начата'); print('Весь документ · проверено'); print('key=xyz'); "
                    "print('Codex CLI не найден: secret'); raise SystemExit(1)"]
         with self.assertRaisesRegex(RuntimeError, "^Установите Codex CLI перед запуском проверки\\.$"):
             execute(command, progress.append, "Ошибка")
-        self.assertEqual(progress, ["Весь документ · проверено"])
+        self.assertEqual(progress, ["План проверки · групп строк: 3", CROSS_CHECK, "Весь документ · проверено"])

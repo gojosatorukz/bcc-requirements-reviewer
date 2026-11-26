@@ -191,7 +191,8 @@ def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, d
         previous = json.loads(file.read_text(encoding="utf-8"))
         validate_shape(previous["result"], schema, stage)
         verify(previous["result"])
-        print(f"{stage} · проверена сохранённая стадия", file=sys.stderr, flush=True)
+        sys.stderr.write(f"{stage} · проверена сохранённая стадия\n")
+        sys.stderr.flush()
         return previous["result"], [dict(a, restored=True) for a in previous["attempts"]]
 
     attempts = []
@@ -216,7 +217,8 @@ def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, d
                 with NamedTemporaryFile("w", dir=file.parent, delete=False, encoding="utf-8") as tmp:
                     tmp.write(packed({"result": result, "attempts": attempts}))
                 Path(tmp.name).replace(file)
-            print(f"{stage} · проверено", file=sys.stderr, flush=True)
+            sys.stderr.write(f"{stage} · проверено\n")
+            sys.stderr.flush()
             return result, attempts
 
 
@@ -243,10 +245,11 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6):
     segments = segment(lines)
     semantic = [b for b in segments if b["kind"] not in {"разметка", "шапка таблицы"}]
     chunks = list(local_batches(semantic, source))
+    print(f"План проверки · групп строк: {len(chunks)}", file=sys.stderr, flush=True)
 
     def local(batch):
         assigned = [{k: v for k, v in b.items() if k != "section"} for b in batch]
-        return call_stage(f"Блоки {batch[0]['start']}–{batch[-1]['start']}", LOCAL,
+        return call_stage(f"Блоки {batch[0]['start']}–{batch[-1]['end']}", LOCAL,
                           {"source": source, "assigned": assigned}, BATCH,
                           lambda result: check_batch(result, batch, source), model, checkpoint, digest)
 
@@ -286,6 +289,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6):
         findings = [dict(f, priority=priority.derive_priority(f, source)) for f in result["findings"]]
         return dict(result, findings=findings)
 
+    print("Сверка требований · начата", file=sys.stderr, flush=True)
     response, events = call_stage("Весь документ", GLOBAL + priority.INSTRUCTIONS, payload, MODEL_WHOLE,
                                verify_whole,
                                model, checkpoint, digest)
