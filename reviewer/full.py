@@ -11,6 +11,7 @@ from time import monotonic
 
 from . import codex_provider, priority
 from .contract import EVIDENCE, INSTRUCTIONS, REVIEW, TEXT, record, validate_review, validate_shape
+from .json_examples import check_findings, inspect_examples
 from .segments import segment
 
 
@@ -243,6 +244,7 @@ def local_batches(semantic, source):
 def analyze(blocks, lines, model, checkpoint, digest, workers=6):
     source = {n: text for n, text in enumerate(lines, 1) if text.strip()}
     segments = segment(lines)
+    json_checks = inspect_examples(lines, segments)
     semantic = [b for b in segments if b["kind"] not in {"разметка", "шапка таблицы"}]
     chunks = list(local_batches(semantic, source))
     print(f"План проверки · групп строк: {len(chunks)}", file=sys.stderr, flush=True)
@@ -279,25 +281,33 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6):
             entry["assessment"] = item["assessment"]
     payload = {"source": source, "registry": index,
                "local_flags": flags, "candidates": [dict(c, id=i) for i, c in enumerate(candidates["conflicts"], 1)]}
+    invalid_examples = [e for e in json_checks["examples"] if e["status"] == "invalid"]
+    instruction = GLOBAL + priority.INSTRUCTIONS
+    if invalid_examples:
+        payload["invalid_json_examples"] = invalid_examples
+        instruction += ("\nПарсер отклонил перечисленные JSON-примеры. Для каждого отрази нарушение "
+                        "синтаксиса JSON в findings с цитатой из самого блока. Отдели синтаксис примера "
+                        "от бизнес-поведения. Объясни инженеру, как проверить исправление.")
 
     def verify_whole(result):
         ranked = materialize(result)
         check_whole(ranked, registry, candidates["conflicts"], source)
         check_critical_sources(ranked, candidates["conflicts"])
+        check_findings(json_checks, ranked["findings"])
 
     def materialize(result):
         findings = [dict(f, priority=priority.derive_priority(f, source)) for f in result["findings"]]
         return dict(result, findings=findings)
 
     print("Сверка требований · начата", file=sys.stderr, flush=True)
-    response, events = call_stage("Весь документ", GLOBAL + priority.INSTRUCTIONS, payload, MODEL_WHOLE,
+    response, events = call_stage("Весь документ", instruction, payload, MODEL_WHOLE,
                                verify_whole,
                                model, checkpoint, digest)
     whole = materialize(response)
     whole["findings"].sort(key=lambda f: (priority.ORDER[f["priority"]], min(e["line"] for e in f["evidence"])))
     for i, item in enumerate(whole["findings"], 1):
         item["id"] = f"D-{i:02d}"
-    return {"segments": segments, "registry": registry, "whole": whole,
+    return {"segments": segments, "registry": registry, "whole": whole, "json_checks": json_checks,
             "priority_policy": priority.POLICY, **candidates}, attempts + events
 
 

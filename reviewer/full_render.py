@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .contract import source_lines, validate_review, validate_shape
 from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
+from .json_examples import check_findings, inspect_examples
 from . import priority
 from .render import render_conflict, render_passport, render_source, safe
 from .segments import segment
@@ -15,6 +16,11 @@ def validate_report(report):
     raw_lines = [lines.get(i, "") for i in range(1, report["run"]["input_lines"] + 1)]
     expected = segment(raw_lines)
     segments, registry, whole = report["segments"], report["registry"], report["whole"]
+    if "json_checks" in report:
+        checks = inspect_examples(raw_lines, expected)
+        if checks != report["json_checks"]:
+            raise ValueError("Результат проверки JSON расходится с исходником")
+        check_findings(checks, whole["findings"])
     if len(segments) != len(expected):
         raise ValueError("Число исходных блоков изменилось")
     records = {r["id"]: r for r in registry}
@@ -63,6 +69,23 @@ def line_link(n):
 
 def evidence(refs):
     return "".join(f'<blockquote>{safe(r["quote"])} {line_link(r["line"])}</blockquote>' for r in refs)
+
+
+def render_json_checks(checks):
+    examples = checks.get("examples", [])
+    if not examples:
+        return ""
+    rows = []
+    for item in examples:
+        status = {"valid": "Корректный JSON", "invalid": "Ошибка синтаксиса",
+                  "unchecked": "Проверка не завершена"}[item["status"]]
+        detail = ""
+        if item["status"] != "valid":
+            detail = f' · {safe(item["diagnostic"])} · {line_link(item["line"])}'
+        rows.append(f'<li>{line_link(item["start"])} · <strong>{status}</strong>{detail}</li>')
+    return ('<section id="json-syntax"><h2>Синтаксис JSON-примеров</h2>'
+            '<p>Парсер проверяет каждый блок с меткой JSON. Поля, типы и поведение API оцениваются в реестре требований.</p>'
+            '<ul>' + "".join(rows) + '</ul></section>')
 
 
 def render_decision_drafts(finding, candidates):
@@ -235,6 +258,7 @@ def render_full(report):
 <section id="actions"><h2>Что исправить в первую очередь</h2><p>Замечания в порядке приоритета. У каждого есть адресат, основание и предлагаемое изменение.</p>
 {''.join(findings) or '<p>Замечаний не выявлено.</p>'}</section>
 <section id="quality"><h2>Качество набора требований</h2>{axes}</section>
+{render_json_checks(report.get("json_checks", {}))}
 <section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
 <table class="registry"><thead><tr><th>ID отчёта / исходника</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
 <section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: {len(scenario_parts)}. У каждого указано решение итогового ревью.</p>

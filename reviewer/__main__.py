@@ -93,7 +93,8 @@ def main():
         if not blocks:
             raise ValueError("Документ пуст")
         revision = version()
-        digest = engine_digest("input.py") if args.conflicts_only else engine_digest("input.py", "segments.py", "full.py", "priority.py")
+        digest = engine_digest("input.py") if args.conflicts_only else engine_digest(
+            "input.py", "segments.py", "json_examples.py", "full.py", "priority.py")
         started = datetime.now(timezone.utc).isoformat()
         clock = time.monotonic()
         if args.conflicts_only:
