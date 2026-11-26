@@ -51,6 +51,13 @@ def docx_lines(raw):
         if len(lines) >= first:
             locations.append({"start": first, "end": len(lines), "label": address})
 
+    json_depth = 0
+    previous_paragraph = ""
+
+    def finish_json():
+        lines.append("```")
+        locations[-1]["end"] = len(lines)
+
     para_no = table_no = 0
     for node in body:
         if node.tag == WORD + "p":
@@ -63,8 +70,29 @@ def docx_lines(raw):
             parts = text.splitlines() or [""]
             if parts[0].strip():
                 parts[0] = prefix + parts[0]
+            if json_depth and prefix:
+                finish_json()
+                json_depth = 0
+            begins_json = (not json_depth and re.search(r"\bJSON\b", previous_paragraph, re.I)
+                           and text.lstrip().startswith(("{", "[")))
+            if begins_json or json_depth:
+                if begins_json:
+                    parts.insert(0, "```json")
+                # Delimit only the explicitly introduced example. The real JSON
+                # parser later diagnoses syntax and reports the source column.
+                structure = re.sub(r'"(?:\\.|[^"\\])*"', '""', text)
+                json_depth += sum(structure.count(char) for char in "{[") - sum(structure.count(char) for char in "}]")
+                if json_depth <= 0:
+                    parts.append("```")
+                    json_depth = 0
             extend(parts, f"Абзац {para_no}")
+            if text.strip():
+                previous_paragraph = text
         elif node.tag == WORD + "tbl":
+            if json_depth:
+                finish_json()
+                json_depth = 0
+            previous_paragraph = ""
             table_no += 1
             rows = node.findall(WORD + "tr")
             if node.find(".//" + WORD + "tbl") is not None:
@@ -81,6 +109,8 @@ def docx_lines(raw):
                         rendered.append("| " + " | ".join("---" for _ in cells) + " |")
                     extend(rendered, f"Таблица {table_no}, строка {i}")
             lines.append("")
+    if json_depth:
+        finish_json()
     if not any(line.strip() for line in lines):
         raise ValueError("DOCX не содержит читаемого текста")
     return lines, {"extraction": "DOCX · абзацы и таблицы основного текста", "locations": locations}

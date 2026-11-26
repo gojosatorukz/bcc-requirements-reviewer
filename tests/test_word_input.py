@@ -9,6 +9,7 @@ from zipfile import ZipFile
 from reviewer.contract import source_lines
 from reviewer.executable import verify_source
 from reviewer.input import load_document
+from reviewer.json_examples import inspect_examples
 from reviewer.render import render_source
 from reviewer.segments import segment
 from reviewer.word_input import WORD, docx_lines
@@ -54,6 +55,13 @@ class WordInputTests(unittest.TestCase):
                 source_lines(report)
             with self.assertRaisesRegex(ValueError, "абзацев"):
                 verify_source(report, source)
+
+    def test_explicit_native_json_may_span_multiple_word_paragraphs(self):
+        body = "".join(paragraph(t) for t in ("Пример JSON", "{", '"note": "}",', '"price": 300', "}", "Конец"))
+        lines, metadata = docx_lines(word_file(body))
+        self.assertEqual(inspect_examples(lines, segment(lines))["examples"],
+                         [{"start": 2, "end": 7, "status": "valid"}])
+        self.assertEqual(metadata["locations"][-2], {"start": 6, "end": 7, "label": "Абзац 5"})
 
     def test_unknown_scope_is_explicit(self):
         for fragment in ('<w:ins>' + paragraph('Условие') + '</w:ins>',
