@@ -136,7 +136,11 @@ def render_full(report):
 .full th{background:var(--green)}.full summary{cursor:pointer}.full tr:target,.finding:target{background:var(--warm)}
 .full .scroll{overflow:auto}.full td:first-child{min-width:4.6em}.full section>h2{border-top:2px solid var(--deep);padding-top:1rem}
 @media(max-width:650px){.full .registry td{display:block;border:0}.full .registry tr{display:block;border-bottom:1px solid var(--line)}.registry thead{display:none}}
-@media print{header,nav,.skip-link,.backlinks{display:none}main{width:auto;margin:0;padding:0;border:0}.full{font-size:10pt}.full h2,.full h3{break-after:avoid}.full tr{break-inside:avoid}}
+@page{size:A4;margin:15mm 15mm 18mm;@bottom-right{content:counter(page) " / " counter(pages);font:9pt sans-serif;color:#52625b}}
+@media print{header,nav,.skip-link,.backlinks{display:none}body{background:white}.metrics,.gates{grid-template-columns:repeat(2,1fr)}
+.full h1{font-size:26pt}.full .source-row,.full blockquote{break-inside:avoid}.full td{padding:5pt}
+.full .finding p,.full .gates p{orphans:3;widows:3}.full .registry thead{display:table-header-group}
+.full .registry tr{display:table-row}.full .registry td{display:table-cell}.full small{font-size:8pt}main{width:auto;margin:0;padding:0;border:0}.full{font-size:10pt}.full h2,.full h3{break-after:avoid}.full tr{break-inside:avoid}}
 """
     return f'''<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -157,5 +161,5 @@ def render_full(report):
 {''.join(scenario_parts)}{('<h3>Согласованные прочтения</h3><ol>'+''.join(closed)+'</ol>') if closed else ''}</section>
 <section id="coverage"><h2>Карта покрытия исходника</h2><p>Учтено {len(lines)} непустых строк, {len(segments)} блоков, {forms['шапка таблицы']} таблиц, {forms['строка таблицы']} строк данных таблиц и {forms['пример json']} блоков JSON. Структура, шаблоны и контекст имеют отдельные записи.</p>
 <details><summary>Открыть все блоки и основания классификации</summary><table><thead><tr><th>Источник</th><th>Тип</th><th>Назначение и пункты</th></tr></thead><tbody>{''.join(routing)}</tbody></table></details></section>
-<section id="source"><h2>Текст исходного документа</h2><ol class="source-list">{render_source(lines,backlinks)}</ol></section>{render_passport(run,2)}</main></body></html>
+<section id="source"><h2>Текст исходного документа</h2><ol class="source-list">{render_source(lines,backlinks,run.get("pages", []))}</ol></section>{render_passport(run,2)}</main></body></html>
 '''

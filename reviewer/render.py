@@ -80,14 +80,16 @@ def render_conflict(number, conflict, lines, backlinks):
     </article>"""
 
 
-def render_source(lines, backlinks):
+def render_source(lines, backlinks, pages=()):
+    page_by_line = {n: p["page"] for p in pages for n in range(p["start"], p["end"]+1)}
     rows = []
     for line, content in sorted(lines.items()):
+        page = f' · с. {int(page_by_line[line])}' if line in page_by_line else ""
         links = "".join(f'<a href="#{target}">↑ {label}</a>' for target, label in backlinks[line])
         references = f'<div class="backlinks">{links}</div>' if links else ""
         rows.append(f"""
         <li class="source-row" id="source-line-{line}" value="{line}" tabindex="-1">
-          <span class="line-number"><span class="sr-only">Строка </span>{line}</span>
+          <span class="line-number"><span class="sr-only">Строка </span>{line}{page}</span>
           <span class="source-text">{safe(content)}</span>{references}
         </li>""")
     return "".join(rows)
@@ -199,7 +201,7 @@ def render_report(report):
     <section class="report-section" aria-labelledby="source">
       <h2 id="source" tabindex="-1">Текст ТЗ</h2>
       <p class="section-note">Непустые строки из снимка прогона с исходными номерами.</p>
-      <ol class="source-list" role="list">{render_source(lines, backlinks)}
+      <ol class="source-list" role="list">{render_source(lines, backlinks, report['run'].get('pages', []))}
       </ol>
     </section>
 {render_passport(report['run'], version)}
@@ -224,7 +226,7 @@ def write_html(path, html):
 def main():
     parser = argparse.ArgumentParser(description="Построить автономный HTML-отчёт по результату проверки")
     parser.add_argument("input", type=Path, metavar="report.json")
-    parser.add_argument("output", type=Path, metavar="report.html")
+    parser.add_argument("output", type=Path, metavar="report.html|report.pdf")
     args = parser.parse_args()
     try:
         if args.input.resolve() == args.output.resolve() or (
@@ -232,10 +234,17 @@ def main():
         ):
             raise ValueError("Пути JSON и HTML должны различаться")
         report = json.loads(args.input.read_text(encoding="utf-8-sig"))
-        write_html(args.output, render_report(report))
+        html = render_report(report)
+        if args.output.suffix.lower() == ".pdf":
+            from .pdf_output import write_pdf
+            write_pdf(args.output, html)
+        elif args.output.suffix.lower() == ".html":
+            write_html(args.output, html)
+        else:
+            raise ValueError("Укажите выходной файл .html или .pdf")
     except (OSError, ValueError, KeyError, TypeError) as exc:
         parser.exit(1, f"Не удалось создать HTML-отчёт: {exc}\n")
-    print(f"HTML-отчёт сохранён: {args.output}")
+    print(f"Отчёт сохранён: {args.output}")
 
 
 if __name__ == "__main__":

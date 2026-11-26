@@ -1,0 +1,2 @@
+# PDF input. Markdown, text input and HTML output use the Python standard library.
+pdfplumber==0.11.9

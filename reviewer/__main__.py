@@ -10,6 +10,7 @@ import time
 
 from . import codex_provider
 from .contract import INSTRUCTIONS, validate_review
+from .input import load_document
 
 
 def version():
@@ -33,6 +34,11 @@ def engine_digest(*modules):
 
 
 def write_report(path, value):
+    if path.suffix.lower() == ".pdf":
+        from .pdf_output import write_pdf
+        from .render import render_report
+        write_pdf(path, render_report(value))
+        return
     if path.suffix.lower() == ".html":
         from .render import render_report
         content = render_report(value)
@@ -70,26 +76,22 @@ def review_document(prompt, model, lines):
 def main():
     parser = argparse.ArgumentParser(description="Полное ревью спецификации требований")
     parser.add_argument("document", type=Path)
-    parser.add_argument("report", type=Path, help="Выходной файл JSON или HTML")
-    parser.add_argument("--model", default="gpt-6.2-astra")
+    parser.add_argument("report", type=Path, help="Выходной файл JSON, HTML или PDF")
+    parser.add_argument("--model", default=os.environ.get("REVIEW_MODEL", "gpt-6.2-astra"))
     parser.add_argument("--conflicts-only", action="store_true", help="Быстрый поиск поведенческих конфликтов (формат v1)")
     parser.add_argument("--checkpoint-dir", type=Path, help="Папка для возобновления проверенных стадий полного прогона")
     args = parser.parse_args()
     try:
         if args.document.resolve() == args.report.resolve():
             raise ValueError("Пути документа и отчёта должны различаться")
-        if args.document.suffix.lower() not in {".md", ".txt"} or args.report.suffix.lower() not in {".json", ".html"}:
-            raise ValueError("Ожидаются вход .md/.txt и выход .json/.html")
-        with args.document.open("rb") as stream:
-            raw = stream.read(120_001)
-        if len(raw) > 120_000:
-            raise ValueError("Этот режим принимает до 120 000 байт за один запрос")
-        lines = raw.decode("utf-8-sig").splitlines()
+        if args.document.suffix.lower() not in {".md", ".txt", ".pdf"} or args.report.suffix.lower() not in {".json", ".html", ".pdf"}:
+            raise ValueError("Ожидаются вход .md/.txt/.pdf и выход .json/.html/.pdf")
+        lines, input_hash, input_metadata = load_document(args.document)
         blocks = [{"line": n, "text": line} for n, line in enumerate(lines, 1) if line.strip()]
         if not blocks:
             raise ValueError("Документ пуст")
         revision = version()
-        digest = engine_digest() if args.conflicts_only else engine_digest("segments.py", "full.py")
+        digest = engine_digest("input.py") if args.conflicts_only else engine_digest("input.py", "segments.py", "full.py")
         started = datetime.now(timezone.utc).isoformat()
         clock = time.monotonic()
         if args.conflicts_only:
@@ -107,7 +109,7 @@ def main():
                         usage[key] = usage.get(key, 0) + value
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
                "provider": "codex-cli", "model": args.model, "agent_version": revision, "engine_sha256": digest,
-               "input_name": args.document.name, "input_sha256": hashlib.sha256(raw).hexdigest(),
+               "input_name": args.document.name, "input_sha256": input_hash, **input_metadata,
                "input_lines": len(lines), "usage": usage, "attempts": attempts}
         scope = "Проверка поведенческих противоречий" if args.conflicts_only else "Полное ревью требований"
         report = {"schema_version": 1 if args.conflicts_only else 2, "scope": scope, "run": run,
