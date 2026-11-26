@@ -23,18 +23,29 @@ def version():
         return "unversioned"
 
 
+def engine_digest(*modules):
+    directory = Path(__file__).resolve().parent
+    digest = hashlib.sha256()
+    for name in sorted({"__main__.py", "contract.py", "codex_provider.py", *modules}):
+        content = (directory / name).read_bytes()
+        digest.update(name.encode() + b"\0" + hashlib.sha256(content).digest())
+    return digest.hexdigest()
+
+
 def write_report(path, value):
+    if path.suffix.lower() == ".html":
+        from .render import render_report
+        content = render_report(value)
+    else:
+        content = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", dir=path.parent, encoding="utf-8", delete=False) as temp:
-        name = temp.name
-        try:
-            json.dump(value, temp, ensure_ascii=False, indent=2)
-            temp.write("\n")
-            temp.flush()
-            temp.close()
-            os.replace(name, path)
-        finally:
-            Path(name).unlink(missing_ok=True)
+    temp = tempfile.NamedTemporaryFile("w", dir=path.parent, encoding="utf-8", delete=False)
+    try:
+        with temp:
+            temp.write(content)
+        os.replace(temp.name, path)
+    finally:
+        Path(temp.name).unlink(missing_ok=True)
 
 
 def review_document(prompt, model, lines):
@@ -59,14 +70,14 @@ def review_document(prompt, model, lines):
 def main():
     parser = argparse.ArgumentParser(description="Поиск смысловых противоречий в требованиях")
     parser.add_argument("document", type=Path)
-    parser.add_argument("report", type=Path, help="Выходной файл JSON")
+    parser.add_argument("report", type=Path, help="Выходной файл JSON или HTML")
     parser.add_argument("--model", default="gpt-6.2-astra")
     args = parser.parse_args()
     try:
         if args.document.resolve() == args.report.resolve():
             raise ValueError("Пути документа и отчёта должны различаться")
-        if args.document.suffix.lower() not in {".md", ".txt"} or args.report.suffix.lower() != ".json":
-            raise ValueError("Ожидаются вход .md/.txt и выход .json")
+        if args.document.suffix.lower() not in {".md", ".txt"} or args.report.suffix.lower() not in {".json", ".html"}:
+            raise ValueError("Ожидаются вход .md/.txt и выход .json/.html")
         with args.document.open("rb") as stream:
             raw = stream.read(120_001)
         if len(raw) > 120_000:
@@ -76,6 +87,7 @@ def main():
         if not blocks:
             raise ValueError("Документ пуст")
         revision = version()
+        digest = engine_digest()
         started = datetime.now(timezone.utc).isoformat()
         clock = time.monotonic()
         prompt = INSTRUCTIONS + "\n\nДокумент:\n" + json.dumps(blocks, ensure_ascii=False)
@@ -88,7 +100,7 @@ def main():
                     if type(value) is int:
                         usage[key] = usage.get(key, 0) + value
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
-               "provider": "codex-cli", "model": args.model, "agent_version": revision,
+               "provider": "codex-cli", "model": args.model, "agent_version": revision, "engine_sha256": digest,
                "input_name": args.document.name, "input_sha256": hashlib.sha256(raw).hexdigest(),
                "input_lines": len(lines), "usage": usage, "attempts": attempts}
         report = {"schema_version": 1, "scope": "Проверка поведенческих противоречий",

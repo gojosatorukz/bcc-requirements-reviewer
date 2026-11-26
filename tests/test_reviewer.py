@@ -64,3 +64,10 @@ class ReviewTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.invoke([ValueError("Провайдер недоступен")])
         self.assertFalse(self.output.exists())
+
+    def test_one_command_writes_offline_html(self):
+        self.output = self.output.with_suffix(".html")
+        self.invoke([(example(), {})])
+        html = self.output.read_text(encoding="utf-8")
+        self.assertIn("Какой приоритет выбрать?", html)
+        self.assertIn("Сначала B.", html)
