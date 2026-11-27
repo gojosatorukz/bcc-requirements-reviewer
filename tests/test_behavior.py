@@ -83,6 +83,20 @@ class BehaviorTests(unittest.TestCase):
         self.assertEqual(whole["findings"], [])
         self.assertEqual(whole["reconciled"][0]["evidence"], refs)
 
+    def test_recorded_museum_disagreement_reaches_the_independent_check(self):
+        import json
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1] / "eval/gemini/behavior"
+        full = json.loads((root / "museum-aligned-release.json").read_bytes())
+        stages = json.loads((root / "museum-aligned-stage-outputs.json").read_bytes())
+        for key in ("input_sha256", "engine_sha256", "model"):
+            self.assertEqual(stages[key], full["run"][key])
+        basis = {p["example"]: p["bases"] for p in stages["Прогноз по правилам"]["predictions"]}
+        agreed = [dict(c, rule_lines=basis[c["example"]]) for c in stages["Сверка примеров"]["checks"]
+                  if c["verdict"] == "agrees"]
+        review, = behavior.disputed_examples(full["whole"], agreed)
+        self.assertEqual((review["rule_line"], review["example_line"]), (5, 15))
+
     def test_addressed_contract_keeps_same_status_examples_independent(self):
         from reviewer import response_fields
         c = {"id":7, "field":"receipt", "errors":{40:409, 46:409, 58:422}}

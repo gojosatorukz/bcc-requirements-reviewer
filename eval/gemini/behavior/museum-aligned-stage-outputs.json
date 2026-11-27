@@ -1,0 +1,56 @@
+{
+  "input_sha256": "7d60a77dacdc925a2fdf7216d47965c6cf65dc6abdbba09a81cb59ed2648e6ab",
+  "engine_sha256": "3278f2b86f464fbc5f31c134d3fba7de0d861f67d06d9a27ab67fd84ccfcc8dd",
+  "model": "gemini-3.5-flash-lite",
+  "Прогноз по правилам": {
+    "predictions": [
+      {
+        "example": 15,
+        "bases": [
+          5
+        ],
+        "predicted": "Паспорт закреплен за мастерской «Северная»."
+      },
+      {
+        "example": 16,
+        "bases": [
+          9
+        ],
+        "predicted": "В ленте паспорта для метки «фасад» видна последняя редакция — кадр A2."
+      },
+      {
+        "example": 17,
+        "bases": [
+          9
+        ],
+        "predicted": "В ленте паспорта видны кадры с метками «слева» и «справа»."
+      }
+    ]
+  },
+  "Сверка примеров": {
+    "conflicts": [],
+    "checks": [
+      {
+        "example": 15,
+        "observable": "местонахождение паспорта по очередям мастерских",
+        "predicted_value": "паспорт в очереди Северной",
+        "printed_value": "паспорт в очереди Северной, очередь Южной пуста",
+        "verdict": "agrees"
+      },
+      {
+        "example": 16,
+        "observable": "содержимое ленты паспорта для метки «фасад»",
+        "predicted_value": "последняя редакция кадр A2 для метки «фасад»",
+        "printed_value": "одна карточка «фасад» с редакцией A2",
+        "verdict": "agrees"
+      },
+      {
+        "example": 17,
+        "observable": "наличие меток в ленте паспорта",
+        "predicted_value": "кадры с метками «слева» и «справа» видны",
+        "printed_value": "видны обе метки",
+        "verdict": "agrees"
+      }
+    ]
+  }
+}
