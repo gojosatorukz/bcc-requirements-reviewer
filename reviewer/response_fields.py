@@ -177,6 +177,40 @@ def describe(choices):
             for c in choices]
 
 
+def addressed_schema(choices):
+    """Name every field and example in the wire contract, independently of printed HTTP codes."""
+    policy = {"type": "string", "enum": list(POLICIES)}
+    reason = record(policy=policy, basis=TEXT, evidence=array(EVIDENCE))
+    return record(**{
+        f"field_{c['id']}": record(outcomes=record(**{f"example_{n}": policy for n in c["errors"]}),
+                                   reasons=array(reason)) for c in choices
+    })
+
+
+ADDRESSED = """\nДля этого формата ответь по фиксированным ключам field_ID и example_N.
+В outcomes укажи policy для КАЖДОГО исхода. В reasons дай одно обоснование и его исходные
+цитаты для каждой использованной политики. Открытый вопрос будет сформирован из тех исходов,
+для которых ты выберешь unspecified. Обязательность нельзя вывести только из образца тела."""
+
+
+def from_addressed(result, choices):
+    assessments = []
+    for c in choices:
+        row = result[f"field_{c['id']}"]
+        outcomes = {n: row["outcomes"][f"example_{n}"] for n in c["errors"]}
+        if sorted(reason["policy"] for reason in row["reasons"]) != sorted(set(outcomes.values())):
+            raise ValueError(f"Дай одно обоснование для каждой использованной политики по полю {c['field']}")
+        rulings = [{**r, "examples": [n for n, policy in outcomes.items() if policy == r["policy"]]}
+                   for r in row["reasons"]]
+        unknown = [n for n, policy in outcomes.items() if policy == "unspecified"]
+        labels = [f"HTTP {code} (примеры со строк {', '.join(str(n) for n in unknown if c['errors'][n] == code)})"
+                  for code in sorted({c["errors"][n] for n in unknown})]
+        questions = ([f"Обязательно ли поле {c['field']} в каждом из следующих ошибочных ответов: "
+                      + ", ".join(labels) + "?"] if unknown else [])
+        assessments.append({"candidate": c["id"], "rulings": rulings, "questions": questions})
+    return {"assessments": assessments}
+
+
 def validate_saved(section, groups, findings, source):
     choices = candidates(groups)
     if (not isinstance(section, dict) or set(section) != {"version", "candidates", "assessments"}

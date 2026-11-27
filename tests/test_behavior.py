@@ -37,8 +37,9 @@ class BehaviorTests(unittest.TestCase):
                  "## Acceptance", "| Given | Expected outcome | When |", "|---|---|---|",
                  r"| draft A\|B | hidden-original | confirm |"]
         source, reading, anchors = self.read(lines)
-        inputs = behavior.blind_inputs(segment(lines), source, reading, anchors)
+        inputs, printed = behavior.table_cases(segment(lines), source, reading, anchors)
         self.assertNotIn("hidden-original", str(inputs))
+        self.assertEqual(printed, {6:"hidden-original"})
         self.assertEqual(inputs["cases"][0]["inputs"], [{"column":"Given", "value":r"draft A\|B"},
                                                        {"column":"When","value":"confirm"}])
         prediction = {"example":6, "bases":[2], "predicted":"Published"}
@@ -47,8 +48,24 @@ class BehaviorTests(unittest.TestCase):
             behavior.check_predictions({"predictions":[]}, inputs)
         with self.assertRaises(ValueError):
             behavior.check_predictions({"predictions":[dict(prediction,bases=[6])]}, inputs)
-        disagreement = {"checks":[{"example":6,"verdict":"disagrees"}],"conflicts":[]}
+        disagreement = {"checks":[{"example":6,"verdict":"disagrees","predicted_value":"A","printed_value":"B"}],"conflicts":[]}
         with self.assertRaises(ValueError):
             behavior.check_comparisons(disagreement, [prediction], anchors, {2})
         disagreement["conflicts"] = [{"first":{"anchor":6}, "second":{"anchor":2}}]
         behavior.check_comparisons(disagreement, [prediction], anchors, {2})
+
+    def test_addressed_contract_keeps_same_status_examples_independent(self):
+        from reviewer import response_fields
+        c = {"id":7, "field":"receipt", "errors":{40:409, 46:409, 58:422}}
+        row = {"outcomes":{"example_40":"excluded","example_46":"unspecified","example_58":"unspecified"},
+               "reasons":[{"policy":"excluded","basis":"Точный контракт","evidence":[{"line":40,"quote":"A"}]},
+                          {"policy":"unspecified","basis":"Нужен ответ","evidence":[{"line":46,"quote":"B"}]}]}
+        answer = {"field_7":row}
+        from reviewer.contract import validate_shape
+        validate_shape(answer, response_fields.addressed_schema([c]), "test")
+        restored = response_fields.from_addressed(answer, [c])
+        response_fields.verify(restored, [c], {40:"A",46:"B",58:"C"})
+        q, = restored["assessments"][0]["questions"]
+        self.assertIn("receipt", q)
+        self.assertIn("46", q)
+        self.assertNotIn("строк 40", q)

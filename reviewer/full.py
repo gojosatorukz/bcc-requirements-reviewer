@@ -338,27 +338,8 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                      lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
                      model, checkpoint, digest)]
     if codex_provider.provider_name() == "gemini-api":
-        reading, anchors = behavior.reading(segments, source)
-
-        def compare_product():
-            inputs = behavior.blind_inputs(segments, source, reading, anchors)
-            predictions, attempts = [], []
-            if inputs["cases"] and inputs["rules"]:
-                result, attempts = call_stage("Прогноз по правилам", behavior.PREDICT, inputs, behavior.PREDICTIONS,
-                                              lambda r: behavior.check_predictions(r, inputs), model, checkpoint, digest)
-                predictions = result["predictions"]
-
-            def verify_comparison(result):
-                behavior.expand(result, anchors, source)
-                if predictions:
-                    behavior.check_comparisons(result, predictions, anchors, set(reading["rules"]))
-
-            wire, events = call_stage("Правила и примеры", behavior.INSTRUCTIONS + (behavior.COMPARE if predictions else ""),
-                                      {**reading, "predictions": predictions}, behavior.COMPARISON if predictions else behavior.SCHEMA,
-                                      verify_comparison, model, checkpoint, digest)
-            return behavior.expand(wire, anchors, source), attempts + events
-
-        tasks.append(compare_product)
+        gemini_stage = partial(call_stage, model=model, checkpoint=checkpoint, digest=digest)
+        tasks.append(partial(behavior.discover, segments, source, gemini_stage))
     field_start = len(tasks)
     for offset in range(0, len(choices), 6):
         batch = choices[offset:offset + 6]
@@ -368,7 +349,12 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         def verify_fields(r, batch=batch):
             response_fields.verify(r, batch, source)
         if codex_provider.provider_name() == "gemini-api":
-            tasks.append(partial(anchored, stage, response_fields.INSTRUCTIONS, data, response_fields.SCHEMA, verify_fields))
+            def addressed_fields(stage=stage, data=data, batch=batch):
+                output, events = anchored(stage, response_fields.INSTRUCTIONS + response_fields.ADDRESSED,
+                    data, response_fields.addressed_schema(batch),
+                    lambda r: response_fields.verify(response_fields.from_addressed(r, batch), batch, source))
+                return response_fields.from_addressed(output, batch), events
+            tasks.append(addressed_fields)
         else:
             tasks.append(partial(call_stage, stage, response_fields.INSTRUCTIONS, data, response_fields.SCHEMA,
                                  verify_fields, model, checkpoint, digest))
