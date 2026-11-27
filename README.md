@@ -27,7 +27,7 @@
 | Попробовать без установки | [razbor-tz.onrender.com](https://razbor-tz.onrender.com/): загрузите PDF, DOCX, MD или TXT |
 | Проверка незнакомого ТЗ через сайт | GPT-6.2 Sol нашёл оба заложенных дефекта в ТЗ музыкальной школы за 120,88 с работы агента. Всего 2 замечания, 8 новых вызовов. [Отчёт](https://razbor-tz.onrender.com/reports/rehearsal/openai-primary.html) · [JSON с паспортом](https://razbor-tz.onrender.com/reports/rehearsal/openai-primary.json) |
 | Архитектура | [Как устроен агент](#как-устроен-агент) · [подробно](docs/architecture-and-evaluation.md) |
-| Бизнес-модель и питч | [Бизнес-модель](#бизнес-модель) · [питч и слайд для вопросов](presentation/pitch/razbor-tz-pitch.pdf) |
+| Бизнес-модель и питч | [Бизнес-модель](#бизнес-модель) · [питч и слайд для вопросов](presentation/pitch/razbor-tz-pitch.pdf) · [видео для жюри](presentation/razbor-tz-video.mp4) |
 
 **Соответствие требованиям к репозиторию (§7 ТЗ):** код агента и [`requirements.txt`](requirements.txt) · README с ключом, конфигом, командой и местом отчёта · запуск одной командой с путями входа и выхода · [`.env.example`](.env.example) без ключа, `.env` в `.gitignore` · вход PDF, DOCX, MD, TXT · модель указана в паспорте отчёта.
 

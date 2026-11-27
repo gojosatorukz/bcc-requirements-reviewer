@@ -19,7 +19,7 @@ def package(source, output):
     release = ROOT / "runs/bcc-jury"
     files = {
         "requirements.md": source,
-        "demo.mp4": ROOT / "presentation/bcc-demo.mp4",
+        "demo.mp4": ROOT / "presentation/razbor-tz-video.mp4",
         "pitch.pptx": ROOT / "presentation/pitch/razbor-tz-pitch.pptx",
         "pitch.pdf": ROOT / "presentation/pitch/razbor-tz-pitch.pdf",
         **{name: release / name for name in ("review.json", "review.html", "review.pdf")},
