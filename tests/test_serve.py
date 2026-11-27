@@ -1,4 +1,5 @@
 import http.client
+from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -10,7 +11,7 @@ import unittest
 from unittest.mock import patch
 from urllib.parse import quote
 
-from reviewer.serve import CROSS_CHECK, Run, Workbench, WorkbenchServer, cli_worker, execute
+from reviewer.serve import CROSS_CHECK, IMPORT_LIMIT, ROOT, Run, Workbench, WorkbenchServer, cli_worker, execute
 
 
 class WorkbenchTest(unittest.TestCase):
@@ -303,6 +304,62 @@ class WorkbenchTest(unittest.TestCase):
         self.assertEqual(self.upload("/api/runs?mode=recheck&baseline=..")[0], 400)
         self.assertEqual(self.calls, [])
 
+    @patch("reviewer.clarify.clarify")
+    def test_import_preserves_download_and_restores_owner_discussion_and_recheck(self, clarify):
+        raw = (ROOT / "eval/executable/runs/named-state.json").read_bytes() + b"\n "
+        headers = {"Origin": self.origin, "Content-Type": "application/json; charset=utf-8"}
+        code, body, _ = self.request("POST", "/api/import-report", raw, headers)
+        self.assertEqual(code, 201)
+        result = json.loads(body)
+        identifier, digest = result["id"], sha256(raw).hexdigest()
+        self.assertEqual(result, {"id": identifier, "input_name": "statement-status.md", "sha256": digest, "reused": False})
+        self.assertEqual(self.status(identifier), {"state": "done", "mode": "full", "progress": [],
+                                                  "error": "", "imported": True})
+        path = f"/reports/{identifier}/review"
+        code, body, response_headers = self.request("GET", path + ".json?download=1")
+        self.assertEqual((code, body, response_headers["X-Report-SHA256"]), (200, raw, digest))
+        self.assertIn(b"AWAITING_SIGNATURE", self.request("GET", path + ".html")[1])
+        self.assertEqual(self.request("GET", f"/reports/{identifier}/executions/{digest}")[0], 200)
+        code, body, _ = self.request("POST", "/api/import-report", raw, headers)
+        self.assertEqual((code, json.loads(body)), (200, {**result, "reused": True}))
+        self.assertEqual(self.calls, [])
+        clarify.assert_not_called()
+        clarify.return_value = {"state": "needs_followup", "answers": ["Проверка вручную."],
+                                "follow_up": "Какой статус вернуть?", "finding_id": "D-01"}
+        route = f"/api/clarifications/{identifier}/{digest}"
+        payload = {"finding_id": "D-01", "answer": "Проверка вручную.", "previous": None}
+        code, reply, _ = self.request("POST", route, json.dumps(payload), headers)
+        self.assertEqual(code, 200)
+        self.release.set()
+        token = json.loads(reply)["token"]
+        query = (f"/api/runs?mode=recheck&baseline={identifier}&finding=D-01"
+                 f"&baseline_sha256={digest}&clarification={token}")
+        code, reply, _ = self.upload(query, name="revised.md")
+        self.assertEqual(code, 202)
+        self.assertEqual(self.wait_until_done(json.loads(reply)["id"])["state"], "done")
+        self.assertEqual(self.calls[0][3].read_bytes(), raw)
+        self.assertEqual(self.clarifications, [clarify.return_value])
+
+    def test_import_rejects_malformed_wrong_scope_and_modified_traces(self):
+        headers = {"Origin": self.origin, "Content-Type": "application/json"}
+        route = "/api/import-report"
+        self.assertEqual(self.request("POST", route, b"{}", {})[0], 403)
+        self.assertEqual(self.request("POST", route, b"{}", {"Origin": self.origin})[0], 400)
+        self.assertEqual(self.request("POST", route, b"{}", {**headers, "Content-Length": str(IMPORT_LIMIT + 1)})[0], 413)
+        source = (ROOT / "eval/executable/runs/named-state.json").read_bytes()
+        for payload, expected in [(b"[", 400), (b'{"schema_version":NaN}', 400), (b'{"schema_version":1}', 422)]:
+            self.assertEqual(self.request("POST", route, payload, headers)[0], expected)
+        for change in (lambda r: r["run"].update(input_lines=120_002),
+                       lambda r: r["run"].update(page_count=1, pages=[{"page": 1, "start": 1, "end": 1000}]),
+                       lambda r: r["whole"]["findings"][0].update(priority="редакционный"),
+                       lambda r: r["executables"]["items"][0]["result"]["scenario"]["first_difference"].update(second="READY")):
+            report = json.loads(source)
+            change(report)
+            code, message, _ = self.request("POST", route, json.dumps(report), headers)
+            self.assertEqual(code, 422, message)
+        self.assertEqual(self.app.runs, {})
+        self.assertEqual(self.calls, [])
+
     def test_failed_worker_does_not_expose_exception_or_reports(self):
         code, body, _ = self.upload(name="failure.md")
         self.assertEqual(code, 202)
@@ -311,6 +368,36 @@ class WorkbenchTest(unittest.TestCase):
         self.assertEqual(status["state"], "failed")
         self.assertNotIn("secret-token", status["error"])
         self.assertEqual(self.request("GET", f"/reports/{identifier}/review.html")[0], 409)
+
+
+class ImportedReportTest(unittest.TestCase):
+    def test_concurrent_imports_register_one_completed_original_without_a_worker(self):
+        raw = (ROOT / "runs/bcc-final/review.json").read_bytes()
+        with TemporaryDirectory() as temp:
+            storage = Path(temp)
+            app = Workbench(storage, worker=lambda *a: self.fail("Import must not launch a review"))
+            with ThreadPoolExecutor(max_workers=5) as pool:
+                results = list(pool.map(app.import_report, [raw] * 5))
+            self.assertEqual(len({r["id"] for r in results}), 1)
+            self.assertEqual(sum(not r["reused"] for r in results), 1)
+            self.assertEqual(len(list(storage.iterdir())), 1)
+            identifier = results[0]["id"]
+            self.assertEqual(app.status(identifier)["mode"], "full")
+            directory = app.reports(identifier, baseline=True)
+            self.assertEqual((directory / "review.json").read_bytes(), raw)
+            self.assertTrue((directory / "review.html").is_file())
+            self.assertNotEqual(app.import_report(raw + b"\n")["id"], identifier)
+
+    def test_failed_publication_leaves_no_run_and_can_be_retried(self):
+        raw = (ROOT / "eval/executable/runs/named-state.json").read_bytes()
+        with TemporaryDirectory() as temp:
+            storage = Path(temp)
+            app = Workbench(storage)
+            with patch.object(Path, "rename", side_effect=OSError("disk unavailable")), self.assertRaises(OSError):
+                app.import_report(raw)
+            self.assertFalse(app.runs)
+            self.assertEqual(list(storage.iterdir()), [])
+            self.assertFalse(app.import_report(raw)["reused"])
 
 
 class FindingArgumentsTest(unittest.TestCase):

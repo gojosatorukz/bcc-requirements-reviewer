@@ -37,6 +37,8 @@ STATIC_FILES = {
 }
 JOB_ID = r"[0-9a-f]{32}"
 FINDING_ID = r"D-(?:0[1-9]|[1-9][0-9]+)"
+IMPORT_LIMIT = 8 * 1024 * 1024
+MAX_INPUT_LINES = INPUT_LIMITS[".txt"] + 1
 DIALOGUE_ROUTE = rf"/api/clarifications/(demo|{JOB_ID})/([0-9a-f]{{64}})"
 PROGRESS = re.compile(r"(?:Сценарии|Блоки [0-9]+–[0-9]+|Весь документ|Повторная проверка) · "
                       r"(?:проверено|проверена сохранённая стадия)")
@@ -72,6 +74,53 @@ class SafeWorkerError(RuntimeError):
     """A fixed message safe to return in the workbench."""
 
 
+def imported_full_report(raw):
+    from .full_render import render_full
+
+    if len(raw) > IMPORT_LIMIT:
+        raise WorkbenchError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Размер отчёта превышает 8 МиБ.")
+
+    def invalid_number(token):
+        raise ValueError(f"{token} не является числом JSON")
+
+    try:
+        report = json.loads(raw.decode("utf-8-sig"), parse_constant=invalid_number)
+    except (ValueError, RecursionError) as exc:
+        raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Не удалось прочитать файл как JSON в UTF-8.") from exc
+    if (not isinstance(report, dict) or "report_type" in report or
+            type(report.get("schema_version")) is not int or report["schema_version"] != 2):
+        raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Нужен JSON полного ревью требований версии 2.")
+    try:
+        run = report["run"]
+        name, count = run["input_name"], run["input_lines"]
+        if not isinstance(name, str) or not 1 <= len(name) <= 1024 or not name.strip() or not name.isprintable():
+            raise ValueError("Некорректное имя исходного документа")
+        if type(count) is not int or not 1 <= count <= MAX_INPUT_LINES:
+            raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY,
+                                 f"Число строк исходного документа должно быть от 1 до {MAX_INPUT_LINES}.")
+        if not re.fullmatch(r"[a-f0-9]{64}", run["input_sha256"]):
+            raise ValueError("Некорректный хеш документа")
+        if not isinstance(report["source"], list) or not report["source"]:
+            raise ValueError("Нет текста исходного документа")
+        # PDF ranges are expanded by the renderer. Validate them before allocating line maps.
+        previous_page = previous_end = 0
+        pages = run.get("pages", [])
+        if not isinstance(pages, list) or ("page_count" in run and
+                (type(run["page_count"]) is not int or run["page_count"] < 1)):
+            raise ValueError("Некорректные страницы")
+        for page in pages:
+            number, start, end = page["page"], page["start"], page["end"]
+            if (any(type(n) is not int for n in (number, start, end)) or
+                    not previous_page < number <= run["page_count"] or not previous_end < start <= end <= count):
+                raise ValueError("Некорректные диапазоны страниц")
+            previous_page, previous_end = number, end
+        html = render_full(report).encode("utf-8")
+    except (ValueError, KeyError, TypeError, AttributeError, IndexError, OverflowError, RecursionError) as exc:
+        raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY,
+                             "Отчёт не прошёл проверку структуры, ссылок на ТЗ или сохранённых вычислений.") from exc
+    return name, html
+
+
 @dataclass
 class Run:
     id: str
@@ -85,6 +134,7 @@ class Run:
     phase: str = "groups"
     proof_total: int | None = None
     checked_proofs: set = field(default_factory=set)
+    imported: bool = False
 
     def record(self, line):
         plan = PLAN.fullmatch(line)
@@ -206,10 +256,35 @@ class Workbench:
         self.runs = {}
         self.lock = Lock()
         self.upload_lock = Lock()
+        self.import_lock = Lock()
+        self.imported = {}
         self.active = None
         self.thread = None
         self.dialogues = {}
         self.pending_dialogues = set()
+
+    def import_report(self, raw):
+        digest = sha256(raw).hexdigest()
+        # Only imports share this lock. Active reviews, downloads and owner answers continue.
+        with self.import_lock:
+            if digest in self.imported:
+                return {**self.imported[digest], "reused": True}
+            name, html = imported_full_report(raw)
+            identifier = uuid4().hex
+            directory = self.storage / identifier
+            self.storage.mkdir(mode=0o700, parents=True, exist_ok=True)
+            with TemporaryDirectory(prefix=".import-", dir=self.storage) as temp:
+                stage = Path(temp) / "report"
+                stage.mkdir(mode=0o700)
+                (stage / "review.json").write_bytes(raw)
+                (stage / "review.html").write_bytes(html)
+                stage.rename(directory)
+            run = Run(identifier, "full", directory, state="done", phase="render", imported=True)
+            with self.lock:
+                self.runs[identifier] = run
+            result = {"id": identifier, "input_name": name, "sha256": digest}
+            self.imported[digest] = result
+            return {**result, "reused": False}
 
     def dialogue_report(self, baseline, sha):
         path = self.reports(baseline, baseline=True) / "review.json"
@@ -301,6 +376,8 @@ class Workbench:
             if run is None:
                 raise WorkbenchError(HTTPStatus.NOT_FOUND, "Прогон не найден.")
             status = {"state": run.state, "progress": list(run.progress), "error": run.error, "mode": run.mode}
+            if run.imported:
+                status["imported"] = True
             if run.group_total is not None:
                 status["coverage"] = {"checked": len(run.checked_groups), "total": run.group_total, "phase": run.phase}
                 if run.proof_total is not None:
@@ -491,7 +568,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
     def json(self, status, response):
         self.reply(status, json.dumps(response, ensure_ascii=False).encode(), REPORT_FILES["review.json"])
 
-    def body_size(self, limit):
+    def body_size(self, limit, size_message="Превышен допустимый размер запроса."):
         sizes = self.headers.get_all("Content-Length", [])
         if self.headers.get("Transfer-Encoding") or len(sizes) != 1 or not re.fullmatch(r"[0-9]{1,10}", sizes[0]):
             raise WorkbenchError(HTTPStatus.LENGTH_REQUIRED, "Укажите размер запроса.")
@@ -499,7 +576,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
         if not size:
             raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Запрос пуст.")
         if size > limit:
-            raise WorkbenchError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Превышен допустимый размер запроса.")
+            raise WorkbenchError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, size_message)
         return size
 
     def do_GET(self):
@@ -562,6 +639,16 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             route = self.route(write=True)
+            if route.path == "/api/import-report":
+                if route.query or self.headers.get_content_type() != "application/json":
+                    raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Передайте сохранённый отчёт с типом application/json.")
+                length = self.body_size(IMPORT_LIMIT, "Размер отчёта превышает 8 МиБ.")
+                raw = self.rfile.read(length)
+                if len(raw) != length:
+                    raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Получен неполный JSON-файл.")
+                result = self.server.app.import_report(raw)
+                self.json(HTTPStatus.OK if result["reused"] else HTTPStatus.CREATED, result)
+                return
             simulation = re.fullmatch(rf"/api/simulate/(demo|{JOB_ID})/([0-9a-f]{{64}})/({FINDING_ID})", route.path)
             if simulation:
                 from .executable import simulate
