@@ -259,9 +259,18 @@ def render_execution(item, explanation=None, boundary=None):
     final = (results_table(program["observe"], states, example["final"]["first"], example["final"]["second"],
                            "Итог после последнего шага")
              if step["step"] < len(example["steps"]) else "")
+    history = ""
+    if "history_proof" in item:
+        rule = item["history_proof"]["rule"]
+        sample = rule["scenario"]
+        line = sample["source"]["line"]
+        history = (f'<p>Исходное значение <strong>{safe(sample["initial"])}</strong>, '
+                   f'к моменту наблюдения <strong>{safe(sample["current"])}</strong>. '
+                   f'<a href="#source-line-{line}">Условия в строке {line}</a>. '
+                   'Проверены два сценария из ТЗ.</p>')
     return (f'<div class="execution" id="execution-{fid}">'
             '<p class="execution-caption">Исполняемый пример</p>'
-            + "".join(comparisons)
+            + "".join(comparisons) + history
             + ('<p>Для обеих трактовок проверены два измерения из приёмки. '
                'Для других входов потребуется уточнить ожидаемый результат.</p>' if "route_proof" in item else "")
             + f'<p class="execution-break"><b>Первое расхождение · шаг {step["step"]}</b>'

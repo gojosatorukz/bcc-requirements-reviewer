@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 import time
 
-from . import acceptance_example, codex_provider, gemini_provider, label_routes, witness_vm
+from . import acceptance_example, codex_provider, gemini_provider, label_routes, value_history, witness_vm
 from .contract import EVIDENCE, TEXT, record, validate_shape
 from .full import InvalidStageResult, StageProviderError, array, call_stage, choice, citations
 
@@ -186,12 +186,13 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, finding, propo
                     return unsupported()
                 payload.update(scope)
             stage = "proposal"
-            if round_index == 0 and label_routes.eligible(witness, source):
+            route = next((kind for kind in (label_routes, value_history) if kind.eligible(witness, source)), None)
+            if round_index == 0 and route is not None:
                 context = dict(payload)
                 if audit_actions is not None:
                     context["unresolved_actions"] = audit_actions()
                 try:
-                    routed = label_routes.build(fid, witness, source, context, model, checkpoint, digest, attempts)
+                    routed = route.build(fid, witness, source, context, model, checkpoint, digest, attempts)
                 except InvalidStageResult as exc:
                     attempts.extend(exc.attempts)
                     routed = None
@@ -311,17 +312,19 @@ def validate_saved(report, lines):
             validate_shape(row, record(finding_id=TEXT, status=choice("provider_unavailable"),
                                        stage=choice(*stages)), fid)
             continue
-        if "route_proof" in row:
-            proof = row["route_proof"]
+        proof_key = next((k for k in ("route_proof", "history_proof") if k in row), None)
+        if proof_key:
+            proof = row[proof_key]
             if not isinstance(proof, dict) or set(proof) != {"rule", "readings"}:
                 raise ValueError(f"{fid}: неполная независимая сверка исходов")
-            program = label_routes.compile_rule(proof["rule"], expected[fid], lines)
+            route = value_history if proof_key == "history_proof" else label_routes
+            program = route.compile_rule(proof["rule"], expected[fid], lines)
             if program != row.get("program"):
                 raise ValueError(f"{fid}: программа отличается от исходных правил выбора")
             verified = witness_vm.execute(program, lines, expected[fid])
-            if label_routes.confirm(proof["rule"], proof["readings"], verified, expected[fid], lines) != row.get("audit"):
+            if route.confirm(proof["rule"], proof["readings"], verified, expected[fid], lines) != row.get("audit"):
                 raise ValueError(f"{fid}: вывод проверки отличается от четырёх исходов")
-            row = {k: v for k, v in row.items() if k != "route_proof"}
+            row = {k: v for k, v in row.items() if k != proof_key}
         elif isinstance(row.get("program"), dict) and "case_scope" in row["program"]:
             raise ValueError(f"{fid}: отсутствует независимая сверка четырёх исходов")
         if set(row) != {"finding_id", "status", "program", "result", "audit"} or row["status"] != "executed":
@@ -406,7 +409,7 @@ def main():
                 raise ValueError("Укажите отдельный выходной файл JSON")
             clock = time.monotonic()
             started = datetime.now(timezone.utc).isoformat()
-            digest = engine_digest("executable.py", "acceptance_example.py", "label_routes.py", "witness_vm.py", "full.py", "priority.py")
+            digest = engine_digest("executable.py", "acceptance_example.py", "label_routes.py", "value_history.py", "witness_vm.py", "full.py", "priority.py")
             section, attempts = build(report, lines, args.model, args.checkpoint_dir, digest, args.workers)
             report["executables"] = section
             report["execution_run"] = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
