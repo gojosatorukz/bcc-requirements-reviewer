@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 import unittest
 
 from reviewer import response_fields
@@ -75,3 +76,19 @@ class ResponseFieldReviewTests(unittest.TestCase):
         self.assertIn("Исключено для HTTP 404", cell)
         self.assertIn("Обязательно для HTTP 409", cell)
         self.assertNotIn("?", cell)
+
+    def test_a_wide_error_body_cannot_hide_a_field_after_the_display_preview(self):
+        wide = {f"k{i}": i for i in range(32)}
+        lines = ["# API", "## GET /drawings", "### HTTP 200", "```json", '{"revision":1}', "```",
+                 "### HTTP 409", "```json", json.dumps(dict(wide, finalMarker=True)), "```",
+                 "### HTTP 410", "```json", json.dumps(wide), "```"]
+        blocks = segment(lines)
+        checks = inspect_examples(lines, blocks)
+        previews = object_shapes(lines, blocks, checks)
+        self.assertNotIn("finalMarker", previews[1]["keys"])
+        complete = object_shapes(lines, blocks, checks, complete=True)
+        groups = response_fields.response_groups(dict(enumerate(lines, 1)), complete, blocks)
+        choices = response_fields.describe(response_fields.candidates(groups))
+        marker = next(c for c in choices if c["field"] == "finalMarker")
+        self.assertEqual(marker["errors"], [{"example": 8, "http_status": 409, "present": True},
+                                            {"example": 12, "http_status": 410, "present": False}])

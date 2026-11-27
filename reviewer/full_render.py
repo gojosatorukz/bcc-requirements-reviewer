@@ -35,8 +35,14 @@ def validate_report(report):
                 json.dumps(object_shapes(raw_lines, expected, checks), sort_keys=True)):
             raise ValueError("Поля JSON-примеров расходятся с исходным документом")
     if "response_field_review" in report:
-        groups = response_fields.response_groups(lines, report.get("example_shapes", ()), expected)
-        response_fields.validate_saved(report["response_field_review"], groups, whole["findings"], lines)
+        field_review = report["response_field_review"]
+        shapes = report.get("example_shapes", ())
+        if isinstance(field_review, dict) and field_review.get("version") == 2:
+            if "json_checks" not in report:
+                raise ValueError("Отсутствуют исходные JSON-примеры оценки полей")
+            shapes = object_shapes(raw_lines, expected, checks, complete=True)
+        groups = response_fields.response_groups(lines, shapes, expected)
+        response_fields.validate_saved(field_review, groups, whole["findings"], lines)
     if len(segments) != len(expected):
         raise ValueError("Число исходных блоков изменилось")
     records = {r["id"]: r for r in registry}

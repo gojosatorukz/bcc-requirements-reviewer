@@ -5,7 +5,7 @@ import json
 from .json_examples import example_body
 
 
-def object_shapes(lines, segments, checks):
+def object_shapes(lines, segments, checks, *, complete=False):
     by_start = {block["start"]: block for block in segments}
     shapes = []
     for example in checks["examples"]:
@@ -18,5 +18,5 @@ def object_shapes(lines, segments, checks):
         if isinstance(value, dict):
             keys = list(value)
             shapes.append({"start": start, "end": end, "section": by_start[start]["section"],
-                           "keys": keys[:32], "key_count": len(keys)})
+                           "keys": keys if complete else keys[:32], "key_count": len(keys)})
     return shapes

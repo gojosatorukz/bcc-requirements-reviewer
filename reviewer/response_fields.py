@@ -1,4 +1,4 @@
-"""Ground questions about omitted response fields in examples of the same HTTP operation."""
+"""Ground questions about response field obligations in examples of the same HTTP operation."""
 
 from collections import defaultdict
 import re
@@ -178,7 +178,7 @@ def describe(choices):
 def validate_saved(section, groups, findings, source):
     choices = candidates(groups)
     if (not isinstance(section, dict) or set(section) != {"version", "candidates", "assessments"}
-            or type(section["version"]) is not int or section["version"] != 1
+            or type(section["version"]) is not int or section["version"] not in (1, 2)
             or section["candidates"] != describe(choices)):
         raise ValueError("Состав ошибок и полей API расходится с примерами документа")
     verify({"assessments": section["assessments"]}, choices, source)

@@ -286,7 +286,9 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     segments = segment(lines, pdf_json_blocks)
     json_checks = inspect_examples(lines, segments)
     shapes = object_shapes(lines, segments, json_checks)
-    groups = response_fields.response_groups(source, shapes, segments)
+    field_version = 2 if any(s["key_count"] > len(s["keys"]) for s in shapes) else 1
+    full_shapes = object_shapes(lines, segments, json_checks, complete=True) if field_version == 2 else shapes
+    groups = response_fields.response_groups(source, full_shapes, segments)
     choices = response_fields.candidates(groups)
     semantic = [b for b in segments if b["kind"] not in {"разметка", "шапка таблицы"}]
     chunks = list(local_batches(semantic, source))
@@ -317,7 +319,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
             resolved, field_attempts = future.result()
             assessments.extend(resolved["assessments"])
             attempts.extend(field_attempts)
-    fields = {"version": 1, "candidates": response_fields.describe(choices),
+    fields = {"version": field_version, "candidates": response_fields.describe(choices),
               "assessments": sorted(assessments, key=lambda a: a["candidate"])}
     marks = {}
     for result, events in local_results:
