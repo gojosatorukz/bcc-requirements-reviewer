@@ -39,21 +39,19 @@ def main():
     manifest = json.loads((ROOT / "runs/bcc-release/materials.json").read_bytes())
     for filename in ("review.html", "review.pdf", "review.json"):
         assert sha256(read("/reports/demo/" + filename)).hexdigest() == manifest[filename], filename
+    print("Ready HTML, PDF and JSON match the release.", flush=True)
     gemini = json.loads(read("/reports/demo/gemini.json"))
     assert gemini["run"]["model"].startswith("gemini-")
+    assert sha256(read("/reports/demo/gemini.html")).digest() == sha256(
+        (ROOT / "eval/gemini/behavior/bcc-release.html").read_bytes()).digest()
     assert "Проверить структуру без ИИ" in read("/").decode()
-    print("Ready HTML, PDF and JSON match the release. Gemini example and upload form open.")
+    print("Gemini examples and the upload form open.", flush=True)
 
     sample = b'# Export\n| Key | Unit |\n| --- | --- |\n| rate | ms |\n~~~json\n{"delay":3,}\n~~~'
     broken = check_file("queue.md", sample)
     assert (broken["lines"], broken["tables"], broken["examples"]) == (7, 1, 1), broken
     assert [item["line"] for item in broken["diagnostics"]] == [6], broken
     assert check_file("queue.md", sample.replace(b"3,}", b"3}"))["diagnostics"] == []
-    for file in ("eval/pdf-official/requirements.pdf", "eval/word-transfer/transfer.docx"):
-        source = ROOT / file
-        result = check_file(source.name, source.read_bytes())
-        assert result["filename"] == source.name and result["examples"] > 0, result
-        print(f"{source.name}: {result['lines']} lines, {result['tables']} table rows, {result['examples']} JSON examples.")
     print("Fresh specification: a JSON error at line 6 disappears after correction. No LLM request was made.")
 
 

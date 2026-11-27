@@ -8,13 +8,24 @@ from .json_examples import inspect_examples
 from .segments import segment
 
 
+def describe_error(item, lines):
+    line = lines[item["line"] - 1]
+    index = item.get("column", 0) - 1
+    if 0 <= index < len(line) and line[index] in "}]":
+        # Only inspect the part of this example preceding the unexpected closing delimiter.
+        prefix = "\n".join([*lines[item["start"] - 1:item["line"] - 1], line[:index]])
+        if prefix.rstrip().endswith(","):
+            return "Уберите лишнюю запятую перед закрывающей скобкой."
+    return item["diagnostic"]
+
+
 def inspect_structure(raw, suffix):
     lines, metadata = extract_document(raw, suffix)
     if not any(line.strip() for line in lines):
         raise ValueError("Документ пуст.")
     blocks = segment(lines, metadata.get("pdf_json_blocks", ()))
     examples = inspect_examples(lines, blocks)["examples"]
-    diagnostics = [{"line": item["line"], "message": item["diagnostic"]}
+    diagnostics = [{"line": item["line"], "message": describe_error(item, lines)}
                    for item in examples if item["status"] != "valid"]
     return {"lines": len(lines), "units": sum(b["kind"] != "разметка" for b in blocks),
             "tables": sum(b["kind"] == "строка таблицы" for b in blocks),

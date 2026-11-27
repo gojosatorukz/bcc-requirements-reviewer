@@ -114,6 +114,7 @@ class HostedWorkbenchTest(unittest.TestCase):
         self.assertEqual((data["filename"], data["lines"], data["units"], data["tables"], data["examples"]),
                          ("draft.md", 7, 4, 1, 1))
         self.assertEqual([d["line"] for d in data["diagnostics"]], [6])
+        self.assertIn("запятую", data["diagnostics"][0]["message"])
         fixed = sample.replace(b"10,}", b"10}")
         self.assertEqual(json.loads(self.request("POST", path, cookie, origin, fixed)[1])["diagnostics"], [])
         for invalid in (b"  \n", b"\xff"):
