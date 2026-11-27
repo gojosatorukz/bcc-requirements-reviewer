@@ -14,8 +14,9 @@ from tempfile import TemporaryDirectory
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(ROOT))
-from eval.executable.audit import check_protocol, require, verify
+from eval.executable.audit import check_protocol, require, source_citations, verify
 from reviewer.executable import targets
+from reviewer.full_render import validate_report
 
 FIELD = ROOT / "eval/field-obligations"
 spec = importlib.util.spec_from_file_location("planetarium_audit", FIELD / "replay.py")
@@ -72,9 +73,32 @@ def timing(report):
     return result
 
 
-def official(path, source):
+def verify_artifact(name, path, source, allow_restored):
+    report = json.loads(path.read_bytes())
+    run = report["run"]
+    if run["restored_attempts"] == 0:
+        return verify(name, path, source)
+    require(allow_restored, "Resumed artifact; use --allow-restored for semantic evidence only")
+    require(report["schema_version"] == 2 and run["model"] == "gpt-6.2-astra"
+            and run["provider"] == "codex-cli" and "execution_run" not in report,
+            "Full Astra report required")
+    require(run["input_sha256"] == sha256(source.read_bytes()).hexdigest(), "Recovered input mismatch")
+    raw = {n: l for n, l in enumerate(source.read_text().splitlines(), 1) if l.strip()}
+    require(validate_report(report) == raw, "Recovered source snapshot mismatch")
+    citations = list(source_citations(report))
+    require(all(ref["quote"] and ref["quote"] in raw.get(ref["line"], "") for ref in citations),
+            "Recovered source quote mismatch")
+    pairs = []
+    for item in report["executables"]["items"]:
+        witness = targets(report)[item["finding_id"]]
+        anchors = {witness[side]["source"]["line"] for side in ("first", "second")}
+        pairs.append((anchors, item))
+    return report, pairs, len(citations)
+
+
+def official(path, source, allow_restored=False):
     require(sha256(source.read_bytes()).hexdigest() == BCC_INPUT, "Wrong BCC input")
-    r, pairs, citations = verify("official", path, source)
+    r, pairs, citations = verify_artifact("official", path, source, allow_restored)
     require(r["run"]["max_workers"] == 6, "BCC pool differs from baseline")
     findings = r["whole"]["findings"]
     matches = {f["id"]: f["question"] for f in findings if re.search(r"\bresult\b", f["question"])
@@ -131,12 +155,24 @@ def official(path, source):
             "both_source_pairs_executed": bcc_pairs, "witnesses": checks}
 
 
-def planetarium(folder, name):
-    summary, report = fields.inspect(folder, name)
+def planetarium(folder, name, allow_restored=False):
+    source = FIELD / (name + ".md")
+    path = folder / (name + ".json")
+    require(sha256(source.read_bytes()).hexdigest() == fields.INPUTS[name], "Planetarium source changed")
+    report, _, citations = verify_artifact(name, path, source, allow_restored)
     require(report["run"]["max_workers"] == 4, "Planetarium pool differs from baseline")
-    return {"sha256": summary["sha256"], "timing": timing(report), "citations": summary["citations"],
-            "examples": summary["examples"], "policy": summary["policies"],
-            "target_questions": summary["target_questions"],
+    observed = {}
+    for shape in report["example_shapes"]:
+        line = shape["start"] + 1
+        op, status, keys = fields.EXAMPLES[line]
+        raw_keys = list(json.loads(source.read_text().splitlines()[line - 1]))
+        require(shape["keys"] == raw_keys == list(keys) and shape["key_count"] == len(keys), "Wrong API shape")
+        require(op in shape["section"] and f"HTTP {status}" in shape["section"], "Wrong example operation/status")
+        observed[line] = (op, status, raw_keys)
+    require(set(observed) == set(fields.EXAMPLES), "Example missing")
+    return {"sha256": sha256(path.read_bytes()).hexdigest(), "timing": timing(report), "citations": citations,
+            "examples": observed, "policy": fields.obligations(report, name.endswith("-aligned")),
+            "target_questions": fields.final_questions(report),
             "all_owner_questions": {f["id"]: f["question"] for f in report["whole"]["findings"]}}
 
 
@@ -144,6 +180,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path, help="Original BCC requirements.md")
     parser.add_argument("cohort", type=Path, help="Directory containing the three candidate JSONs")
+    parser.add_argument("--allow-restored", action="store_true",
+                        help="Check semantics of resumed documents; they are ineligible for cold timings")
     args = parser.parse_args()
     result = {}
     with TemporaryDirectory() as tmp:
@@ -152,9 +190,9 @@ def main():
         require(sha256(before.read_bytes()).hexdigest() == OLD_OFFICIAL, "Baseline bytes changed")
         for label, path, folder in (("before", before, FIELD / "runs/release"),
                                     ("after", args.cohort / "official.json", args.cohort)):
-            result[label] = {"official": official(path, args.source)}
+            result[label] = {"official": official(path, args.source, args.allow_restored)}
             for name in fields.INPUTS:
-                result[label][name] = planetarium(folder, name)
+                result[label][name] = planetarium(folder, name, args.allow_restored)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
