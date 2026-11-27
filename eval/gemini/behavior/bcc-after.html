@@ -1,0 +1,1668 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-3x5wzRi6wmPKTOsZIDPW9oN6VqRevLPUlVpa0ocCD3Y='; base-uri 'none'; form-action 'none'">
+<title>Уведомление о расходах по карте · Ревью требований</title><style>:root {
+  color-scheme: light;
+  --canvas: #e7ece6;
+  --paper: #f7f7f3;
+  --ink: #202e2b;
+  --muted: #52625b;
+  --line: #c9d2ca;
+  --deep: #123e34;
+  --green: #e5ece5;
+  --warm: #fbe9d7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font: 1rem/1.55 system-ui, sans-serif;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: #205a48;
+  text-underline-offset: .2em;
+}
+
+:focus-visible {
+  outline: 3px solid #8c5020;
+  outline-offset: 3px;
+}
+
+[id] { scroll-margin-block: 1.25rem; }
+
+p { margin: 0; }
+
+.sr-only,
+.skip-link:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link:focus {
+  position: absolute;
+  z-index: 1;
+  top: .75rem;
+  left: .75rem;
+  padding: .5rem .75rem;
+  background: white;
+}
+
+.masthead {
+  background: var(--deep);
+  color: white;
+}
+
+.masthead-inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+  padding-block: .8rem;
+}
+
+.masthead strong {
+  font-size: 1.3rem;
+  letter-spacing: -.035em;
+}
+
+.masthead span {
+  color: #d0dfd3;
+  font-size: .875rem;
+}
+
+main {
+  width: min(100% - 2rem, 72rem);
+  margin: 1.75rem auto 3rem;
+  padding: clamp(1rem, 3.75vw, 2.75rem);
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.scope,
+.section-note,
+.owner,
+.facts dt { color: var(--muted); }
+
+.scope {
+  font-size: .875rem;
+  font-weight: 650;
+}
+
+h1 {
+  margin: .45rem 0 1rem;
+  font: 500 clamp(2rem, 5vw, 3.5rem)/1.06 Georgia, serif;
+  letter-spacing: -.035em;
+}
+
+h2 {
+  margin: 0 0 .875rem;
+  font-size: clamp(1.3rem, 3vw, 1.85rem);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+}
+
+h3 {
+  margin: 0 0 .45rem;
+  font-size: .875rem;
+  line-height: 1.35;
+}
+
+.overview {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.overview nav,
+.backlinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1rem;
+}
+
+.overview a,
+.citation,
+.backlinks a {
+  display: inline-block;
+  padding-block: .25rem;
+  font-size: .875rem;
+}
+
+.count {
+  padding: .3rem .65rem;
+  border-radius: 3px;
+  background: var(--green);
+  color: var(--deep);
+}
+
+.count strong {
+  margin-inline-start: .35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.conflict,
+.empty,
+.report-section { margin-top: 2rem; }
+
+.conflict + .conflict,
+.report-section {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.scenario,
+.empty {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: var(--green);
+}
+
+.scenario p { max-width: 80ch; }
+
+.outcomes,
+.follow-up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.outcome,
+.question,
+.control {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border-top: 3px solid var(--deep);
+}
+
+.outcome h3 { color: var(--deep); }
+.outcome-text,
+.question-text { font-weight: 600; }
+
+blockquote {
+  margin: .9rem 0 .5rem;
+  padding-left: .75rem;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.citation { margin-top: auto; }
+
+.question {
+  border-color: #e4cdb8;
+  background: var(--warm);
+}
+
+.owner {
+  margin-top: .75rem;
+  font-size: .875rem;
+}
+
+.owner span {
+  display: block;
+  font-weight: 650;
+}
+
+.source-list {
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  list-style: none;
+  background: white;
+}
+
+.source-row {
+  display: grid;
+  grid-template-columns: minmax(3.6rem, max-content) minmax(0, 1fr);
+  column-gap: .75rem;
+  padding: .5rem .75rem .5rem 0;
+}
+
+.source-row + .source-row { border-top: 1px solid var(--line); }
+
+.source-row:target,
+.outcome:target {
+  outline: 2px solid #8c5020;
+  outline-offset: 2px;
+  background: var(--warm);
+}
+
+.line-number {
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.source-text {
+  font: .875rem/1.55 ui-monospace, "Cascadia Code", Menlo, monospace;
+  white-space: pre-wrap;
+  tab-size: 4;
+}
+
+.backlinks { grid-column: 2; }
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: .75rem 1rem;
+  margin: 0;
+}
+
+.facts div {
+  min-width: 0;
+  padding: .65rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.facts dt { font-size: .875rem; }
+.facts dd { margin: .15rem 0 0; }
+.tokens-heading { margin-top: 1.25rem; }
+
+.attempts { margin-top: 1rem; }
+.attempts summary { cursor: pointer; }
+.attempts ol { padding-inline-start: 1.5rem; }
+.attempts li + li { margin-top: .75rem; }
+.attempts .facts { margin-top: .5rem; }
+
+@media (max-width: 45rem) {
+  main {
+    width: calc(100% - 1rem);
+    margin-top: .75rem;
+  }
+
+  .outcomes,
+  .follow-up { grid-template-columns: minmax(0, 1fr); }
+
+  .scenario,
+  .outcome,
+  .question,
+  .control,
+  .empty { padding-inline: .875rem; }
+
+  .source-row {
+    grid-template-columns: minmax(2rem, max-content) minmax(0, 1fr);
+    column-gap: .5rem;
+  }
+}
+
+.source-origin{display:block;font:600 .78em/1.45 system-ui,sans-serif;color:#52625b}
+.execution {
+  --proof-ink: #251d26;
+  --proof-muted: #665859;
+  --proof-line: #c4b8b3;
+  --proof-paper: #fffaf0;
+  min-width: 0;
+  padding: clamp(1rem, 2.1vw, 1.65rem);
+  background: var(--proof-paper);
+  color: var(--proof-ink);
+  border: 2px solid var(--proof-ink);
+  border-radius: .95rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  container-type: inline-size;
+}
+.execution p, .execution dl, .execution dd, .execution h4 {margin: 0}
+.execution p.execution-caption {
+  margin: 0 0 .32rem;
+  font-size: .76rem;
+  font-weight: 760;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.execution h4 {font-size: clamp(1.22rem, 2.5vw, 1.85rem); letter-spacing: -.035em; line-height: 1.12}
+.execution dl.execution-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: .85rem 0;
+  border: 1.5px solid var(--proof-ink);
+  border-radius: .65rem;
+  overflow: hidden;
+}
+.execution-side {min-width: 0; padding: .7rem .85rem; background: #ffdbba}
+.execution-side + .execution-side {border-left: 1.5px solid var(--proof-ink); background: #e4dafa}
+.execution-side dt {font-size: .78rem; font-weight: 650}
+.execution a {color: inherit; text-decoration: underline; text-underline-offset: .18em}
+.execution .execution-side dd {
+  margin: .35rem 0 0;
+  font-size: clamp(1.15rem, 2.6vw, 2.3rem);
+  font-weight: 790;
+  letter-spacing: -.045em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.07;
+}
+.execution .execution-comparison[data-values="enum"] dd {
+  font: 700 clamp(1rem, 1.9vw, 1.52rem)/1.2 ui-monospace, monospace;
+  letter-spacing: -.035em;
+}
+.execution-break {display: grid; gap: .12rem}
+.execution-break b {font-size: .8rem; color: var(--proof-muted)}
+.execution-break span {font-size: 1rem; font-weight: 670}
+.execution dl.execution-values {display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin: .35rem 0 .6rem}
+.execution-values div {display: inline; min-width: 0}
+.execution-values dt, .execution-values dd {display: inline; font-size: .85rem}
+.execution-values dt {color: var(--proof-muted)}
+.execution-values dt::after {content: " · "}
+.execution-values dd {font-weight: 660; font-variant-numeric: tabular-nums}
+.execution details {border-top: 1px solid var(--proof-line)}
+.execution details:first-of-type {margin-top: .9rem}
+.execution details > summary {
+  padding: .56rem .15rem;
+  font-size: .9rem;
+  font-weight: 690;
+  cursor: pointer;
+}
+.execution details[open] > summary {margin-bottom: .2rem}
+.execution .execution-subtitle {margin: .28rem 0; font-size: .8rem; font-weight: 720}
+.execution-step {margin: .65rem 0; padding: .15rem .65rem .4rem; border-left: 3px solid var(--proof-line)}
+.execution-step.differs {border-color: #bf4c24}
+.execution .execution-step-title {margin: .15rem 0; font-size: .91rem; font-weight: 720}
+.execution-step-title span {display: block; margin-bottom: .12rem; font-size: .75rem; color: var(--proof-muted)}
+.execution .execution-difference-note {margin: .22rem 0; color: #853818; font-size: .77rem; font-weight: 650}
+.execution table.execution-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: .4rem 0 .2rem;
+  font-size: .81rem;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.execution .execution-table caption {text-align: left; margin-bottom: .25rem; color: var(--proof-muted)}
+.execution .execution-table th, .execution .execution-table td {
+  padding: .3rem;
+  border-bottom: 1px solid var(--proof-line);
+  background: transparent;
+  text-align: left;
+  vertical-align: baseline;
+}
+.execution .execution-table th:first-child {width: 45%}
+.execution .execution-table tbody th {font-weight: 540}
+.execution .execution-sources blockquote {
+  margin: .25rem 0 .7rem;
+  padding: .15rem 0 .15rem .65rem;
+  border-left: 3px solid var(--proof-line);
+  color: var(--proof-ink);
+  font-size: .9rem;
+  white-space: pre-wrap;
+}
+.execution .execution-sources blockquote span {display: block; font-size: .76rem; font-weight: 720}
+.execution .execution-reading {margin: .2rem 0 .75rem; font-size: .84rem; color: var(--proof-muted)}
+.execution-logic > div {padding: .3rem .55rem .55rem; border-left: 3px solid #f2aa76; margin: 0 0 .65rem}
+.execution-logic > div + div {border-color: #b29bcf}
+.execution-logic h5 {font-size: .86rem; margin: 0 0 .28rem}
+.execution-logic p {font-size: .84rem}
+.execution code {font-size: .92em; overflow-wrap: anywhere}
+.execution-unavailable {border-color: var(--proof-line); box-shadow: none}
+.execution-unavailable h4 {margin-bottom: .35rem; font-size: 1.08rem}
+.full .finding > .execution {margin: .85rem 0; max-width: 58rem}
+.execution-edit, .lab-dialog button {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  border: 1.5px solid var(--proof-ink);
+  border-radius: .5rem;
+  padding: .46rem .72rem;
+  color: var(--proof-ink);
+  background: var(--proof-paper);
+  font: 675 .9rem/1.35 system-ui, sans-serif;
+  cursor: pointer;
+}
+.execution-edit {margin: .5rem 0 .1rem; background: #ffe092}
+.execution-edit:enabled:hover, .lab-dialog button:enabled:hover {box-shadow: 0 2px 0 currentColor}
+.execution.lab-dialog {
+  width: min(41rem, calc(100% - 1rem));
+  max-width: calc(100vw - 1rem);
+  max-height: min(90dvh, 57rem);
+  margin: auto;
+  padding: clamp(1rem, 3vw, 1.75rem);
+  box-shadow: .3rem .45rem 0 #251d26;
+  overscroll-behavior: contain;
+}
+.lab-dialog::backdrop {background: #251d269e}
+.lab-head {position: sticky; top: 0; z-index: 1; display: flex; align-items: start; justify-content: space-between; gap: .4rem; padding: .35rem 0; background: var(--proof-paper)}
+.lab-dialog h2 {margin: 0; font-size: clamp(1.3rem, 3vw, 1.82rem); line-height: 1.1}
+.lab-dialog .lab-head + p {margin: .65rem 0; font-size: .92rem; color: var(--proof-muted)}
+.lab-dialog .lab-close {flex: none; white-space: nowrap; border-color: transparent; text-decoration: underline}
+.lab-presets {display: flex; flex-wrap: wrap; gap: .4rem}
+.lab-presets [aria-pressed="true"] {background: #251d26; color: #fffaf0}
+.lab-output {margin: .9rem 0; color: var(--proof-ink); scroll-margin-top: 4rem}
+.lab-result {
+  padding: .65rem .8rem;
+  background: #f6ead4;
+  border-radius: .5rem;
+  border-left: 3px solid #a43b1a;
+}
+.lab-result .lab-origin {font-size: .75rem; color: var(--proof-muted); font-weight: 680}
+.lab-result h3 {margin: .25rem 0; font-size: 1.08rem}
+.lab-result p {font-size: .88rem}
+.lab-result p.lab-scope {margin: .65rem 0 .45rem; font-size: .84rem; line-height: 1.4}
+.lab-dialog .execution-table caption {font-size: .78rem}
+.lab-fields {display: grid; gap: .75rem}
+.lab-fields fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: .4rem 0 .75rem;
+  border: 0;
+  border-bottom: 1px solid var(--proof-line);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+  align-items: end;
+  gap: .55rem .95rem;
+}
+.lab-fields legend {padding: 0; font-weight: 720; font-size: .88rem}
+.lab-fields details.lab-event {grid-column: 1 / -1; margin: 0; border: 0}
+.lab-fields .lab-event summary {padding: .12rem 0; color: var(--proof-muted); font-size: .8rem}
+.lab-fields .lab-event p {font-size: .84rem}
+.lab-fields label {display: grid; gap: .2rem; font-size: .84rem; color: var(--proof-muted)}
+.lab-fields input, .lab-fields select {
+  width: 100%;
+  min-width: 0;
+  padding: .42rem .56rem;
+  border: 1px solid #8e7885;
+  border-radius: .43rem;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--proof-ink);
+  background: #fffdfa;
+}
+.lab-enum-field {min-width: 0}
+.lab-value-source {display: inline-block; margin-top: .18rem; font-size: .76rem}
+.lab-dialog .lab-submit {margin-top: .9rem; background: var(--proof-ink); color: #fffaf0}
+.lab-dialog .lab-submit:disabled {opacity: .65; cursor: wait}
+@container (max-width: 27rem) {
+  .execution-table[data-values="enum"], .execution-table[data-values="enum"] caption,
+  .execution-table[data-values="enum"] tbody {display: block}
+  .execution-table[data-values="enum"] thead {position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap}
+  .execution-table[data-values="enum"] tbody tr {display: grid; gap: .13rem; padding: .35rem 0; border-top: 1px solid var(--proof-line)}
+  .execution .execution-table[data-values="enum"] tbody th {width: auto; border: 0; font-weight: 690}
+  .execution .execution-table[data-values="enum"] td {display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); gap: .35rem; border: 0}
+  .execution-table[data-values="enum"] td::before {content: attr(data-rule); content: attr(data-rule) / ""; color: var(--proof-muted); font: 560 .76rem/1.35 system-ui, sans-serif}
+}
+@container (max-width: 20rem) {
+  .execution .execution-table[data-values="enum"] td {display: block; padding-bottom: .4rem}
+  .execution-table[data-values="enum"] td::before {display: block; margin-bottom: .1rem}
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lab-dialog[open] {animation: lab-enter .18s ease-out both}
+  @keyframes lab-enter {from {opacity: .3; transform: translateY(.45rem)} to {opacity: 1; transform: none}}
+}
+@media print {
+  .execution {padding: .55rem; break-inside: auto; border: 1px solid #888}
+  .execution .execution-comparison {break-inside: avoid}
+  .execution details:not([open]) {display: none}
+  .execution .execution-side dd {font-size: 14pt}
+}
+
+.full nav{margin:1rem 0}.metrics,.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13em),1fr));gap:.8rem;margin:1rem 0}
+.metrics>div{padding:.55rem .85rem;border-left:2px solid var(--line)}
+.metrics strong{font-size:1.45rem;display:block}.full h3{font-size:1.05rem;margin:.35rem 0}
+.gates>article{padding:1rem;background:var(--green);border-top:3px solid var(--deep)}
+.gates strong{font-size:1.3rem;color:var(--deep)}.gates p{margin:.4rem 0}
+.full .brief-refs{font-size:.86em;color:var(--muted)}
+.full section{margin:1.6rem 0}.finding{border-top:1px solid var(--line);padding:1rem 0}
+.decision-brief{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:.8rem}
+.decision-brief>h2{grid-column:1/-1;margin:0}.decision-brief article{min-width:0;border-left:3px solid #bd582d;background:#fff5e8;padding:.8rem 1rem}
+.decision-brief article>strong{font-size:1.4rem;color:#48271e}.decision-brief article p{margin:.45rem 0}
+.full .report-meta{color:var(--muted)}.full .report-toolbar{display:flex;flex-wrap:wrap;align-items:start;justify-content:space-between;gap:.5rem 1rem}
+.full .report-toolbar nav{margin:0}.full .report-toolbar summary{font-weight:600;color:var(--deep);padding:.4rem 0}
+.full .report-toolbar button{font:inherit;font-weight:600;color:var(--deep);background:white;border:1px solid var(--deep);border-radius:.4rem;cursor:pointer;padding:.4rem .8rem}
+.finding p+p{margin-top:.45rem}.full small{color:var(--muted)}.full blockquote{margin:.45rem 0}
+.finding-export{display:inline-block;margin:.45rem 0;padding:.25rem .5rem;border:1px solid var(--line);border-radius:3px;font-size:.9rem}
+.finding-export:hover{background:var(--green)}
+.full table{width:100%;border-collapse:collapse}.full td,.full th{padding:.55rem;vertical-align:top;border-bottom:1px solid var(--line);text-align:left}
+.full th{background:var(--green)}.full summary{cursor:pointer}.full tr:target,.finding:target{background:var(--warm)}
+.full .scroll{overflow:auto}.full td:first-child{min-width:4.6em}.full section>h2{border-top:2px solid var(--deep);padding-top:1rem}
+#response-fields table{table-layout:fixed}#response-fields th:first-child{width:16%}
+@media screen and (max-width:680px){#response-fields table{min-width:38rem}}
+.decision-draft{margin-top:.75rem;padding:.65rem .85rem;border:1px solid var(--line);background:var(--green)}
+.decision-draft summary{font-weight:650;color:var(--deep)}
+.draft-scenario{min-inline-size:0;margin:.8rem 0 0;padding:.65rem;border:1px solid var(--line);background:var(--paper)}
+.draft-scenario legend{padding:0 .3rem;font-weight:650}
+.draft-options{display:grid;grid-template-columns:auto minmax(0,1fr) max-content;gap:.35rem .6rem;margin-top:.45rem;align-items:start}
+.draft-options input{margin:.65rem 0 0;accent-color:var(--deep);cursor:pointer}
+.draft-options label{display:block;padding:.25rem .4rem;border-radius:3px;cursor:pointer}
+.draft-options label span{display:block}
+.draft-options input:checked + label{background:var(--green)}
+.draft-source a{display:inline-block;padding:.4rem 0;font-size:.875rem}
+.draft-result{display:none;grid-column:1/-1;padding:.75rem;border-left:3px solid var(--deep);background:white}
+.draft-result h4{margin:0 0 .35rem}
+.draft-options input[value="1"]:checked ~ .draft-result-1,.draft-options input[value="2"]:checked ~ .draft-result-2{display:block}
+@media(max-width:650px){.full .registry td{display:block;border:0}.full .registry tr{display:block;border-bottom:1px solid var(--line)}.registry thead{display:none}}
+@page{size:A4;margin:15mm 15mm 18mm;@bottom-right{content:counter(page) " / " counter(pages);font:9pt sans-serif;color:#52625b}}
+@media print{
+ html{font-size:12px}body,main,.full{font-family:Arial,sans-serif;background:white}
+ header,nav,.skip-link,.backlinks,.decision-draft,.finding-export,.full .report-toolbar{display:none}
+ .full #actions.after-brief{break-before:page}
+ main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
+ .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
+ .full h2,.full h3{break-after:avoid}.full section{margin:9pt 0}.full section>h2{padding-top:7pt}
+ .qa-scenario{break-inside:avoid}
+ .decision-brief{grid-template-columns:repeat(2,minmax(0,1fr));gap:6pt}.decision-brief article{padding:5pt 7pt}
+ .gates>article{padding:5pt 7pt}.metrics>div{padding:2pt 6pt}.gates p,.decision-brief article p{margin:3pt 0}
+ .full .brief-refs{font-size:8pt}
+ .metrics{grid-template-columns:repeat(3,1fr)}.gates{grid-template-columns:repeat(2,1fr)}
+ .full .registry{table-layout:fixed}.full .registry th:first-child{width:10%}.full .registry th:nth-child(2){width:49%}
+ .full .registry thead{display:table-header-group}.full .registry tr{display:table-row}.full .registry td{display:table-cell}
+ .full td,.full th{padding:4pt}.full .registry td:first-child{white-space:nowrap}
+ .full .source-row,.full tr,.full blockquote{break-inside:avoid}.full .source-text{font:8.5pt/1.3 Arial,sans-serif}
+ .full .finding{padding:6pt 0}.full small{font-size:8pt}.full blockquote{margin:2pt 0}
+ .full .facts{display:flex;flex-wrap:wrap;gap:3pt 9pt}.full .facts div{padding:2pt 0}.full .facts dd{margin:1pt 0}
+ .full .attempts li{break-inside:avoid}.full .attempts .facts div{border:0}
+}
+</style></head>
+<body><a class="skip-link" href="#report">К результатам</a><header class="masthead"><div class="masthead-inner"><strong>Разбор ТЗ</strong><span>Отчёт полного прогона</span></div></header>
+<main class="full" id="report"><small class="report-meta">requirements.md · 2026-11-27 UTC · gemini-3.5-flash-lite</small>
+<h1>Уведомление о расходах по карте</h1>
+<div class="report-toolbar"><nav aria-label="Разделы отчёта"><details><summary>Разделы отчёта</summary><a href="#actions">Замечания</a> · <a href="#qa-scenarios">Сценарии для QA</a> · <a href="#register">Реестр</a> · <a href="#quality">Оценка набора</a> · <a href="#coverage">Покрытие</a> · <a href="#source">Исходник</a> · <a href="#passport">Паспорт</a></details></nav>
+<button id="print-report" type="button" hidden>Печать / сохранить PDF</button></div>
+<section aria-labelledby="readiness-title"><h2 id="readiness-title">Можно ли начинать работу</h2><div class="gates"><article><h3>Разработка</h3><strong>Заблокировано</strong><p>Реализация заблокирована наличием неразрешенных бизнес-противоречий (лимит push и дата транзакции), а также отсутствием Prod URL и контракта ошибок API.</p><p class="brief-refs"><a href="#source-line-38">строка 38</a> · <a href="#source-line-39">строка 39</a> · <a href="#source-line-108">строка 108</a> · <a href="#source-line-175">строка 175</a></p></article><article><h3>Тестирование</h3><strong>Заблокировано</strong><p>Тестирование невозможно из-за противоречивых бизнес-правил в требованиях и критериях приёмки, а также неопределенности кодов ответа и полей ошибок.</p><p class="brief-refs"><a href="#source-line-39">строка 39</a> · <a href="#source-line-64">строка 64</a> · <a href="#source-line-175">строка 175</a> · <a href="#source-line-189">строка 189</a></p></article></div></section>
+<div class="metrics"><div><strong>53</strong>пунктов в реестре</div><div><strong>4</strong>нарушений, включая 2 критических</div><div><strong>3</strong>открытых вопросов</div></div>
+<p>43 требований · 3 приёмочных примеров · 7 примеров контракта.</p><section class="decision-brief" aria-labelledby="brief-title"><h2 id="brief-title">Что согласовать в первую очередь</h2><article><small><a href="#D-01">D-01</a> · критический · Автор ТЗ</small><h3>Несоответствие даты и месяца учёта покупки</h3><p>К какому месяцу относится покупка, совершённая 31 января в 23:58 по времени Алматы?</p><p><b>Следующий шаг.</b> Привести текстовое правило Ф-2 и пример в таблице приёмки к единому исходу.</p><p class="brief-refs">Основания · <a href="#source-line-38">строка 38</a> · <a href="#source-line-64">строка 64</a></p></article><article><small><a href="#D-02">D-02</a> · критический · Владелец продукта</small><h3>Конфликт лимита push-уведомлений и изменения порога</h3><p>Разрешена ли отправка второго push-уведомления в календарном месяце при изменении порога?</p><p><b>Следующий шаг.</b> Уточнить приоритет правила обнуления истории при изменении порога над месячным лимитом push-уведомлений.</p><p class="brief-refs">Основания · <a href="#source-line-39">строка 39</a> · <a href="#source-line-40">строка 40</a></p></article></section><p><a href="#qa-scenarios">Сценарии для QA · 4</a> · <a href="#qa-scenario-1">Первое действие</a></p>
+<section id="actions" class="after-brief"><h2>Все замечания · 7</h2>
+<article id="D-01" class="finding"><small>D-01 · нарушение · критический</small>
+<h3>Несоответствие даты и месяца учёта покупки</h3><p>согласованность. Текстовое правило определения месяца по дате в Алматы расходится с примером в критериях приёмки.</p><p><b>Последствие.</b> Неправильное начисление месячного счётчика расходов при покупках на стыке месяцев.</p>
+<div id="execution-D-01" class="execution execution-unavailable"><h4>Расчёт не подтверждён</h4><p>Итоговая проверка выявила противоречие между текстовым правилом определения месяца по дате и примером в критериях приёмки. Вопрос оставлен владельцу, автоматическая формализация невозможна без домысливания бизнес-логики.</p></div>
+<blockquote>* **Ф-2.** Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки. Возврат уменьшает расходы месяца исходной покупки. Переводы и снятие наличных исключаются. <a href="#source-line-38">строка 38</a></blockquote><blockquote>| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ | <a href="#source-line-64">строка 64</a></blockquote><p><b>Автор ТЗ.</b> К какому месяцу относится покупка, совершённая 31 января в 23:58 по времени Алматы?</p>
+<p><b>Исправление.</b> Привести текстовое правило Ф-2 и пример в таблице приёмки к единому исходу.</p><p><a href="#R-007">R-007</a> · <a href="#R-015">R-015</a></p>
+<a class="finding-export" download="D-01.md" aria-label="Скачать карточку D-01 в Markdown" href="data:text/markdown;charset=utf-8;base64,IyBELTAxIMK3INCd0LXRgdC+0L7RgtCy0LXRgtGB0YLQstC40LUg0LTQsNGC0Ysg0Lgg0LzQtdGB0Y/RhtCwINGD0YfRkdGC0LAg0L/QvtC60YPQv9C60LgKCioq0KLQuNC/OioqINC90LDRgNGD0YjQtdC90LjQtSAgCioq0J/RgNC40L7RgNC40YLQtdGCOioqINC60YDQuNGC0LjRh9C10YHQutC40LkgIAoqKtCQ0LTRgNC10YHQsNGCOioqINCQ0LLRgtC+0YAg0KLQlyAgCioq0KHRgtCw0YLRg9GBINC60LDRgNGC0L7Rh9C60Lg6Kiog0YfQtdGA0L3QvtCy0LjQuiDQtNC70Y8g0YHQvtCz0LvQsNGB0L7QstCw0L3QuNGPCgoqKtCU0L7QutGD0LzQtdC90YI6KiogcmVxdWlyZW1lbnRzLm1kICAKKipTSEEtMjU2INC40YHRhdC+0LTQvdC40LrQsDoqKiBlN2RhZTU1ZTU0NTNhMjUwZDkzZTMzNWY1ZmY5YzdmNzc1ZjQ0NTdjY2RkZDMzM2Y0YTY3ZTQ3YjIwZDc0MzgxCgojIyDQntGB0L3QvtCy0LDQvdC40LUKCtCi0LXQutGB0YLQvtCy0L7QtSDQv9GA0LDQstC40LvQviDQvtC/0YDQtdC00LXQu9C10L3QuNGPINC80LXRgdGP0YbQsCDQv9C+INC00LDRgtC1INCyINCQ0LvQvNCw0YLRiyDRgNCw0YHRhdC+0LTQuNGC0YHRjyDRgSDQv9GA0LjQvNC10YDQvtC8INCyINC60YDQuNGC0LXRgNC40Y/RhSDQv9GA0LjRkdC80LrQuC4KCiMjINCS0L7Qv9GA0L7RgSDQstC70LDQtNC10LvRjNGG0YMKCtCaINC60LDQutC+0LzRgyDQvNC10YHRj9GG0YMg0L7RgtC90L7RgdC40YLRgdGPINC/0L7QutGD0L/QutCwLCDRgdC+0LLQtdGA0YjRkdC90L3QsNGPIDMxINGP0L3QstCw0YDRjyDQsiAyM1w6NTgg0L/QviDQstGA0LXQvNC10L3QuCDQkNC70LzQsNGC0Ys/CgojIyDQn9GA0LXQtNC70LDQs9Cw0LXQvNC+0LUg0LTQtdC50YHRgtCy0LjQtQoK0J/RgNC40LLQtdGB0YLQuCDRgtC10LrRgdGC0L7QstC+0LUg0L/RgNCw0LLQuNC70L4g0KQtMiDQuCDQv9GA0LjQvNC10YAg0LIg0YLQsNCx0LvQuNGG0LUg0L/RgNC40ZHQvNC60Lgg0Log0LXQtNC40L3QvtC80YMg0LjRgdGF0L7QtNGDLgoKIyMg0KDQsNGB0YfRkdGCINC90LUg0L/QvtC00YLQstC10YDQttC00ZHQvQoK0JjRgtC+0LPQvtCy0LDRjyDQv9GA0L7QstC10YDQutCwINCy0YvRj9Cy0LjQu9CwINC/0YDQvtGC0LjQstC+0YDQtdGH0LjQtSDQvNC10LbQtNGDINGC0LXQutGB0YLQvtCy0YvQvCDQv9GA0LDQstC40LvQvtC8INC+0L/RgNC10LTQtdC70LXQvdC40Y8g0LzQtdGB0Y/RhtCwINC/0L4g0LTQsNGC0LUg0Lgg0L/RgNC40LzQtdGA0L7QvCDQsiDQutGA0LjRgtC10YDQuNGP0YUg0L/RgNC40ZHQvNC60LguINCS0L7Qv9GA0L7RgSDQvtGB0YLQsNCy0LvQtdC9INCy0LvQsNC00LXQu9GM0YbRgywg0LDQstGC0L7QvNCw0YLQuNGH0LXRgdC60LDRjyDRhNC+0YDQvNCw0LvQuNC30LDRhtC40Y8g0L3QtdCy0L7Qt9C80L7QttC90LAg0LHQtdC3INC00L7QvNGL0YHQu9C40LLQsNC90LjRjyDQsdC40LfQvdC10YEt0LvQvtCz0LjQutC4LgoKIyMg0KbQuNGC0LDRgtGLINC40Lcg0LjRgdGF0L7QtNC90LjQutCwCgrQodGC0YDQvtC60LAgMzgKCmBgYHRleHQKKiAqKtCkLTIuKiog0JzQtdGB0Y/RhiDQvtC/0YDQtdC00LXQu9GP0LXRgtGB0Y8g0L/QviDQtNCw0YLQtSDRgdC+0LLQtdGA0YjQtdC90LjRjyDQv9C+0LrRg9C/0LrQuCDQsiDQkNC70LzQsNGC0YsuINCSINGA0LDRgdGF0L7QtNGLINCy0YXQvtC00Y/RgiDQv9GA0L7QstC10LTRkdC90L3Ri9C1INC/0L7QutGD0L/QutC4LiDQktC+0LfQstGA0LDRgiDRg9C80LXQvdGM0YjQsNC10YIg0YDQsNGB0YXQvtC00Ysg0LzQtdGB0Y/RhtCwINC40YHRhdC+0LTQvdC+0Lkg0L/QvtC60YPQv9C60LguINCf0LXRgNC10LLQvtC00Ysg0Lgg0YHQvdGP0YLQuNC1INC90LDQu9C40YfQvdGL0YUg0LjRgdC60LvRjtGH0LDRjtGC0YHRjy4KYGBgCgrQodGC0YDQvtC60LAgNjQKCmBgYHRleHQKfCDQn9C+0LrRg9C/0LrQsCAzMSDRj9C90LLQsNGA0Y8g0LIgMjM6NTgg0L3QsCA0IDAwMCDigrggfCDQn9GA0L7QstC10YHRgtC4IDEg0YTQtdCy0YDQsNC70Y8g0LIgMDA6MDMg0L/QviDQkNC70LzQsNGC0YsgfCDQpNC10LLRgNCw0LvRjNGB0LrQuNC5INGB0YfRkdGC0YfQuNC6INCy0YvRgNC+0YEg0L3QsCA0IDAwMCDigrggfApgYGAK">Скачать карточку (.md)</a>
+<details><summary>Основание приоритета · impact-v1</summary><p>Для одного допустимого сценария заданы два несовместимых результата продукта.</p><p>Покупка 31 января в 23:58 на 4 000 ₸</p><p>Январские расходы увеличиваются на 4 000 ₸, февральские не меняются · <a href="#source-line-38">строка 38</a></p><p>Февральский счётчик вырос на 4 000 ₸ · <a href="#source-line-64">строка 64</a></p></details><details class="decision-draft"><summary>Подготовить критерий приёмки для QA</summary>
+<fieldset class="draft-scenario"><legend>Учёт месяца покупки</legend>
+<p><b>Сценарий.</b> Покупка 31 января в 23:58 на 4 000 ₸</p>
+<p>Выберите ожидаемый результат для черновика.</p>
+<div class="draft-options"><input type="radio" id="draft-D-01-2-1" name="draft-D-01-2" value="1" autocomplete="off">
+<label for="draft-D-01-2-1"><b>Исход 1</b><span>Январские расходы увеличиваются на 4 000 ₸, февральские не меняются</span></label>
+<span class="draft-source"><a href="#source-line-38">строка 38</a></span><input type="radio" id="draft-D-01-2-2" name="draft-D-01-2" value="2" autocomplete="off">
+<label for="draft-D-01-2-2"><b>Исход 2</b><span>Февральский счётчик вырос на 4 000 ₸</span></label>
+<span class="draft-source"><a href="#source-line-64">строка 64</a></span><div class="draft-result draft-result-1">
+<h4>Черновик критерия приёмки для QA</h4>
+<p><b>Сценарий.</b> Покупка 31 января в 23:58 на 4 000 ₸</p>
+<p><b>Ожидаемый результат.</b> Январские расходы увеличиваются на 4 000 ₸, февральские не меняются</p>
+<p><b>Контрольный пример.</b> Покупка 15 января в 12:00 на 4 000 ₸</p>
+<p><b>Основание.</b> <a href="#source-line-38">строка 38</a></p></div><div class="draft-result draft-result-2">
+<h4>Черновик критерия приёмки для QA</h4>
+<p><b>Сценарий.</b> Покупка 31 января в 23:58 на 4 000 ₸</p>
+<p><b>Ожидаемый результат.</b> Февральский счётчик вырос на 4 000 ₸</p>
+<p><b>Контрольный пример.</b> Покупка 15 января в 12:00 на 4 000 ₸</p>
+<p><b>Основание.</b> <a href="#source-line-64">строка 64</a></p></div></div></fieldset></details></article><article id="D-02" class="finding"><small>D-02 · нарушение · критический</small>
+<h3>Конфликт лимита push-уведомлений и изменения порога</h3><p>согласованность. Документ одновременно запрещает отправку более одного push в месяц и требует отправки push при изменении порога независимо от истории.</p><p><b>Последствие.</b> Неопределенность поведения системы при изменении порога исчерпанного лимита.</p>
+<div id="execution-D-02" class="execution execution-unavailable"><h4>Расчёт не подтверждён</h4><p>Конфликт между ограничением на максимум один push за календарный месяц и требованием отправки push при изменении порога независимо от истории не может быть честно формализован в детерминированную бизнес-модель без уточнения владельца продукта о приоритете правил.</p></div>
+<blockquote>* **Ф-3.** Когда расходы переходят от суммы ниже порога к сумме, равной порогу или выше, клиент получает push. На карту приходится максимум один такой push за календарный месяц. <a href="#source-line-39">строка 39</a></blockquote><blockquote>* **Ф-4.** При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки. <a href="#source-line-40">строка 40</a></blockquote><p><b>Владелец продукта.</b> Разрешена ли отправка второго push-уведомления в календарном месяце при изменении порога?</p>
+<p><b>Исправление.</b> Уточнить приоритет правила обнуления истории при изменении порога над месячным лимитом push-уведомлений.</p><p><a href="#R-008">R-008</a> · <a href="#R-009">R-009</a></p>
+<a class="finding-export" download="D-02.md" aria-label="Скачать карточку D-02 в Markdown" href="data:text/markdown;charset=utf-8;base64,IyBELTAyIMK3INCa0L7QvdGE0LvQuNC60YIg0LvQuNC80LjRgtCwIHB1c2gt0YPQstC10LTQvtC80LvQtdC90LjQuSDQuCDQuNC30LzQtdC90LXQvdC40Y8g0L/QvtGA0L7Qs9CwCgoqKtCi0LjQvzoqKiDQvdCw0YDRg9GI0LXQvdC40LUgIAoqKtCf0YDQuNC+0YDQuNGC0LXRgjoqKiDQutGA0LjRgtC40YfQtdGB0LrQuNC5ICAKKirQkNC00YDQtdGB0LDRgjoqKiDQktC70LDQtNC10LvQtdGGINC/0YDQvtC00YPQutGC0LAgIAoqKtCh0YLQsNGC0YPRgSDQutCw0YDRgtC+0YfQutC4OioqINGH0LXRgNC90L7QstC40Log0LTQu9GPINGB0L7Qs9C70LDRgdC+0LLQsNC90LjRjwoKKirQlNC+0LrRg9C80LXQvdGCOioqIHJlcXVpcmVtZW50cy5tZCAgCioqU0hBLTI1NiDQuNGB0YXQvtC00L3QuNC60LA6KiogZTdkYWU1NWU1NDUzYTI1MGQ5M2UzMzVmNWZmOWM3Zjc3NWY0NDU3Y2NkZGQzMzNmNGE2N2U0N2IyMGQ3NDM4MQoKIyMg0J7RgdC90L7QstCw0L3QuNC1CgrQlNC+0LrRg9C80LXQvdGCINC+0LTQvdC+0LLRgNC10LzQtdC90L3QviDQt9Cw0L/RgNC10YnQsNC10YIg0L7RgtC/0YDQsNCy0LrRgyDQsdC+0LvQtdC1INC+0LTQvdC+0LPQviBwdXNoINCyINC80LXRgdGP0YYg0Lgg0YLRgNC10LHRg9C10YIg0L7RgtC/0YDQsNCy0LrQuCBwdXNoINC/0YDQuCDQuNC30LzQtdC90LXQvdC40Lgg0L/QvtGA0L7Qs9CwINC90LXQt9Cw0LLQuNGB0LjQvNC+INC+0YIg0LjRgdGC0L7RgNC40LguCgojIyDQktC+0L/RgNC+0YEg0LLQu9Cw0LTQtdC70YzRhtGDCgrQoNCw0LfRgNC10YjQtdC90LAg0LvQuCDQvtGC0L/RgNCw0LLQutCwINCy0YLQvtGA0L7Qs9C+IHB1c2gt0YPQstC10LTQvtC80LvQtdC90LjRjyDQsiDQutCw0LvQtdC90LTQsNGA0L3QvtC8INC80LXRgdGP0YbQtSDQv9GA0Lgg0LjQt9C80LXQvdC10L3QuNC4INC/0L7RgNC+0LPQsD8KCiMjINCf0YDQtdC00LvQsNCz0LDQtdC80L7QtSDQtNC10LnRgdGC0LLQuNC1CgrQo9GC0L7Rh9C90LjRgtGMINC/0YDQuNC+0YDQuNGC0LXRgiDQv9GA0LDQstC40LvQsCDQvtCx0L3Rg9C70LXQvdC40Y8g0LjRgdGC0L7RgNC40Lgg0L/RgNC4INC40LfQvNC10L3QtdC90LjQuCDQv9C+0YDQvtCz0LAg0L3QsNC0INC80LXRgdGP0YfQvdGL0Lwg0LvQuNC80LjRgtC+0LwgcHVzaC3Rg9Cy0LXQtNC+0LzQu9C10L3QuNC5LgoKIyMg0KDQsNGB0YfRkdGCINC90LUg0L/QvtC00YLQstC10YDQttC00ZHQvQoK0JrQvtC90YTQu9C40LrRgiDQvNC10LbQtNGDINC+0LPRgNCw0L3QuNGH0LXQvdC40LXQvCDQvdCwINC80LDQutGB0LjQvNGD0Lwg0L7QtNC40L0gcHVzaCDQt9CwINC60LDQu9C10L3QtNCw0YDQvdGL0Lkg0LzQtdGB0Y/RhiDQuCDRgtGA0LXQsdC+0LLQsNC90LjQtdC8INC+0YLQv9GA0LDQstC60LggcHVzaCDQv9GA0Lgg0LjQt9C80LXQvdC10L3QuNC4INC/0L7RgNC+0LPQsCDQvdC10LfQsNCy0LjRgdC40LzQviDQvtGCINC40YHRgtC+0YDQuNC4INC90LUg0LzQvtC20LXRgiDQsdGL0YLRjCDRh9C10YHRgtC90L4g0YTQvtGA0LzQsNC70LjQt9C+0LLQsNC9INCyINC00LXRgtC10YDQvNC40L3QuNGA0L7QstCw0L3QvdGD0Y4g0LHQuNC30L3QtdGBLdC80L7QtNC10LvRjCDQsdC10Lcg0YPRgtC+0YfQvdC10L3QuNGPINCy0LvQsNC00LXQu9GM0YbQsCDQv9GA0L7QtNGD0LrRgtCwINC+INC/0YDQuNC+0YDQuNGC0LXRgtC1INC/0YDQsNCy0LjQuy4KCiMjINCm0LjRgtCw0YLRiyDQuNC3INC40YHRhdC+0LTQvdC40LrQsAoK0KHRgtGA0L7QutCwIDM5CgpgYGB0ZXh0CiogKirQpC0zLioqINCa0L7Qs9C00LAg0YDQsNGB0YXQvtC00Ysg0L/QtdGA0LXRhdC+0LTRj9GCINC+0YIg0YHRg9C80LzRiyDQvdC40LbQtSDQv9C+0YDQvtCz0LAg0Log0YHRg9C80LzQtSwg0YDQsNCy0L3QvtC5INC/0L7RgNC+0LPRgyDQuNC70Lgg0LLRi9GI0LUsINC60LvQuNC10L3RgiDQv9C+0LvRg9GH0LDQtdGCIHB1c2guINCd0LAg0LrQsNGA0YLRgyDQv9GA0LjRhdC+0LTQuNGC0YHRjyDQvNCw0LrRgdC40LzRg9C8INC+0LTQuNC9INGC0LDQutC+0LkgcHVzaCDQt9CwINC60LDQu9C10L3QtNCw0YDQvdGL0Lkg0LzQtdGB0Y/Rhi4KYGBgCgrQodGC0YDQvtC60LAgNDAKCmBgYHRleHQKKiAqKtCkLTQuKiog0J/RgNC4INC40LfQvNC10L3QtdC90LjQuCDQv9C+0YDQvtCz0LAg0L3QsNC60L7Qv9C70LXQvdC90LDRjyDRgdGD0LzQvNCwINGB0L7RhdGA0LDQvdGP0LXRgtGB0Y8uINCV0YHQu9C4INC+0L3QsCDQvdC40LbQtSDQvdC+0LLQvtCz0L4g0L/QvtGA0L7Qs9CwLCDRgdC70LXQtNGD0Y7RidC10LUg0LTQvtGB0YLQuNC20LXQvdC40LUg0LLRi9C30YvQstCw0LXRgiBwdXNoINC90LXQt9Cw0LLQuNGB0LjQvNC+INC+0YIg0LjRgdGC0L7RgNC40Lgg0L/RgNC10LTRi9C00YPRidC10Lkg0L3QsNGB0YLRgNC+0LnQutC4LgpgYGAK">Скачать карточку (.md)</a>
+<details><summary>Основание приоритета · impact-v1</summary><p>Для одного допустимого сценария заданы два несовместимых результата продукта.</p><p>В текущем месяце уже был отправлен один push. Пользователь меняет порог, и расходы повторно достигают нового порога в том же месяце.</p><p>Push не отправляется из-за месячного лимита · <a href="#source-line-39">строка 39</a></p><p>Push отправляется независимо от истории · <a href="#source-line-40">строка 40</a></p></details><details class="decision-draft"><summary>Подготовить критерий приёмки для QA</summary>
+<fieldset class="draft-scenario"><legend>Конфликт лимита push-уведомлений и изменения порога</legend>
+<p><b>Сценарий.</b> В текущем месяце уже был отправлен один push. Пользователь меняет порог, и расходы повторно достигают нового порога в том же месяце.</p>
+<p>Выберите ожидаемый результат для черновика.</p>
+<div class="draft-options"><input type="radio" id="draft-D-02-1-1" name="draft-D-02-1" value="1" autocomplete="off">
+<label for="draft-D-02-1-1"><b>Исход 1</b><span>Push не отправляется из-за месячного лимита</span></label>
+<span class="draft-source"><a href="#source-line-39">строка 39</a></span><input type="radio" id="draft-D-02-1-2" name="draft-D-02-1" value="2" autocomplete="off">
+<label for="draft-D-02-1-2"><b>Исход 2</b><span>Push отправляется независимо от истории</span></label>
+<span class="draft-source"><a href="#source-line-40">строка 40</a></span><div class="draft-result draft-result-1">
+<h4>Черновик критерия приёмки для QA</h4>
+<p><b>Сценарий.</b> В текущем месяце уже был отправлен один push. Пользователь меняет порог, и расходы повторно достигают нового порога в том же месяце.</p>
+<p><b>Ожидаемый результат.</b> Push не отправляется из-за месячного лимита</p>
+<p><b>Контрольный пример.</b> Уточнить приоритет правила обнуления истории при изменении порога над месячным лимитом push-уведомлений.</p>
+<p><b>Основание.</b> <a href="#source-line-39">строка 39</a></p></div><div class="draft-result draft-result-2">
+<h4>Черновик критерия приёмки для QA</h4>
+<p><b>Сценарий.</b> В текущем месяце уже был отправлен один push. Пользователь меняет порог, и расходы повторно достигают нового порога в том же месяце.</p>
+<p><b>Ожидаемый результат.</b> Push отправляется независимо от истории</p>
+<p><b>Контрольный пример.</b> Уточнить приоритет правила обнуления истории при изменении порога над месячным лимитом push-уведомлений.</p>
+<p><b>Основание.</b> <a href="#source-line-40">строка 40</a></p></div></div></fieldset></details></article><article id="D-03" class="finding"><small>D-03 · нарушение · существенный</small>
+<h3>Отсутствие Prod URL</h3><p>полнота. В общих параметрах REST API отсутствует адрес для продакшн-окружения.</p><p><b>Последствие.</b> Интеграция с боевым окружением заблокирована.</p>
+
+<blockquote>| **Request URL** | Dev: `/alerts/saveLimit` . Prod: — | <a href="#source-line-108">строка 108</a></blockquote><p><b>Backend Developer.</b> Какой URL используется для production-окружения?</p>
+<p><b>Исправление.</b> Заполнить Prod URL в общих параметрах метода.</p><p><a href="#R-021">R-021</a></p>
+<a class="finding-export" download="D-03.md" aria-label="Скачать карточку D-03 в Markdown" href="data:text/markdown;charset=utf-8;base64,IyBELTAzIMK3INCe0YLRgdGD0YLRgdGC0LLQuNC1IFByb2QgVVJMCgoqKtCi0LjQvzoqKiDQvdCw0YDRg9GI0LXQvdC40LUgIAoqKtCf0YDQuNC+0YDQuNGC0LXRgjoqKiDRgdGD0YnQtdGB0YLQstC10L3QvdGL0LkgIAoqKtCQ0LTRgNC10YHQsNGCOioqIEJhY2tlbmQgRGV2ZWxvcGVyICAKKirQodGC0LDRgtGD0YEg0LrQsNGA0YLQvtGH0LrQuDoqKiDRh9C10YDQvdC+0LLQuNC6INC00LvRjyDRgdC+0LPQu9Cw0YHQvtCy0LDQvdC40Y8KCioq0JTQvtC60YPQvNC10L3RgjoqKiByZXF1aXJlbWVudHMubWQgIAoqKlNIQS0yNTYg0LjRgdGF0L7QtNC90LjQutCwOioqIGU3ZGFlNTVlNTQ1M2EyNTBkOTNlMzM1ZjVmZjljN2Y3NzVmNDQ1N2NjZGRkMzMzZjRhNjdlNDdiMjBkNzQzODEKCiMjINCe0YHQvdC+0LLQsNC90LjQtQoK0JIg0L7QsdGJ0LjRhSDQv9Cw0YDQsNC80LXRgtGA0LDRhSBSRVNUIEFQSSDQvtGC0YHRg9GC0YHRgtCy0YPQtdGCINCw0LTRgNC10YEg0LTQu9GPINC/0YDQvtC00LDQutGI0L0t0L7QutGA0YPQttC10L3QuNGPLgoKIyMg0JLQvtC/0YDQvtGBINCy0LvQsNC00LXQu9GM0YbRgwoK0JrQsNC60L7QuSBVUkwg0LjRgdC/0L7Qu9GM0LfRg9C10YLRgdGPINC00LvRjyBwcm9kdWN0aW9uLdC+0LrRgNGD0LbQtdC90LjRjz8KCiMjINCf0YDQtdC00LvQsNCz0LDQtdC80L7QtSDQtNC10LnRgdGC0LLQuNC1CgrQl9Cw0L/QvtC70L3QuNGC0YwgUHJvZCBVUkwg0LIg0L7QsdGJ0LjRhSDQv9Cw0YDQsNC80LXRgtGA0LDRhSDQvNC10YLQvtC00LAuCgojIyDQptC40YLQsNGC0Ysg0LjQtyDQuNGB0YXQvtC00L3QuNC60LAKCtCh0YLRgNC+0LrQsCAxMDgKCmBgYHRleHQKfCAqKlJlcXVlc3QgVVJMKiogfCBEZXY6IGAvYWxlcnRzL3NhdmVMaW1pdGAgLiBQcm9kOiDigJQgfApgYGAK">Скачать карточку (.md)</a>
+<details><summary>Основание приоритета · impact-v1</summary><p>Требуется решение о реализации, контракте, границе поставки или приёмке.</p></details></article><article id="D-04" class="finding"><small>D-04 · открытый вопрос · существенный</small>
+<h3>Неопределенность обязательности поля result в ошибках</h3><p>проверяемость. Не определено, обязательно ли поле result в неуспешных ответах 400, 401, 404, 500.</p><p><b>Последствие.</b> Неоднозначность контракта API для клиентов.</p>
+
+<blockquote>| `result` | string | OK / ERROR | Исход сохранения | — | <a href="#source-line-155">строка 155</a></blockquote><blockquote>```json <a href="#source-line-179">строка 179</a></blockquote><blockquote>```json <a href="#source-line-184">строка 184</a></blockquote><blockquote>```json <a href="#source-line-191">строка 191</a></blockquote><blockquote>```json <a href="#source-line-196">строка 196</a></blockquote><p><b>Backend Developer.</b> Обязательно ли поле result в каждом из следующих ошибочных ответов: HTTP 400 (примеры со строк 179), HTTP 401 (примеры со строк 184), HTTP 404 (примеры со строк 191), HTTP 500 (примеры со строк 196)?</p>
+<p><b>Исправление.</b> Явно зафиксировать контракт полей для ошибок в таблице ответов.</p><p></p>
+<a class="finding-export" download="D-04.md" aria-label="Скачать карточку D-04 в Markdown" href="data:text/markdown;charset=utf-8;base64,IyBELTA0IMK3INCd0LXQvtC/0YDQtdC00LXQu9C10L3QvdC+0YHRgtGMINC+0LHRj9C30LDRgtC10LvRjNC90L7RgdGC0Lgg0L/QvtC70Y8gcmVzdWx0INCyINC+0YjQuNCx0LrQsNGFCgoqKtCi0LjQvzoqKiDQvtGC0LrRgNGL0YLRi9C5INCy0L7Qv9GA0L7RgSAgCioq0J/RgNC40L7RgNC40YLQtdGCOioqINGB0YPRidC10YHRgtCy0LXQvdC90YvQuSAgCioq0JDQtNGA0LXRgdCw0YI6KiogQmFja2VuZCBEZXZlbG9wZXIgIAoqKtCh0YLQsNGC0YPRgSDQutCw0YDRgtC+0YfQutC4OioqINGH0LXRgNC90L7QstC40Log0LTQu9GPINGB0L7Qs9C70LDRgdC+0LLQsNC90LjRjwoKKirQlNC+0LrRg9C80LXQvdGCOioqIHJlcXVpcmVtZW50cy5tZCAgCioqU0hBLTI1NiDQuNGB0YXQvtC00L3QuNC60LA6KiogZTdkYWU1NWU1NDUzYTI1MGQ5M2UzMzVmNWZmOWM3Zjc3NWY0NDU3Y2NkZGQzMzNmNGE2N2U0N2IyMGQ3NDM4MQoKIyMg0J7RgdC90L7QstCw0L3QuNC1CgrQndC1INC+0L/RgNC10LTQtdC70LXQvdC+LCDQvtCx0Y/Qt9Cw0YLQtdC70YzQvdC+INC70Lgg0L/QvtC70LUgcmVzdWx0INCyINC90LXRg9GB0L/QtdGI0L3Ri9GFINC+0YLQstC10YLQsNGFIDQwMCwgNDAxLCA0MDQsIDUwMC4KCiMjINCS0L7Qv9GA0L7RgSDQstC70LDQtNC10LvRjNGG0YMKCtCe0LHRj9C30LDRgtC10LvRjNC90L4g0LvQuCDQv9C+0LvQtSByZXN1bHQg0LIg0LrQsNC20LTQvtC8INC40Lcg0YHQu9C10LTRg9GO0YnQuNGFINC+0YjQuNCx0L7Rh9C90YvRhSDQvtGC0LLQtdGC0L7Qslw6IEhUVFAgNDAwICjQv9GA0LjQvNC10YDRiyDRgdC+INGB0YLRgNC+0LogMTc5KSwgSFRUUCA0MDEgKNC/0YDQuNC80LXRgNGLINGB0L4g0YHRgtGA0L7QuiAxODQpLCBIVFRQIDQwNCAo0L/RgNC40LzQtdGA0Ysg0YHQviDRgdGC0YDQvtC6IDE5MSksIEhUVFAgNTAwICjQv9GA0LjQvNC10YDRiyDRgdC+INGB0YLRgNC+0LogMTk2KT8KCiMjINCf0YDQtdC00LvQsNCz0LDQtdC80L7QtSDQtNC10LnRgdGC0LLQuNC1CgrQr9Cy0L3QviDQt9Cw0YTQuNC60YHQuNGA0L7QstCw0YLRjCDQutC+0L3RgtGA0LDQutGCINC/0L7Qu9C10Lkg0LTQu9GPINC+0YjQuNCx0L7QuiDQsiDRgtCw0LHQu9C40YbQtSDQvtGC0LLQtdGC0L7Qsi4KCiMjINCm0LjRgtCw0YLRiyDQuNC3INC40YHRhdC+0LTQvdC40LrQsAoK0KHRgtGA0L7QutCwIDE1NQoKYGBgdGV4dAp8IGByZXN1bHRgIHwgc3RyaW5nIHwgT0sgLyBFUlJPUiB8INCY0YHRhdC+0LQg0YHQvtGF0YDQsNC90LXQvdC40Y8gfCDigJQgfApgYGAKCtCh0YLRgNC+0LrQsCAxNzkKCmBgYGB0ZXh0CmBgYGpzb24KYGBgYAoK0KHRgtGA0L7QutCwIDE4NAoKYGBgYHRleHQKYGBganNvbgpgYGBgCgrQodGC0YDQvtC60LAgMTkxCgpgYGBgdGV4dApgYGBqc29uCmBgYGAKCtCh0YLRgNC+0LrQsCAxOTYKCmBgYGB0ZXh0CmBgYGpzb24KYGBgYAo=">Скачать карточку (.md)</a>
+<details><summary>Основание приоритета · impact-v1</summary><p>Требуется решение о реализации, контракте, границе поставки или приёмке.</p></details></article><article id="D-05" class="finding"><small>D-05 · открытый вопрос · существенный</small>
+<h3>Неопределенность обязательности поля enabled в ошибках</h3><p>проверяемость. Не определено, обязательно ли поле enabled в неуспешных ответах 400, 401, 404, 500.</p><p><b>Последствие.</b> Неоднозначность контракта API для клиентов.</p>
+
+<blockquote>| `enabled` | string | «0» или «1» | Признак включения | `enabled` | <a href="#source-line-157">строка 157</a></blockquote><blockquote>```json <a href="#source-line-179">строка 179</a></blockquote><blockquote>```json <a href="#source-line-184">строка 184</a></blockquote><blockquote>```json <a href="#source-line-191">строка 191</a></blockquote><blockquote>```json <a href="#source-line-196">строка 196</a></blockquote><p><b>Backend Developer.</b> Обязательно ли поле enabled в каждом из следующих ошибочных ответов: HTTP 400 (примеры со строк 179), HTTP 401 (примеры со строк 184), HTTP 404 (примеры со строк 191), HTTP 500 (примеры со строк 196)?</p>
+<p><b>Исправление.</b> Явно зафиксировать контракт полей для ошибок в таблице ответов.</p><p></p>
+<a class="finding-export" download="D-05.md" aria-label="Скачать карточку D-05 в Markdown" href="data:text/markdown;charset=utf-8;base64,IyBELTA1IMK3INCd0LXQvtC/0YDQtdC00LXQu9C10L3QvdC+0YHRgtGMINC+0LHRj9C30LDRgtC10LvRjNC90L7RgdGC0Lgg0L/QvtC70Y8gZW5hYmxlZCDQsiDQvtGI0LjQsdC60LDRhQoKKirQotC40L86Kiog0L7RgtC60YDRi9GC0YvQuSDQstC+0L/RgNC+0YEgIAoqKtCf0YDQuNC+0YDQuNGC0LXRgjoqKiDRgdGD0YnQtdGB0YLQstC10L3QvdGL0LkgIAoqKtCQ0LTRgNC10YHQsNGCOioqIEJhY2tlbmQgRGV2ZWxvcGVyICAKKirQodGC0LDRgtGD0YEg0LrQsNGA0YLQvtGH0LrQuDoqKiDRh9C10YDQvdC+0LLQuNC6INC00LvRjyDRgdC+0LPQu9Cw0YHQvtCy0LDQvdC40Y8KCioq0JTQvtC60YPQvNC10L3RgjoqKiByZXF1aXJlbWVudHMubWQgIAoqKlNIQS0yNTYg0LjRgdGF0L7QtNC90LjQutCwOioqIGU3ZGFlNTVlNTQ1M2EyNTBkOTNlMzM1ZjVmZjljN2Y3NzVmNDQ1N2NjZGRkMzMzZjRhNjdlNDdiMjBkNzQzODEKCiMjINCe0YHQvdC+0LLQsNC90LjQtQoK0J3QtSDQvtC/0YDQtdC00LXQu9C10L3Qviwg0L7QsdGP0LfQsNGC0LXQu9GM0L3QviDQu9C4INC/0L7Qu9C1IGVuYWJsZWQg0LIg0L3QtdGD0YHQv9C10YjQvdGL0YUg0L7RgtCy0LXRgtCw0YUgNDAwLCA0MDEsIDQwNCwgNTAwLgoKIyMg0JLQvtC/0YDQvtGBINCy0LvQsNC00LXQu9GM0YbRgwoK0J7QsdGP0LfQsNGC0LXQu9GM0L3QviDQu9C4INC/0L7Qu9C1IGVuYWJsZWQg0LIg0LrQsNC20LTQvtC8INC40Lcg0YHQu9C10LTRg9GO0YnQuNGFINC+0YjQuNCx0L7Rh9C90YvRhSDQvtGC0LLQtdGC0L7Qslw6IEhUVFAgNDAwICjQv9GA0LjQvNC10YDRiyDRgdC+INGB0YLRgNC+0LogMTc5KSwgSFRUUCA0MDEgKNC/0YDQuNC80LXRgNGLINGB0L4g0YHRgtGA0L7QuiAxODQpLCBIVFRQIDQwNCAo0L/RgNC40LzQtdGA0Ysg0YHQviDRgdGC0YDQvtC6IDE5MSksIEhUVFAgNTAwICjQv9GA0LjQvNC10YDRiyDRgdC+INGB0YLRgNC+0LogMTk2KT8KCiMjINCf0YDQtdC00LvQsNCz0LDQtdC80L7QtSDQtNC10LnRgdGC0LLQuNC1CgrQr9Cy0L3QviDQt9Cw0YTQuNC60YHQuNGA0L7QstCw0YLRjCDQutC+0L3RgtGA0LDQutGCINC/0L7Qu9C10Lkg0LTQu9GPINC+0YjQuNCx0L7QuiDQsiDRgtCw0LHQu9C40YbQtSDQvtGC0LLQtdGC0L7Qsi4KCiMjINCm0LjRgtCw0YLRiyDQuNC3INC40YHRhdC+0LTQvdC40LrQsAoK0KHRgtGA0L7QutCwIDE1NwoKYGBgdGV4dAp8IGBlbmFibGVkYCB8IHN0cmluZyB8IMKrMMK7INC40LvQuCDCqzHCuyB8INCf0YDQuNC30L3QsNC6INCy0LrQu9GO0YfQtdC90LjRjyB8IGBlbmFibGVkYCB8CmBgYAoK0KHRgtGA0L7QutCwIDE3OQoKYGBgYHRleHQKYGBganNvbgpgYGBgCgrQodGC0YDQvtC60LAgMTg0CgpgYGBgdGV4dApgYGBqc29uCmBgYGAKCtCh0YLRgNC+0LrQsCAxOTEKCmBgYGB0ZXh0CmBgYGpzb24KYGBgYAoK0KHRgtGA0L7QutCwIDE5NgoKYGBgYHRleHQKYGBganNvbgpgYGBgCg==">Скачать карточку (.md)</a>
+<details><summary>Основание приоритета · impact-v1</summary><p>Требуется решение о реализации, контракте, границе поставки или приёмке.</p></details></article><article id="D-06" class="finding"><small>D-06 · нарушение · существенный</small>
+<h3>Противоречие в кодах ответа для чужой карты</h3><p>согласованность. В спецификации статусов для чужой карты указан статус 403, а в особых правилах — 404.</p><p><b>Последствие.</b> Разработчики и клиенты получат противоречивые коды ошибок при попытке доступа к чужой карте.</p>
+<div id="execution-D-06" class="execution execution-unavailable"><h4>Расчёт не подтверждён</h4><p>В спецификации зафиксировано неразрешенное противоречие в кодах ответа для доступа к чужой карте (статус 403 в перечне статусов и 404 в особых правилах). Согласно итоговой проверке, вопрос оставлен владельцу, поэтому поведение невозможно честно формализовать без допущений.</p></div>
+<blockquote>**403.** Ответ в случае, если на указанный ресурс доступ запрещен.   <a href="#source-line-175">строка 175</a></blockquote><blockquote>Для чужой карты возвращается 404, как и для отсутствующей карты.   <a href="#source-line-189">строка 189</a></blockquote><p><b>Backend Developer.</b> Какой HTTP-статус должен возвращаться при попытке доступа к чужой карте: 403 или 404?</p>
+<p><b>Исправление.</b> Унифицировать код ответа для доступа к чужой карте в соответствии с единым стандартом безопасности.</p><p><a href="#R-047">R-047</a> · <a href="#R-051">R-051</a></p>
+<a class="finding-export" download="D-06.md" aria-label="Скачать карточку D-06 в Markdown" href="data:text/markdown;charset=utf-8;base64,IyBELTA2IMK3INCf0YDQvtGC0LjQstC+0YDQtdGH0LjQtSDQsiDQutC+0LTQsNGFINC+0YLQstC10YLQsCDQtNC70Y8g0YfRg9C20L7QuSDQutCw0YDRgtGLCgoqKtCi0LjQvzoqKiDQvdCw0YDRg9GI0LXQvdC40LUgIAoqKtCf0YDQuNC+0YDQuNGC0LXRgjoqKiDRgdGD0YnQtdGB0YLQstC10L3QvdGL0LkgIAoqKtCQ0LTRgNC10YHQsNGCOioqIEJhY2tlbmQgRGV2ZWxvcGVyICAKKirQodGC0LDRgtGD0YEg0LrQsNGA0YLQvtGH0LrQuDoqKiDRh9C10YDQvdC+0LLQuNC6INC00LvRjyDRgdC+0LPQu9Cw0YHQvtCy0LDQvdC40Y8KCioq0JTQvtC60YPQvNC10L3RgjoqKiByZXF1aXJlbWVudHMubWQgIAoqKlNIQS0yNTYg0LjRgdGF0L7QtNC90LjQutCwOioqIGU3ZGFlNTVlNTQ1M2EyNTBkOTNlMzM1ZjVmZjljN2Y3NzVmNDQ1N2NjZGRkMzMzZjRhNjdlNDdiMjBkNzQzODEKCiMjINCe0YHQvdC+0LLQsNC90LjQtQoK0JIg0YHQv9C10YbQuNGE0LjQutCw0YbQuNC4INGB0YLQsNGC0YPRgdC+0LIg0LTQu9GPINGH0YPQttC+0Lkg0LrQsNGA0YLRiyDRg9C60LDQt9Cw0L0g0YHRgtCw0YLRg9GBIDQwMywg0LAg0LIg0L7RgdC+0LHRi9GFINC/0YDQsNCy0LjQu9Cw0YUg4oCUIDQwNC4KCiMjINCS0L7Qv9GA0L7RgSDQstC70LDQtNC10LvRjNGG0YMKCtCa0LDQutC+0LkgSFRUUC3RgdGC0LDRgtGD0YEg0LTQvtC70LbQtdC9INCy0L7Qt9Cy0YDQsNGJ0LDRgtGM0YHRjyDQv9GA0Lgg0L/QvtC/0YvRgtC60LUg0LTQvtGB0YLRg9C/0LAg0Log0YfRg9C20L7QuSDQutCw0YDRgtC1XDogNDAzINC40LvQuCA0MDQ/CgojIyDQn9GA0LXQtNC70LDQs9Cw0LXQvNC+0LUg0LTQtdC50YHRgtCy0LjQtQoK0KPQvdC40YTQuNGG0LjRgNC+0LLQsNGC0Ywg0LrQvtC0INC+0YLQstC10YLQsCDQtNC70Y8g0LTQvtGB0YLRg9C/0LAg0Log0YfRg9C20L7QuSDQutCw0YDRgtC1INCyINGB0L7QvtGC0LLQtdGC0YHRgtCy0LjQuCDRgSDQtdC00LjQvdGL0Lwg0YHRgtCw0L3QtNCw0YDRgtC+0Lwg0LHQtdC30L7Qv9Cw0YHQvdC+0YHRgtC4LgoKIyMg0KDQsNGB0YfRkdGCINC90LUg0L/QvtC00YLQstC10YDQttC00ZHQvQoK0JIg0YHQv9C10YbQuNGE0LjQutCw0YbQuNC4INC30LDRhNC40LrRgdC40YDQvtCy0LDQvdC+INC90LXRgNCw0LfRgNC10YjQtdC90L3QvtC1INC/0YDQvtGC0LjQstC+0YDQtdGH0LjQtSDQsiDQutC+0LTQsNGFINC+0YLQstC10YLQsCDQtNC70Y8g0LTQvtGB0YLRg9C/0LAg0Log0YfRg9C20L7QuSDQutCw0YDRgtC1ICjRgdGC0LDRgtGD0YEgNDAzINCyINC/0LXRgNC10YfQvdC1INGB0YLQsNGC0YPRgdC+0LIg0LggNDA0INCyINC+0YHQvtCx0YvRhSDQv9GA0LDQstC40LvQsNGFKS4g0KHQvtCz0LvQsNGB0L3QviDQuNGC0L7Qs9C+0LLQvtC5INC/0YDQvtCy0LXRgNC60LUsINCy0L7Qv9GA0L7RgSDQvtGB0YLQsNCy0LvQtdC9INCy0LvQsNC00LXQu9GM0YbRgywg0L/QvtGN0YLQvtC80YMg0L/QvtCy0LXQtNC10L3QuNC1INC90LXQstC+0LfQvNC+0LbQvdC+INGH0LXRgdGC0L3QviDRhNC+0YDQvNCw0LvQuNC30L7QstCw0YLRjCDQsdC10Lcg0LTQvtC/0YPRidC10L3QuNC5LgoKIyMg0KbQuNGC0LDRgtGLINC40Lcg0LjRgdGF0L7QtNC90LjQutCwCgrQodGC0YDQvtC60LAgMTc1CgpgYGB0ZXh0CioqNDAzLioqINCe0YLQstC10YIg0LIg0YHQu9GD0YfQsNC1LCDQtdGB0LvQuCDQvdCwINGD0LrQsNC30LDQvdC90YvQuSDRgNC10YHRg9GA0YEg0LTQvtGB0YLRg9C/INC30LDQv9GA0LXRidC10L0uICAKYGBgCgrQodGC0YDQvtC60LAgMTg5CgpgYGB0ZXh0CtCU0LvRjyDRh9GD0LbQvtC5INC60LDRgNGC0Ysg0LLQvtC30LLRgNCw0YnQsNC10YLRgdGPIDQwNCwg0LrQsNC6INC4INC00LvRjyDQvtGC0YHRg9GC0YHRgtCy0YPRjtGJ0LXQuSDQutCw0YDRgtGLLiAgCmBgYAo=">Скачать карточку (.md)</a>
+<details><summary>Основание приоритета · impact-v1</summary><p>Требуется решение о реализации, контракте, границе поставки или приёмке.</p></details></article><article id="D-07" class="finding"><small>D-07 · открытый вопрос · редакционный</small>
+<h3>Отсутствие текста ошибки ввода</h3><p>проверяемость. В описании UI не указан конкретный текст сообщения об ошибке под полем.</p><p><b>Последствие.</b> Тестировщики не смогут автоматизировать проверку текста ошибки.</p>
+
+<blockquote>Карты → Расходы → Уведомления. На экране видны переключатель, поле «Порог, ₸», сумма за месяц и кнопка «Сохранить». При ошибке ввода сообщение появляется под полем. <a href="#source-line-29">строка 29</a></blockquote><p><b>UX/UI Designer.</b> Какой текст сообщения об ошибке должен отображаться под полем при неверном вводе?</p>
+<p><b>Исправление.</b> Добавить точный текст сообщения об ошибке в спецификацию дизайна.</p><p><a href="#R-004">R-004</a></p>
+<a class="finding-export" download="D-07.md" aria-label="Скачать карточку D-07 в Markdown" href="data:text/markdown;charset=utf-8;base64,IyBELTA3IMK3INCe0YLRgdGD0YLRgdGC0LLQuNC1INGC0LXQutGB0YLQsCDQvtGI0LjQsdC60Lgg0LLQstC+0LTQsAoKKirQotC40L86Kiog0L7RgtC60YDRi9GC0YvQuSDQstC+0L/RgNC+0YEgIAoqKtCf0YDQuNC+0YDQuNGC0LXRgjoqKiDRgNC10LTQsNC60YbQuNC+0L3QvdGL0LkgIAoqKtCQ0LTRgNC10YHQsNGCOioqIFVYL1VJIERlc2lnbmVyICAKKirQodGC0LDRgtGD0YEg0LrQsNGA0YLQvtGH0LrQuDoqKiDRh9C10YDQvdC+0LLQuNC6INC00LvRjyDRgdC+0LPQu9Cw0YHQvtCy0LDQvdC40Y8KCioq0JTQvtC60YPQvNC10L3RgjoqKiByZXF1aXJlbWVudHMubWQgIAoqKlNIQS0yNTYg0LjRgdGF0L7QtNC90LjQutCwOioqIGU3ZGFlNTVlNTQ1M2EyNTBkOTNlMzM1ZjVmZjljN2Y3NzVmNDQ1N2NjZGRkMzMzZjRhNjdlNDdiMjBkNzQzODEKCiMjINCe0YHQvdC+0LLQsNC90LjQtQoK0JIg0L7Qv9C40YHQsNC90LjQuCBVSSDQvdC1INGD0LrQsNC30LDQvSDQutC+0L3QutGA0LXRgtC90YvQuSDRgtC10LrRgdGCINGB0L7QvtCx0YnQtdC90LjRjyDQvtCxINC+0YjQuNCx0LrQtSDQv9C+0LQg0L/QvtC70LXQvC4KCiMjINCS0L7Qv9GA0L7RgSDQstC70LDQtNC10LvRjNGG0YMKCtCa0LDQutC+0Lkg0YLQtdC60YHRgiDRgdC+0L7QsdGJ0LXQvdC40Y8g0L7QsSDQvtGI0LjQsdC60LUg0LTQvtC70LbQtdC9INC+0YLQvtCx0YDQsNC20LDRgtGM0YHRjyDQv9C+0LQg0L/QvtC70LXQvCDQv9GA0Lgg0L3QtdCy0LXRgNC90L7QvCDQstCy0L7QtNC1PwoKIyMg0J/RgNC10LTQu9Cw0LPQsNC10LzQvtC1INC00LXQudGB0YLQstC40LUKCtCU0L7QsdCw0LLQuNGC0Ywg0YLQvtGH0L3Ri9C5INGC0LXQutGB0YIg0YHQvtC+0LHRidC10L3QuNGPINC+0LEg0L7RiNC40LHQutC1INCyINGB0L/QtdGG0LjRhNC40LrQsNGG0LjRjiDQtNC40LfQsNC50L3QsC4KCiMjINCm0LjRgtCw0YLRiyDQuNC3INC40YHRhdC+0LTQvdC40LrQsAoK0KHRgtGA0L7QutCwIDI5CgpgYGB0ZXh0CtCa0LDRgNGC0Ysg4oaSINCg0LDRgdGF0L7QtNGLIOKGkiDQo9Cy0LXQtNC+0LzQu9C10L3QuNGPLiDQndCwINGN0LrRgNCw0L3QtSDQstC40LTQvdGLINC/0LXRgNC10LrQu9GO0YfQsNGC0LXQu9GMLCDQv9C+0LvQtSDCq9Cf0L7RgNC+0LMsIOKCuMK7LCDRgdGD0LzQvNCwINC30LAg0LzQtdGB0Y/RhiDQuCDQutC90L7Qv9C60LAgwqvQodC+0YXRgNCw0L3QuNGC0YzCuy4g0J/RgNC4INC+0YjQuNCx0LrQtSDQstCy0L7QtNCwINGB0L7QvtCx0YnQtdC90LjQtSDQv9C+0Y/QstC70Y/QtdGC0YHRjyDQv9C+0LQg0L/QvtC70LXQvC4KYGBgCg==">Скачать карточку (.md)</a>
+<details><summary>Основание приоритета · impact-v1</summary><p>Исправление меняет только оформление, терминологию или паспорт документа.</p></details></article></section>
+<section id="quality"><h2>Качество набора требований</h2><article class="finding"><h3>Полнота</h3><p>Спецификация описывает бизнес-логику, экранные формы и REST API, но содержит пропуски в отметках чек-листа ревью, Prod URL и тексте ошибок.</p><blockquote>Документ (версия/дата) в источнике не заполнен. Пункты чек-листа приведены как в шаблоне, отметки не проставлены. <a href="#source-line-68">строка 68</a></blockquote><blockquote>| **Request URL** | Dev: `/alerts/saveLimit` . Prod: — | <a href="#source-line-108">строка 108</a></blockquote><blockquote>| **Swagger** | — | <a href="#source-line-110">строка 110</a></blockquote></article><article class="finding"><h3>Согласованность</h3><p>Обнаружены противоречия между правилами месячного лимита push и изменения порога, датой учёта покупки и кодами ответа для чужой карты.</p><blockquote>* **Ф-3.** Когда расходы переходят от суммы ниже порога к сумме, равной порогу или выше, клиент получает push. На карту приходится максимум один такой push за календарный месяц. <a href="#source-line-39">строка 39</a></blockquote><blockquote>* **Ф-4.** При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки. <a href="#source-line-40">строка 40</a></blockquote><blockquote>* **Ф-2.** Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки. Возврат уменьшает расходы месяца исходной покупки. Переводы и снятие наличных исключаются. <a href="#source-line-38">строка 38</a></blockquote><blockquote>| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ | <a href="#source-line-64">строка 64</a></blockquote><blockquote>**403.** Ответ в случае, если на указанный ресурс доступ запрещен.   <a href="#source-line-175">строка 175</a></blockquote><blockquote>Для чужой карты возвращается 404, как и для отсутствующей карты.   <a href="#source-line-189">строка 189</a></blockquote></article><article class="finding"><h3>Проверяемость</h3><p>Параметры и структура ответов заданы, но для ряда ошибочных ответов не определена обязательность полей result и enabled.</p><blockquote>| Parameter | Format | Size | Mandatory | Logic | Description | DB field | <a href="#source-line-140">строка 140</a></blockquote><blockquote>| Parameter | Format | Logic | Description | DB field | <a href="#source-line-153">строка 153</a></blockquote><blockquote>```json <a href="#source-line-179">строка 179</a></blockquote></article><article class="finding"><h3>Прослеживаемость</h3><p>Связи между Частью A и Частью B зафиксированы, структура базы данных и полей в целом прослеживается.</p><blockquote>Часть B — дочерняя спецификация, на которую ссылается раздел интеграции в части A. <a href="#source-line-4">строка 4</a></blockquote><blockquote>### Требования к данным <a href="#source-line-48">строка 48</a></blockquote><blockquote>Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API». Повторная доставка одного события процессинга сохраняет исходный итог. <a href="#source-line-52">строка 52</a></blockquote><blockquote>| `cardId` | string | 1–64 | Да | Карта клиента | Идентификатор карты | `card_id` | <a href="#source-line-142">строка 142</a></blockquote></article><article class="finding"><h3>Границы решения</h3><p>Границы функционала мобильного банка и сервиса уведомлений очерчены, однако отсутствуют данные для production-окружения.</p><blockquote>| **Продукт** | Мобильный банк, учебный кейс | <a href="#source-line-15">строка 15</a></blockquote><blockquote>| **Влияние на ИС** | Мобильный банк, карточный процессинг, сервис уведомлений | <a href="#source-line-19">строка 19</a></blockquote><blockquote>| **URL type** | Dev / Prod | <a href="#source-line-107">строка 107</a></blockquote><blockquote>| **Request URL** | Dev: `/alerts/saveLimit` . Prod: — | <a href="#source-line-108">строка 108</a></blockquote></article></section>
+<section id="json-syntax"><h2>Синтаксис JSON-примеров</h2><p>Парсер проверяет распознанные примеры. Условия обязательности полей и поведение API оцениваются в реестре требований.</p><ul><li><a href="#source-line-166">строка 166</a> · <strong>Корректный JSON</strong> · <code>result</code>, <code>amount</code>, <code>enabled</code></li><li><a href="#source-line-170">строка 170</a> · <strong>Корректный JSON</strong> · <code>result</code>, <code>message</code></li><li><a href="#source-line-179">строка 179</a> · <strong>Корректный JSON</strong> · <code>message</code></li><li><a href="#source-line-184">строка 184</a> · <strong>Корректный JSON</strong> · <code>message</code></li><li><a href="#source-line-191">строка 191</a> · <strong>Корректный JSON</strong> · <code>message</code></li><li><a href="#source-line-196">строка 196</a> · <strong>Корректный JSON</strong> · <code>message</code></li></ul></section><section id="response-fields"><h2>Состав ответов по примерам</h2><p>Сопоставлены ключи объектов из одного раздела. Проверьте условия по нормативной схеме. Если она оставляет выбор, передайте вопрос владельцу контракта.</p><p>Раздел ответов · <a href="#source-line-160">строка 160</a></p><div class="scroll"><table><thead><tr><th>Поле</th><th>Есть в примере</th><th>Отсутствует в примере</th><th>Условия контракта</th></tr></thead><tbody><tr><td><code>result</code></td><td><a href="#source-line-166">200 · строка 166</a>, <a href="#source-line-170">200 · строка 170</a></td><td><a href="#source-line-179">400 · строка 179</a>, <a href="#source-line-184">401 · строка 184</a>, <a href="#source-line-191">404 (раздел 403) · строка 191</a>, <a href="#source-line-196">500 · строка 196</a></td><td><p>Обязательно ли поле result в каждом из следующих ошибочных ответов: HTTP 400 (примеры со строк 179), HTTP 401 (примеры со строк 184), HTTP 404 (примеры со строк 191), HTTP 500 (примеры со строк 196)?</p></td></tr><tr><td><code>amount</code></td><td><a href="#source-line-166">200 · строка 166</a></td><td><a href="#source-line-170">200 · строка 170</a>, <a href="#source-line-179">400 · строка 179</a>, <a href="#source-line-184">401 · строка 184</a>, <a href="#source-line-191">404 (раздел 403) · строка 191</a>, <a href="#source-line-196">500 · строка 196</a></td><td><p>Исключено для HTTP 400, 401, 404, 500. <a href="#source-line-156">строка 156</a></p></td></tr><tr><td><code>enabled</code></td><td><a href="#source-line-166">200 · строка 166</a></td><td><a href="#source-line-170">200 · строка 170</a>, <a href="#source-line-179">400 · строка 179</a>, <a href="#source-line-184">401 · строка 184</a>, <a href="#source-line-191">404 (раздел 403) · строка 191</a>, <a href="#source-line-196">500 · строка 196</a></td><td><p>Обязательно ли поле enabled в каждом из следующих ошибочных ответов: HTTP 400 (примеры со строк 179), HTTP 401 (примеры со строк 184), HTTP 404 (примеры со строк 191), HTTP 500 (примеры со строк 196)?</p></td></tr><tr><td><code>message</code></td><td><a href="#source-line-170">200 · строка 170</a>, <a href="#source-line-179">400 · строка 179</a>, <a href="#source-line-184">401 · строка 184</a>, <a href="#source-line-191">404 (раздел 403) · строка 191</a>, <a href="#source-line-196">500 · строка 196</a></td><td><a href="#source-line-166">200 · строка 166</a></td><td><p>Обязательно для HTTP 400, 401, 404, 500. <a href="#source-line-158">строка 158</a></p></td></tr></tbody></table></div></section>
+<section id="qa-scenarios"><h2>Сценарии для QA</h2><article class="finding qa-scenario" id="qa-scenario-1" tabindex="-1">
+<h3>Первое действие</h3><small>Результат следует из ТЗ</small>
+<p><b>Условия.</b> Карта с выключенным уведомлением по умолчанию</p><p><b>Действие.</b> Выполнение первого сохранения настроек через API /alerts/saveLimit</p>
+<p><b>Ожидаемый результат.</b> Настройка сохранена успешно с возвратом параметров</p><blockquote>По умолчанию уведомление выключено. <a href="#source-line-37">строка 37</a></blockquote><blockquote>curl -G &quot;$BASE/alerts/saveLimit&quot; -H &quot;Authorization: Bearer $TOKEN&quot; --data &#x27;cardId=demo-42&amp;amount=50000&amp;enabled=1&#x27; <a href="#source-line-109">строка 109</a></blockquote></article><article class="finding qa-scenario" id="qa-scenario-2" tabindex="-1">
+<h3>Повтор действия</h3><small>Результат следует из ТЗ</small>
+<p><b>Условия.</b> Событие покупки уже было доставлено и обработано процессингом</p><p><b>Действие.</b> Повторная доставка того же события процессинга</p>
+<p><b>Ожидаемый результат.</b> Повторная доставка сохраняет исходный итог расходов без повторного учета</p><blockquote>Повторная доставка одного события процессинга сохраняет исходный итог. <a href="#source-line-52">строка 52</a></blockquote></article><article class="finding qa-scenario" id="qa-scenario-3" tabindex="-1">
+<h3>Повторное наступление условия</h3><small>Нужно решение владельца</small>
+<p><b>Условия.</b> Расходы достигли порога и отправлен push в текущем месяце, затем изменен порог</p><p><b>Действие.</b> Проведение новой покупки, приводящей к повторному достижению нового порога в том же месяце</p>
+<p><b>Что следует из ТЗ.</b> Правило Ф-3 ограничивает отправку максимум одним push в месяц, а правило Ф-4 разрешает следующее достижение независимо от истории</p><p><b>Вопрос владельцу.</b> Разрешена ли отправка второго push-уведомления в календарном месяце при изменении порога вопреки лимиту в один push?</p><blockquote>Когда расходы переходят от суммы ниже порога к сумме, равной порогу или выше, клиент получает push. На карту приходится максимум один такой push за календарный месяц. <a href="#source-line-39">строка 39</a></blockquote><blockquote>При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки. <a href="#source-line-40">строка 40</a></blockquote></article><article class="finding qa-scenario" id="qa-scenario-4" tabindex="-1">
+<h3>Граница значения</h3><small>Результат следует из ТЗ</small>
+<p><b>Условия.</b> Задание целочисленного порога в тенге для активной карты</p><p><b>Действие.</b> Передача граничных и околограничных значений суммы порога (999, 1000, 1000000, 1000001)</p>
+<p><b>Ожидаемый результат.</b> Значения 1 000 и 1 000 000 принимаются успешно, значения 999 и 1 000 001 отклоняются</p><blockquote>Держатель активной карты KZT задаёт целый порог от 1 000 до 1 000 000 ₸ включительно. <a href="#source-line-37">строка 37</a></blockquote><blockquote>Целое число тенге, обе границы включены. <a href="#source-line-124">строка 124</a></blockquote></article><details id="qa-skipped"><summary>Почему пропущены ситуации · 1</summary><ul><li><b>Независимость объектов.</b> В тексте спецификации отсутствуют правила об изоляции и независимости нескольких объектов в одном периоде.</li></ul></details></section>
+<section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
+<table class="registry"><thead><tr><th scope="col">ID отчёта<br>ID в ТЗ</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody><tr id="R-001"><td><b>R-001</b><br>—</td>
+<td><small>требование · Часть A. Новый функционал / Цели</small><br><b>Дать клиенту возможность узнать о достижении личного бюджета в момент покупки.</b>
+<blockquote>Дать клиенту возможность узнать о достижении личного бюджета в момент покупки. <a href="#source-line-23">строка 23</a></blockquote></td>
+<td><small>проверяемо</small><br>Цель сформулирована четко и может быть проверена на бизнес-сценарии.<p></p></td></tr><tr id="R-002"><td><b>R-002</b><br>—</td>
+<td><small>требование · Часть A. Новый функционал / Архитектура решения</small><br><b>Мобильное приложение взаимодействует с сервисом настроек, а карточный процессинг ведет учёт расходов и связан с сервисом push.</b>
+<blockquote>Мобильное приложение → сервис настроек. Карточный процессинг → учёт расходов → сервис push. <a href="#source-line-26">строка 26</a></blockquote></td>
+<td><small>проверяемо</small><br>Компоненты взаимодействия указаны однозначно.<p></p></td></tr><tr id="R-003"><td><b>R-003</b><br>—</td>
+<td><small>требование · Часть A. Новый функционал / Дизайн процесса UI</small><br><b>На экране видны переключатель, поле «Порог, ₸», сумма за месяц и кнопка «Сохранить».</b>
+<blockquote>Карты → Расходы → Уведомления. На экране видны переключатель, поле «Порог, ₸», сумма за месяц и кнопка «Сохранить». При ошибке ввода сообщение появляется под полем. <a href="#source-line-29">строка 29</a></blockquote></td>
+<td><small>проверяемо</small><br>Элементы интерфейса описаны однозначно.<p></p></td></tr><tr id="R-004"><td><b>R-004</b><br>—</td>
+<td><small>требование · Часть A. Новый функционал / Дизайн процесса UI</small><br><b>При ошибке ввода сообщение появляется под полем.</b>
+<blockquote>Карты → Расходы → Уведомления. На экране видны переключатель, поле «Порог, ₸», сумма за месяц и кнопка «Сохранить». При ошибке ввода сообщение появляется под полем. <a href="#source-line-29">строка 29</a></blockquote></td>
+<td><small>нужно уточнение</small><br>Не указан точный текст сообщения об ошибке.<p><a href="#D-07">D-07</a></p></td></tr><tr id="R-005"><td><b>R-005</b><br>—</td>
+<td><small>требование · Часть A. Новый функционал / Требования к изменениям / BPMN схема процесса</small><br><b>Проведение покупки приводит к пересчёту расходов, проверке порога и при достижении отправке push до завершения процесса.</b>
+<blockquote>Проведение покупки → пересчёт расходов → проверка порога → при достижении отправка push → завершение. <a href="#source-line-34">строка 34</a></blockquote></td>
+<td><small>проверяемо</small><br>Последовательность шагов процесса задана корректно.<p></p></td></tr><tr id="R-006"><td><b>R-006</b><br>Ф-1</td>
+<td><small>требование · Часть A. Новый функционал / Требования к изменениям / Функциональные требования</small><br><b>Держатель активной карты KZT задаёт целый порог от 1 000 до 1 000 000 ₸ включительно. По умолчанию уведомление выключено.</b>
+<blockquote>* **Ф-1.** Держатель активной карты KZT задаёт целый порог от 1 000 до 1 000 000 ₸ включительно. По умолчанию уведомление выключено. <a href="#source-line-37">строка 37</a></blockquote></td>
+<td><small>проверяемо</small><br>Границы, тип и значение по умолчанию определены чётко.<p></p></td></tr><tr id="R-007"><td><b>R-007</b><br>Ф-2</td>
+<td><small>требование · Часть A. Новый функционал / Требования к изменениям / Функциональные требования</small><br><b>Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки. Возврат уменьшает расходы месяца исходной покупки. Переводы и снятие наличных исключаются.</b>
+<blockquote>* **Ф-2.** Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки. Возврат уменьшает расходы месяца исходной покупки. Переводы и снятие наличных исключаются. <a href="#source-line-38">строка 38</a></blockquote></td>
+<td><small>проверяемо</small><br>Правила расчёта расходов и учета операций исчерпывающие.<p><a href="#D-01">D-01</a></p></td></tr><tr id="R-008"><td><b>R-008</b><br>Ф-3</td>
+<td><small>требование · Часть A. Новый функционал / Требования к изменениям / Функциональные требования</small><br><b>Когда расходы переходят от суммы ниже порога к сумме, равной порогу или выше, клиент получает push. На карту приходится максимум один такой push за календарный месяц.</b>
+<blockquote>* **Ф-3.** Когда расходы переходят от суммы ниже порога к сумме, равной порогу или выше, клиент получает push. На карту приходится максимум один такой push за календарный месяц. <a href="#source-line-39">строка 39</a></blockquote></td>
+<td><small>проверяемо</small><br>Условие отправки и ограничение частоты заданы однозначно.<p><a href="#D-02">D-02</a></p></td></tr><tr id="R-009"><td><b>R-009</b><br>Ф-4</td>
+<td><small>требование · Часть A. Новый функционал / Требования к изменениям / Функциональные требования</small><br><b>При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки.</b>
+<blockquote>* **Ф-4.** При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки. <a href="#source-line-40">строка 40</a></blockquote></td>
+<td><small>проверяемо</small><br>Поведение при изменении порога описано понятно.<p><a href="#D-02">D-02</a></p></td></tr><tr id="R-010"><td><b>R-010</b><br>—</td>
+<td><small>требование · Часть A. Новый функционал / Sequence Diagram</small><br><b>Процессинг передает в сервис расходов информацию о проведенной покупке, сервис запрашивает порог и передает в сервис push последние четыре цифры карты и сумму при достижении порога.</b>
+<blockquote>Процессинг → сервис расходов: проведена покупка. Сервис расходов → настройки: получить порог карты. Сервис расходов → push: передать последние четыре цифры карты и сумму при достижении порога. <a href="#source-line-43">строка 43</a></blockquote></td>
+<td><small>проверяемо</small><br>Взаимодействие систем и передаваемые параметры отражены.<p></p></td></tr><tr id="R-011"><td><b>R-011</b><br>—</td>
+<td><small>требование · Часть A. Новый функционал / Нефункциональные требования</small><br><b>Сервис передаёт push на отправку в течение минуты после получения события.</b>
+<blockquote>Сервис передаёт push на отправку в течение минуты после получения события. <a href="#source-line-46">строка 46</a></blockquote></td>
+<td><small>проверяемо</small><br>Измеримо, но требует уточнения критерия завершения передачи.<p></p></td></tr><tr id="R-012"><td><b>R-012</b><br>—</td>
+<td><small>требование · Часть A. Новый функционал / Требования к данным</small><br><b>Хранить идентификатор карты, месяц, идентификатор операции, сумму покупки в тиынах, признак отправки и порог в тенге.</b>
+<blockquote>Хранить идентификатор карты, месяц, идентификатор операции, сумму покупки в тиынах, признак отправки и порог в тенге. <a href="#source-line-49">строка 49</a></blockquote></td>
+<td><small>проверяемо</small><br>Полнота обеспечена списком полей, проверяемо по структуре БД.<p></p></td></tr><tr id="R-013"><td><b>R-013</b><br>—</td>
+<td><small>требование · Часть A. Новый функционал / Требования к интеграции</small><br><b>Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API». Повторная доставка одного события процессинга сохраняет исходный итог.</b>
+<blockquote>Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API». Повторная доставка одного события процессинга сохраняет исходный итог. <a href="#source-line-52">строка 52</a></blockquote></td>
+<td><small>проверяемо</small><br>Описана идемпотентность и источник API, проверяемо тестами.<p></p></td></tr><tr id="R-014"><td><b>R-014</b><br>—</td>
+<td><small>приёмочный пример · Часть A. Новый функционал / Критерии приемки</small><br><b>Расходы 48 500 ₸, порог 50 000 ₸. Провести покупку на 1 500 ₸. Итог 50 000 ₸ и один push</b>
+<blockquote>| Расходы 48 500 ₸, порог 50 000 ₸ | Провести покупку на 1 500 ₸ | Итог 50 000 ₸ и один push | <a href="#source-line-63">строка 63</a></blockquote></td>
+<td><small>проверяемо</small><br>Содержит исходное состояние, действие и ожидаемый результат.<p></p></td></tr><tr id="R-015"><td><b>R-015</b><br>—</td>
+<td><small>приёмочный пример · Часть A. Новый функционал / Критерии приемки</small><br><b>Покупка 31 января в 23:58 на 4 000 ₸. Провести 1 февраля в 00:03 по Алматы. Февральский счётчик вырос на 4 000 ₸</b>
+<blockquote>| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ | <a href="#source-line-64">строка 64</a></blockquote></td>
+<td><small>проверяемо</small><br>Четко проверяет логику определения месяца по часовому поясу Алматы.<p><a href="#D-01">D-01</a></p></td></tr><tr id="R-016"><td><b>R-016</b><br>—</td>
+<td><small>приёмочный пример · Часть A. Новый функционал / Критерии приемки</small><br><b>Расходы 19 900 ₸, порог 20 000 ₸. Перевести 500 ₸. Счётчик показывает 19 900 ₸</b>
+<blockquote>| Расходы 19 900 ₸, порог 20 000 ₸ | Перевести 500 ₸ | Счётчик показывает 19 900 ₸ | <a href="#source-line-65">строка 65</a></blockquote></td>
+<td><small>проверяемо</small><br>Подтверждает правило исключения переводов из расчета расходов.<p></p></td></tr><tr id="R-017"><td><b>R-017</b><br>—</td>
+<td><small>требование · Часть A. Новый функционал / Ревью требований</small><br><b>Техническое требование зафиксировано и покрывает бизнес-требование</b>
+<blockquote>| Техническое требование зафиксировано и покрывает бизнес-требование | Да / Нет | Да / Нет | | <a href="#source-line-72">строка 72</a></blockquote></td>
+<td><small>нужно уточнение</small><br>Отметки в чек-листе не проставлены.<p><a href="#resolution-1">Пояснение</a></p></td></tr><tr id="R-018"><td><b>R-018</b><br>—</td>
+<td><small>требование · Часть B. REST API / Общие параметры</small><br><b>Метод выполняет сохранение порога и чтение порога</b>
+<blockquote>| **Description** | Сохранение порога. Функциональные требования: чтение порога | <a href="#source-line-103">строка 103</a></blockquote></td>
+<td><small>проверяемо</small><br>Назначение метода зафиксировано.<p></p></td></tr><tr id="R-019"><td><b>R-019</b><br>—</td>
+<td><small>требование · Часть B. REST API / Общие параметры</small><br><b>Тип REST запроса GET</b>
+<blockquote>| **REST type** | GET | <a href="#source-line-104">строка 104</a></blockquote></td>
+<td><small>проверяемо</small><br>Указан тип GET для сохранения.<p></p></td></tr><tr id="R-020"><td><b>R-020</b><br>—</td>
+<td><small>требование · Часть B. REST API / Общие параметры</small><br><b>Авторизация Bearer, сессия владельца карты</b>
+<blockquote>| **Authorization** | Bearer, сессия владельца карты | <a href="#source-line-105">строка 105</a></blockquote></td>
+<td><small>проверяемо</small><br>Требование к авторизации задано.<p></p></td></tr><tr id="R-021"><td><b>R-021</b><br>—</td>
+<td><small>требование · Часть B. REST API / Общие параметры</small><br><b>URL запроса для Dev /alerts/saveLimit, для Prod не указан</b>
+<blockquote>| **Request URL** | Dev: `/alerts/saveLimit` . Prod: — | <a href="#source-line-108">строка 108</a></blockquote></td>
+<td><small>нужно уточнение</small><br>Prod URL отсутствует.<p><a href="#D-03">D-03</a></p></td></tr><tr id="R-022"><td><b>R-022</b><br>—</td>
+<td><small>пример контракта · Часть B. REST API / Общие параметры</small><br><b>Пример запроса curl с параметрами cardId, amount, enabled</b>
+<blockquote>| **CURL** | `curl -G &quot;$BASE/alerts/saveLimit&quot; -H &quot;Authorization: Bearer $TOKEN&quot; --data &#x27;cardId=demo-42&amp;amount=50000&amp;enabled=1&#x27;` | <a href="#source-line-109">строка 109</a></blockquote></td>
+<td><small>проверяемо</small><br>Пример корректен и соответствует параметрам.<p></p></td></tr><tr id="R-023"><td><b>R-023</b><br>1</td>
+<td><small>требование · Часть B. REST API / Логика работы метода</small><br><b>Проверить пользовательскую сессию.</b>
+<blockquote>1. Проверить пользовательскую сессию. <a href="#source-line-117">строка 117</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверяется на уровне авторизации.<p></p></td></tr><tr id="R-024"><td><b>R-024</b><br>2</td>
+<td><small>требование · Часть B. REST API / Логика работы метода</small><br><b>Проверить принадлежность карты клиенту.</b>
+<blockquote>2. Проверить принадлежность карты клиенту. <a href="#source-line-118">строка 118</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверяется привязка карты к сессии.<p></p></td></tr><tr id="R-025"><td><b>R-025</b><br>3</td>
+<td><small>требование · Часть B. REST API / Логика работы метода</small><br><b>Проверить сумму и переключатель.</b>
+<blockquote>3. Проверить сумму и переключатель. <a href="#source-line-119">строка 119</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверяется корректность входящих данных.<p></p></td></tr><tr id="R-026"><td><b>R-026</b><br>4</td>
+<td><small>требование · Часть B. REST API / Логика работы метода</small><br><b>Заменить настройку и вернуть результат сохранения.</b>
+<blockquote>4. Заменить настройку и вернуть результат сохранения. <a href="#source-line-120">строка 120</a></blockquote></td>
+<td><small>проверяемо</small><br>Ожидается успешный ответ API.<p></p></td></tr><tr id="R-027"><td><b>R-027</b><br>5</td>
+<td><small>требование · Часть B. REST API / Логика работы метода</small><br><b>При отклонении суммы вернуть прежнее состояние и результат ERROR.</b>
+<blockquote>5. При отклонении суммы вернуть прежнее состояние и результат ERROR. <a href="#source-line-121">строка 121</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверяется откат изменения и код ответа.<p></p></td></tr><tr id="R-028"><td><b>R-028</b><br>1</td>
+<td><small>требование · Часть B. REST API / Особые правила</small><br><b>Целое число тенге, обе границы включены.</b>
+<blockquote>1. Целое число тенге, обе границы включены. <a href="#source-line-124">строка 124</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить граничные значения 1000 и 1000000.<p></p></td></tr><tr id="R-029"><td><b>R-029</b><br>2</td>
+<td><small>требование · Часть B. REST API / Особые правила</small><br><b>Повторное сохранение заменяет действующую настройку.</b>
+<blockquote>2. Повторное сохранение заменяет действующую настройку. <a href="#source-line-125">строка 125</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить перезапись существующей записи.<p></p></td></tr><tr id="R-030"><td><b>R-030</b><br>3</td>
+<td><small>требование · Часть B. REST API / Особые правила</small><br><b>Изменение порога сохраняет накопленные расходы.</b>
+<blockquote>3. Изменение порога сохраняет накопленные расходы. <a href="#source-line-126">строка 126</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить неизменность счетчика трат.<p></p></td></tr><tr id="R-031"><td><b>R-031</b><br>—</td>
+<td><small>требование · Часть B. REST API / Параметры запроса / Path-параметры</small><br><b>Path-параметры не используются.</b>
+<blockquote>Не используются. <a href="#source-line-136">строка 136</a></blockquote></td>
+<td><small>проверяемо</small><br>Соответствует спецификации endpoint.<p></p></td></tr><tr id="R-032"><td><b>R-032</b><br>—</td>
+<td><small>требование · Часть B. REST API / Параметры запроса / Query-параметры</small><br><b>Параметр cardId строковый, размер 1-64, обязательный, идентификатор карты.</b>
+<blockquote>| `cardId` | string | 1–64 | Да | Карта клиента | Идентификатор карты | `card_id` | <a href="#source-line-142">строка 142</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверяется валидация строки card_id.<p></p></td></tr><tr id="R-033"><td><b>R-033</b><br>—</td>
+<td><small>требование · Часть B. REST API / Параметры запроса / Query-параметры</small><br><b>Параметр amount целое 32 bit, обязательный, 1 000–1 000 000, порог в тенге.</b>
+<blockquote>| `amount` | integer | 32 bit | Да | 1 000–1 000 000 | Порог в тенге | `limit_kzt` | <a href="#source-line-143">строка 143</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверяется числовой диапазон limit_kzt.<p></p></td></tr><tr id="R-034"><td><b>R-034</b><br>—</td>
+<td><small>требование · Часть B. REST API / Параметры запроса / Query-параметры</small><br><b>Параметр enabled целое 1 знак, обязательный, 0 или 1, признак включения.</b>
+<blockquote>| `enabled` | integer | 1 знак | Да | 0 или 1 | Признак включения | `enabled` | <a href="#source-line-144">строка 144</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверяется допустимость значений флага.<p></p></td></tr><tr id="R-035"><td><b>R-035</b><br>—</td>
+<td><small>требование · Часть B. REST API / Параметры запроса / Request body</small><br><b>Content-Type приложения должен быть application/json</b>
+<blockquote>* **Content-Type:** `application/json` . <a href="#source-line-147">строка 147</a></blockquote></td>
+<td><small>проверяемо</small><br>Задано корректно.<p></p></td></tr><tr id="R-036"><td><b>R-036</b><br>—</td>
+<td><small>требование · Часть B. REST API / Параметры запроса / Request body</small><br><b>Тело запроса не используется</b>
+<blockquote>* Тело не используется. <a href="#source-line-148">строка 148</a></blockquote></td>
+<td><small>проверяемо</small><br>Правило очевидно.<p></p></td></tr><tr id="R-037"><td><b>R-037</b><br>—</td>
+<td><small>требование · Часть B. REST API / Ответ</small><br><b>Результат 200 или 201 считается успешным, а 400, 401 и далее — неуспешным</b>
+<blockquote>Если результат 200 или 201 — успешный. Если результат 400, 401 и далее — неуспешный. <a href="#source-line-151">строка 151</a></blockquote></td>
+<td><small>проверяемо</small><br>Упоминание 201 избыточно для GET, но проверяемо.<p></p></td></tr><tr id="R-038"><td><b>R-038</b><br>—</td>
+<td><small>требование · Часть B. REST API / Ответ</small><br><b>Параметр result возвращает строку OK или ERROR</b>
+<blockquote>| `result` | string | OK / ERROR | Исход сохранения | — | <a href="#source-line-155">строка 155</a></blockquote></td>
+<td><small>проверяемо</small><br>Формат и возможные значения описаны.<p></p></td></tr><tr id="R-039"><td><b>R-039</b><br>—</td>
+<td><small>требование · Часть B. REST API / Ответ</small><br><b>Параметр amount возвращает порог в тенге при успехе</b>
+<blockquote>| `amount` | string | При успехе | Порог в тенге | `limit_kzt` | <a href="#source-line-156">строка 156</a></blockquote></td>
+<td><small>проверяемо</small><br>Назначение параметра понятно.<p></p></td></tr><tr id="R-040"><td><b>R-040</b><br>—</td>
+<td><small>требование · Часть B. REST API / Ответ</small><br><b>Параметр enabled возвращает 0 или 1 как признак включения</b>
+<blockquote>| `enabled` | string | «0» или «1» | Признак включения | `enabled` | <a href="#source-line-157">строка 157</a></blockquote></td>
+<td><small>проверяемо</small><br>Допустимые значения заданы.<p></p></td></tr><tr id="R-041"><td><b>R-041</b><br>—</td>
+<td><small>требование · Часть B. REST API / Ответ</small><br><b>Параметр message возвращает описание ошибки при ошибке</b>
+<blockquote>| `message` | string | При ошибке | Описание ошибки | — | <a href="#source-line-158">строка 158</a></blockquote></td>
+<td><small>проверяемо</small><br>Назначение описано корректно.<p></p></td></tr><tr id="R-042"><td><b>R-042</b><br>—</td>
+<td><small>требование · Часть B. REST API / Статусы</small><br><b>Статус 200 возвращается в случае успешного выполнения метода</b>
+<blockquote>**200.** Ответ в случае успешного выполнения метода.   <a href="#source-line-162">строка 162</a></blockquote></td>
+<td><small>проверяемо</small><br>Смысл кода статуса определен.<p></p></td></tr><tr id="R-043"><td><b>R-043</b><br>—</td>
+<td><small>требование · Часть B. REST API / Статусы</small><br><b>Статус 400 возвращается, если параметры запроса заполнены неверно</b>
+<blockquote>**400.** Ответ в случае, если параметры запроса заполнены неверно. <a href="#source-line-163">строка 163</a></blockquote></td>
+<td><small>проверяемо</small><br>Условие возврата ошибки зафиксировано.<p></p></td></tr><tr id="R-044"><td><b>R-044</b><br>—</td>
+<td><small>пример контракта · Часть B. REST API / Статусы / 200. Successful — Created</small><br><b>Пример успешного JSON-ответа с результатами OK, amount и enabled</b>
+<blockquote>{&quot;result&quot;:&quot;OK&quot;,&quot;amount&quot;:&quot;50000&quot;,&quot;enabled&quot;:&quot;1&quot;} <a href="#source-line-167">строка 167</a></blockquote></td>
+<td><small>проверяемо</small><br>Соответствует структуре ответа.<p></p></td></tr><tr id="R-045"><td><b>R-045</b><br>—</td>
+<td><small>пример контракта · Часть B. REST API / Статусы / 200. Successful — Created</small><br><b>Пример JSON-ответа с ошибкой и сообщением</b>
+<blockquote>{&quot;result&quot;:&quot;ERROR&quot;,&quot;message&quot;:&quot;Проверьте сумму&quot;} <a href="#source-line-171">строка 171</a></blockquote></td>
+<td><small>проверяемо</small><br>Формат примера корректен.<p></p></td></tr><tr id="R-046"><td><b>R-046</b><br>—</td>
+<td><small>требование · Часть B. REST API / Статусы / 200. Successful — Created</small><br><b>Запрос без необходимой авторизации возвращает статус 401</b>
+<blockquote>**401.** Ответ в случае, если запрос выполнен без необходимой авторизации.   <a href="#source-line-174">строка 174</a></blockquote></td>
+<td><small>проверяемо</small><br>Требование однозначно и проверяемо по коду HTTP-ответа.<p></p></td></tr><tr id="R-047"><td><b>R-047</b><br>—</td>
+<td><small>требование · Часть B. REST API / Статусы / 200. Successful — Created</small><br><b>Запрос на указанный ресурс при запрете доступа возвращает статус 403</b>
+<blockquote>**403.** Ответ в случае, если на указанный ресурс доступ запрещен.   <a href="#source-line-175">строка 175</a></blockquote></td>
+<td><small>проверяемо</small><br>Требование однозначно и проверяемо по коду HTTP-ответа.<p><a href="#D-06">D-06</a></p></td></tr><tr id="R-048"><td><b>R-048</b><br>—</td>
+<td><small>требование · Часть B. REST API / Статусы / 200. Successful — Created</small><br><b>Внутренняя ошибка сервера возвращает статус 500</b>
+<blockquote>**500.** Ответ в случае, если произошла внутренняя ошибка сервера. <a href="#source-line-176">строка 176</a></blockquote></td>
+<td><small>проверяемо</small><br>Требование однозначно и проверяемо по коду HTTP-ответа.<p></p></td></tr><tr id="R-049"><td><b>R-049</b><br>—</td>
+<td><small>пример контракта · Часть B. REST API / Статусы / 400. Unsuccessful — Bad request</small><br><b>При ответе 400 возвращается JSON с полем message равным Некорректный запрос</b>
+<blockquote>{&quot;message&quot;:&quot;Некорректный запрос&quot;} <a href="#source-line-180">строка 180</a></blockquote></td>
+<td><small>проверяемо</small><br>Контракт ответа 400 задан явно и проверяем.<p></p></td></tr><tr id="R-050"><td><b>R-050</b><br>—</td>
+<td><small>пример контракта · Часть B. REST API / Статусы / 401. Unsuccessful — Unauthorized</small><br><b>При ответе 401 возвращается JSON с полем message равным Требуется вход</b>
+<blockquote>{&quot;message&quot;:&quot;Требуется вход&quot;} <a href="#source-line-185">строка 185</a></blockquote></td>
+<td><small>проверяемо</small><br>Контракт ответа 401 задан явно и проверяем.<p></p></td></tr><tr id="R-051"><td><b>R-051</b><br>—</td>
+<td><small>требование · Часть B. REST API / Статусы / 403. Unsuccessful — Forbidden</small><br><b>Для чужой карты возвращается 404, как и для отсутствующей карты</b>
+<blockquote>Для чужой карты возвращается 404, как и для отсутствующей карты.   <a href="#source-line-189">строка 189</a></blockquote></td>
+<td><small>проверяемо</small><br>Правило безопасности сформулировано однозначно.<p><a href="#D-06">D-06</a></p></td></tr><tr id="R-052"><td><b>R-052</b><br>—</td>
+<td><small>пример контракта · Часть B. REST API / Статусы / 403. Unsuccessful — Forbidden</small><br><b>При ответе 404 возвращается JSON с полем message равным Карта не найдена</b>
+<blockquote>{&quot;message&quot;:&quot;Карта не найдена&quot;} <a href="#source-line-192">строка 192</a></blockquote></td>
+<td><small>проверяемо</small><br>Контракт ответа 404 задан явно и проверяем.<p></p></td></tr><tr id="R-053"><td><b>R-053</b><br>—</td>
+<td><small>пример контракта · Часть B. REST API / Статусы / 500. Unsuccessful — Internal server error</small><br><b>При ошибке 500 возвращается JSON с сообщением Ошибка сервиса</b>
+<blockquote>{&quot;message&quot;:&quot;Ошибка сервиса&quot;} <a href="#source-line-197">строка 197</a></blockquote></td>
+<td><small>проверяемо</small><br>Контракт ответа 500 задан корректно<p></p></td></tr></tbody></table></section>
+<section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: 3. У каждого указано решение итогового ревью.</p>
+<p>Результат итоговой проверки · <a href="#D-02">D-02 · нарушение</a></p>
+    <article class="conflict" aria-labelledby="conflict-1">
+      <h2 id="conflict-1">Конфликт лимита push-уведомлений и изменения порога</h2>
+      <section class="scenario">
+        <h3>Сценарий</h3>
+        <p>В текущем месяце уже был отправлен один push. Пользователь меняет порог, и расходы повторно достигают нового порога в том же месяце.</p>
+      </section>
+      <div class="outcomes">
+      <div class="outcome" id="conflict-1-outcome-1" tabindex="-1">
+        <h3>Исход 1</h3>
+        <p class="outcome-text">Push не отправляется из-за месячного лимита</p>
+        <blockquote>* **Ф-3.** Когда расходы переходят от суммы ниже порога к сумме, равной порогу или выше, клиент получает push. На карту приходится максимум один такой push за календарный месяц.</blockquote>
+        <a class="citation" href="#source-line-39">К строке 39 в ТЗ ↓</a>
+      </div>
+      <div class="outcome" id="conflict-1-outcome-2" tabindex="-1">
+        <h3>Исход 2</h3>
+        <p class="outcome-text">Push отправляется независимо от истории</p>
+        <blockquote>* **Ф-4.** При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки.</blockquote>
+        <a class="citation" href="#source-line-40">К строке 40 в ТЗ ↓</a>
+      </div>
+      </div>
+      <div class="follow-up">
+        <section class="question">
+          <h3>Вопрос для решения</h3>
+          <p class="question-text">Разрешена ли отправка второго push-уведомления в календарном месяце при изменении порога?</p>
+          <p class="owner"><span>Владелец решения</span> Владелец продукта</p>
+        </section>
+        <section class="control">
+          <h3>Где правила совпадают</h3>
+          <p>Уточнить приоритет правила обнуления истории при изменении порога над месячным лимитом push-уведомлений.</p>
+        </section>
+      </div>
+    </article><p>Результат итоговой проверки · <a href="#D-01">D-01 · нарушение</a></p>
+    <article class="conflict" aria-labelledby="conflict-2">
+      <h2 id="conflict-2">Учёт месяца покупки</h2>
+      <section class="scenario">
+        <h3>Сценарий</h3>
+        <p>Покупка 31 января в 23:58 на 4 000 ₸</p>
+      </section>
+      <div class="outcomes">
+      <div class="outcome" id="conflict-2-outcome-1" tabindex="-1">
+        <h3>Исход 1</h3>
+        <p class="outcome-text">Январские расходы увеличиваются на 4 000 ₸, февральские не меняются</p>
+        <blockquote>* **Ф-2.** Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки. Возврат уменьшает расходы месяца исходной покупки. Переводы и снятие наличных исключаются.</blockquote>
+        <a class="citation" href="#source-line-38">К строке 38 в ТЗ ↓</a>
+      </div>
+      <div class="outcome" id="conflict-2-outcome-2" tabindex="-1">
+        <h3>Исход 2</h3>
+        <p class="outcome-text">Февральский счётчик вырос на 4 000 ₸</p>
+        <blockquote>| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ |</blockquote>
+        <a class="citation" href="#source-line-64">К строке 64 в ТЗ ↓</a>
+      </div>
+      </div>
+      <div class="follow-up">
+        <section class="question">
+          <h3>Вопрос для решения</h3>
+          <p class="question-text">К какому месяцу относится покупка, совершённая 31 января в 23:58 по времени Алматы?</p>
+          <p class="owner"><span>Владелец решения</span> Автор ТЗ</p>
+        </section>
+        <section class="control">
+          <h3>Где правила совпадают</h3>
+          <p>Покупка 15 января в 12:00 на 4 000 ₸</p>
+        </section>
+      </div>
+    </article><p>Результат итоговой проверки · <a href="#D-06">D-06 · нарушение</a></p>
+    <article class="conflict" aria-labelledby="conflict-3">
+      <h2 id="conflict-3">Код ответа для доступа к чужой карте</h2>
+      <section class="scenario">
+        <h3>Сценарий</h3>
+        <p>Клиент пытается изменить настройки порога для карты, которая принадлежит другому пользователю.</p>
+      </section>
+      <div class="outcomes">
+      <div class="outcome" id="conflict-3-outcome-1" tabindex="-1">
+        <h3>Исход 1</h3>
+        <p class="outcome-text">Сервер возвращает HTTP-статус 403.</p>
+        <blockquote>**403.** Ответ в случае, если на указанный ресурс доступ запрещен.</blockquote>
+        <a class="citation" href="#source-line-175">К строке 175 в ТЗ ↓</a>
+      </div>
+      <div class="outcome" id="conflict-3-outcome-2" tabindex="-1">
+        <h3>Исход 2</h3>
+        <p class="outcome-text">Сервер возвращает HTTP-статус 404.</p>
+        <blockquote>Для чужой карты возвращается 404, как и для отсутствующей карты.</blockquote>
+        <a class="citation" href="#source-line-189">К строке 189 в ТЗ ↓</a>
+      </div>
+      </div>
+      <div class="follow-up">
+        <section class="question">
+          <h3>Вопрос для решения</h3>
+          <p class="question-text">Какой HTTP-статус должен возвращаться при попытке доступа к чужой карте: 403 или 404?</p>
+          <p class="owner"><span>Владелец решения</span> Backend Developer</p>
+        </section>
+        <section class="control">
+          <h3>Где правила совпадают</h3>
+          <p>При запросе к чужой карте возвращается согласованный HTTP-статус, например 403, а для несуществующей — 404.</p>
+        </section>
+      </div>
+    </article><h3>Согласованные прочтения</h3><ol><li id="resolution-1">Отсутствие заполненных отметок в чек-листе является дефектом оформления шаблона, не влияющим на логику реализации. <blockquote>| Проверка | Создано или доступно | Проверено | Примечания | <a href="#source-line-70">строка 70</a></blockquote><blockquote>| Техническое требование зафиксировано и покрывает бизнес-требование | Да / Нет | Да / Нет | | <a href="#source-line-72">строка 72</a></blockquote></li></ol></section>
+<section id="coverage"><h2>Карта покрытия исходника</h2><p>Учтено 152 непустых строк, 138 блоков, 7 таблиц, 44 строк данных таблиц и 6 блоков JSON. Структура, шаблоны и контекст имеют отдельные записи.</p>
+<details><summary>Открыть все блоки и основания классификации</summary><table><thead><tr><th>Источник</th><th>Тип</th><th>Назначение и пункты</th></tr></thead><tbody><tr><td><a href="#source-line-1">строка 1</a></td><td>заголовок</td><td>Заголовок документа </td></tr><tr><td><a href="#source-line-3">строка 3</a></td><td>текст</td><td>Примечание к комплекту документов </td></tr><tr><td><a href="#source-line-4">строка 4</a></td><td>текст</td><td>Информация о связи с дочерней спецификацией </td></tr><tr><td><a href="#source-line-6">строка 6</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-8">строка 8</a></td><td>заголовок</td><td>Заголовок раздела Часть A </td></tr><tr><td><a href="#source-line-10">строка 10</a></td><td>заголовок</td><td>Заголовок подраздела Общие сведения </td></tr><tr><td><a href="#source-line-12">строка 12</a></td><td>шапка таблицы</td><td>Названия столбцов. </td></tr><tr><td><a href="#source-line-13">строка 13</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-14">строка 14</a></td><td>строка таблицы · шапка <a href="#source-line-12">строка 12</a></td><td>Сведения о наименовании задачи </td></tr><tr><td><a href="#source-line-15">строка 15</a></td><td>строка таблицы · шапка <a href="#source-line-12">строка 12</a></td><td>Сведения о продукте </td></tr><tr><td><a href="#source-line-16">строка 16</a></td><td>строка таблицы · шапка <a href="#source-line-12">строка 12</a></td><td>Сведения о бизнес-процессе </td></tr><tr><td><a href="#source-line-17">строка 17</a></td><td>строка таблицы · шапка <a href="#source-line-12">строка 12</a></td><td>Сведения об ответственных ролях </td></tr><tr><td><a href="#source-line-18">строка 18</a></td><td>строка таблицы · шапка <a href="#source-line-12">строка 12</a></td><td>Сведения о типе работы </td></tr><tr><td><a href="#source-line-19">строка 19</a></td><td>строка таблицы · шапка <a href="#source-line-12">строка 12</a></td><td>Сведения о влиянии на ИС </td></tr><tr><td><a href="#source-line-20">строка 20</a></td><td>строка таблицы · шапка <a href="#source-line-12">строка 12</a></td><td>Сведения о задаче в JIRA </td></tr><tr><td><a href="#source-line-22">строка 22</a></td><td>заголовок</td><td>Заголовок целей </td></tr><tr><td><a href="#source-line-23">строка 23</a></td><td>текст</td><td>Описание цели проекта <a href="#R-001">R-001</a></td></tr><tr><td><a href="#source-line-25">строка 25</a></td><td>заголовок</td><td>Заголовок архитектуры решения </td></tr><tr><td><a href="#source-line-26">строка 26</a></td><td>текст</td><td>Описание архитектурных компонентов решения <a href="#R-002">R-002</a></td></tr><tr><td><a href="#source-line-28">строка 28</a></td><td>заголовок</td><td>Заголовок дизайна процесса UI </td></tr><tr><td><a href="#source-line-29">строка 29</a></td><td>текст</td><td>Описание UI и поведения при ошибке ввода <a href="#R-003">R-003</a> · <a href="#R-004">R-004</a></td></tr><tr><td><a href="#source-line-31">строка 31</a></td><td>заголовок</td><td>Заголовок раздела требований к изменениям </td></tr><tr><td><a href="#source-line-33">строка 33</a></td><td>заголовок</td><td>Заголовок BPMN схемы процесса </td></tr><tr><td><a href="#source-line-34">строка 34</a></td><td>текст</td><td>Шаги бизнес-процесса <a href="#R-005">R-005</a></td></tr><tr><td><a href="#source-line-36">строка 36</a></td><td>заголовок</td><td>Заголовок функциональных требований </td></tr><tr><td><a href="#source-line-37">строка 37</a></td><td>текст</td><td>Требование Ф-1 к параметрам порога и значению по умолчанию <a href="#R-006">R-006</a></td></tr><tr><td><a href="#source-line-38">строка 38</a></td><td>текст</td><td>Требование Ф-2 к расчёту месяца и классификации операций <a href="#R-007">R-007</a></td></tr><tr><td><a href="#source-line-39">строка 39</a></td><td>текст</td><td>Требование Ф-3 к отправке push-уведомлений <a href="#R-008">R-008</a></td></tr><tr><td><a href="#source-line-40">строка 40</a></td><td>текст</td><td>Требование Ф-4 к сохранению накопленной суммы при изменении порога <a href="#R-009">R-009</a></td></tr><tr><td><a href="#source-line-42">строка 42</a></td><td>заголовок</td><td>Заголовок Sequence Diagram </td></tr><tr><td><a href="#source-line-43">строка 43</a></td><td>текст</td><td>Описание взаимодействия компонентов на Sequence Diagram <a href="#R-010">R-010</a></td></tr><tr><td><a href="#source-line-45">строка 45</a></td><td>заголовок</td><td>Заголовок нефункциональных требований </td></tr><tr><td><a href="#source-line-46">строка 46</a></td><td>текст</td><td>Нефункциональное требование к отправке push <a href="#R-011">R-011</a></td></tr><tr><td><a href="#source-line-48">строка 48</a></td><td>заголовок</td><td>Заголовок требований к данным </td></tr><tr><td><a href="#source-line-49">строка 49</a></td><td>текст</td><td>Требования к составу хранимых данных <a href="#R-012">R-012</a></td></tr><tr><td><a href="#source-line-51">строка 51</a></td><td>заголовок</td><td>Заголовок требований к интеграции </td></tr><tr><td><a href="#source-line-52">строка 52</a></td><td>текст</td><td>Требования к интеграционному взаимодействию и идемпотентности <a href="#R-013">R-013</a></td></tr><tr><td><a href="#source-line-54">строка 54</a></td><td>заголовок</td><td>Заголовок требований к тестированию </td></tr><tr><td><a href="#source-line-56">строка 56</a></td><td>заголовок</td><td>Заголовок тестирования требований </td></tr><tr><td><a href="#source-line-57">строка 57</a></td><td>текст</td><td>Сведения о тестировании требований </td></tr><tr><td><a href="#source-line-59">строка 59</a></td><td>заголовок</td><td>Заголовок критериев приемки </td></tr><tr><td><a href="#source-line-61">строка 61</a></td><td>шапка таблицы</td><td>Названия столбцов. </td></tr><tr><td><a href="#source-line-62">строка 62</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-63">строка 63</a></td><td>строка таблицы · шапка <a href="#source-line-61">строка 61</a></td><td>Приемочный пример успешного достижения порога <a href="#R-014">R-014</a></td></tr><tr><td><a href="#source-line-64">строка 64</a></td><td>строка таблицы · шапка <a href="#source-line-61">строка 61</a></td><td>Приемочный пример с учетом даты и времени <a href="#R-015">R-015</a></td></tr><tr><td><a href="#source-line-65">строка 65</a></td><td>строка таблицы · шапка <a href="#source-line-61">строка 61</a></td><td>Приемочный пример исключения переводов <a href="#R-016">R-016</a></td></tr><tr><td><a href="#source-line-67">строка 67</a></td><td>заголовок</td><td>Заголовок ревью требований </td></tr><tr><td><a href="#source-line-68">строка 68</a></td><td>текст</td><td>Примечания к ревью требований </td></tr><tr><td><a href="#source-line-70">строка 70</a></td><td>шапка таблицы</td><td>Названия столбцов. </td></tr><tr><td><a href="#source-line-71">строка 71</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-72">строка 72</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований про техническое требование <a href="#R-017">R-017</a></td></tr><tr><td><a href="#source-line-73">строка 73</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: проверка структуры функциональной спецификации </td></tr><tr><td><a href="#source-line-74">строка 74</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: проверка наличия sequence-диаграмм </td></tr><tr><td><a href="#source-line-75">строка 75</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: проверка покрытия спецификации UX/UI дизайна </td></tr><tr><td><a href="#source-line-76">строка 76</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: проверка схемы отката решений </td></tr><tr><td><a href="#source-line-77">строка 77</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: проверка тестируемости требований </td></tr><tr><td><a href="#source-line-78">строка 78</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: проверка модели данных или потока </td></tr><tr><td><a href="#source-line-79">строка 79</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: проверка на противоречия и операционные риски </td></tr><tr><td><a href="#source-line-80">строка 80</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: проверка архитектуры и согласования </td></tr><tr><td><a href="#source-line-81">строка 81</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: согласование изменений, влияющих на другие продукты </td></tr><tr><td><a href="#source-line-82">строка 82</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: проверка рисков информационной безопасности </td></tr><tr><td><a href="#source-line-83">строка 83</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа ревью требований: проверка наличия схемы полного бизнес-процесса </td></tr><tr><td><a href="#source-line-84">строка 84</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа: интеграционное взаимодействие </td></tr><tr><td><a href="#source-line-85">строка 85</a></td><td>строка таблицы · шапка <a href="#source-line-70">строка 70</a></td><td>Пункт чек-листа: версионность документа </td></tr><tr><td><a href="#source-line-87">строка 87</a></td><td>заголовок</td><td>Заголовок раздела согласующих </td></tr><tr><td><a href="#source-line-89">строка 89</a></td><td>шапка таблицы</td><td>Названия столбцов. </td></tr><tr><td><a href="#source-line-90">строка 90</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-91">строка 91</a></td><td>строка таблицы · шапка <a href="#source-line-89">строка 89</a></td><td>Строка таблицы согласующих </td></tr><tr><td><a href="#source-line-93">строка 93</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-95">строка 95</a></td><td>заголовок</td><td>Заголовок Части B REST API </td></tr><tr><td><a href="#source-line-97">строка 97</a></td><td>текст</td><td>Связь с дочерним документом </td></tr><tr><td><a href="#source-line-99">строка 99</a></td><td>заголовок</td><td>Заголовок общих параметров API </td></tr><tr><td><a href="#source-line-101">строка 101</a></td><td>шапка таблицы</td><td>Названия столбцов. </td></tr><tr><td><a href="#source-line-102">строка 102</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-103">строка 103</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Описание метода API <a href="#R-018">R-018</a></td></tr><tr><td><a href="#source-line-104">строка 104</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Тип REST запроса <a href="#R-019">R-019</a></td></tr><tr><td><a href="#source-line-105">строка 105</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Авторизация <a href="#R-020">R-020</a></td></tr><tr><td><a href="#source-line-106">строка 106</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Контроллер </td></tr><tr><td><a href="#source-line-107">строка 107</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Тип URL </td></tr><tr><td><a href="#source-line-108">строка 108</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>URL запроса <a href="#R-021">R-021</a></td></tr><tr><td><a href="#source-line-109">строка 109</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Пример CURL <a href="#R-022">R-022</a></td></tr><tr><td><a href="#source-line-110">строка 110</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Swagger </td></tr><tr><td><a href="#source-line-111">строка 111</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Проект Gitlab </td></tr><tr><td><a href="#source-line-112">строка 112</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Фреймворк </td></tr><tr><td><a href="#source-line-113">строка 113</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Автор </td></tr><tr><td><a href="#source-line-114">строка 114</a></td><td>строка таблицы · шапка <a href="#source-line-101">строка 101</a></td><td>Разработчик </td></tr><tr><td><a href="#source-line-116">строка 116</a></td><td>заголовок</td><td>Заголовок логики работы </td></tr><tr><td><a href="#source-line-117">строка 117</a></td><td>текст</td><td>Проверка сессии <a href="#R-023">R-023</a></td></tr><tr><td><a href="#source-line-118">строка 118</a></td><td>текст</td><td>Проверка карты <a href="#R-024">R-024</a></td></tr><tr><td><a href="#source-line-119">строка 119</a></td><td>текст</td><td>Проверка суммы и переключателя <a href="#R-025">R-025</a></td></tr><tr><td><a href="#source-line-120">строка 120</a></td><td>текст</td><td>Сохранение настройки <a href="#R-026">R-026</a></td></tr><tr><td><a href="#source-line-121">строка 121</a></td><td>текст</td><td>Обработка отклонения суммы <a href="#R-027">R-027</a></td></tr><tr><td><a href="#source-line-123">строка 123</a></td><td>заголовок</td><td>Заголовок особых правил </td></tr><tr><td><a href="#source-line-124">строка 124</a></td><td>текст</td><td>Правило границ <a href="#R-028">R-028</a></td></tr><tr><td><a href="#source-line-125">строка 125</a></td><td>текст</td><td>Повторное сохранение <a href="#R-029">R-029</a></td></tr><tr><td><a href="#source-line-126">строка 126</a></td><td>текст</td><td>Сохранение расходов <a href="#R-030">R-030</a></td></tr><tr><td><a href="#source-line-128">строка 128</a></td><td>заголовок</td><td>Заголовок схемы </td></tr><tr><td><a href="#source-line-129">строка 129</a>–131</td><td>пример text</td><td>Текстовая схема </td></tr><tr><td><a href="#source-line-133">строка 133</a></td><td>заголовок</td><td>Заголовок параметров запроса </td></tr><tr><td><a href="#source-line-135">строка 135</a></td><td>заголовок</td><td>Заголовок path-параметров </td></tr><tr><td><a href="#source-line-136">строка 136</a></td><td>текст</td><td>Отсутствие path-параметров <a href="#R-031">R-031</a></td></tr><tr><td><a href="#source-line-138">строка 138</a></td><td>заголовок</td><td>Заголовок query-параметров </td></tr><tr><td><a href="#source-line-140">строка 140</a></td><td>шапка таблицы</td><td>Названия столбцов. </td></tr><tr><td><a href="#source-line-141">строка 141</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-142">строка 142</a></td><td>строка таблицы · шапка <a href="#source-line-140">строка 140</a></td><td>Параметр cardId <a href="#R-032">R-032</a></td></tr><tr><td><a href="#source-line-143">строка 143</a></td><td>строка таблицы · шапка <a href="#source-line-140">строка 140</a></td><td>Параметр amount <a href="#R-033">R-033</a></td></tr><tr><td><a href="#source-line-144">строка 144</a></td><td>строка таблицы · шапка <a href="#source-line-140">строка 140</a></td><td>Параметр enabled <a href="#R-034">R-034</a></td></tr><tr><td><a href="#source-line-146">строка 146</a></td><td>заголовок</td><td>Заголовок тела запроса </td></tr><tr><td><a href="#source-line-147">строка 147</a></td><td>текст</td><td>Тип контента <a href="#R-035">R-035</a></td></tr><tr><td><a href="#source-line-148">строка 148</a></td><td>текст</td><td>Правило тела запроса <a href="#R-036">R-036</a></td></tr><tr><td><a href="#source-line-150">строка 150</a></td><td>заголовок</td><td>Заголовок раздела ответа </td></tr><tr><td><a href="#source-line-151">строка 151</a></td><td>текст</td><td>Общие правила результатов <a href="#R-037">R-037</a></td></tr><tr><td><a href="#source-line-153">строка 153</a></td><td>шапка таблицы</td><td>Названия столбцов. </td></tr><tr><td><a href="#source-line-154">строка 154</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-155">строка 155</a></td><td>строка таблицы · шапка <a href="#source-line-153">строка 153</a></td><td>Параметр result <a href="#R-038">R-038</a></td></tr><tr><td><a href="#source-line-156">строка 156</a></td><td>строка таблицы · шапка <a href="#source-line-153">строка 153</a></td><td>Параметр amount <a href="#R-039">R-039</a></td></tr><tr><td><a href="#source-line-157">строка 157</a></td><td>строка таблицы · шапка <a href="#source-line-153">строка 153</a></td><td>Параметр enabled <a href="#R-040">R-040</a></td></tr><tr><td><a href="#source-line-158">строка 158</a></td><td>строка таблицы · шапка <a href="#source-line-153">строка 153</a></td><td>Параметр message <a href="#R-041">R-041</a></td></tr><tr><td><a href="#source-line-160">строка 160</a></td><td>заголовок</td><td>Заголовок статусов </td></tr><tr><td><a href="#source-line-162">строка 162</a></td><td>текст</td><td>Описание статуса 200 <a href="#R-042">R-042</a></td></tr><tr><td><a href="#source-line-163">строка 163</a></td><td>текст</td><td>Описание статуса 400 <a href="#R-043">R-043</a></td></tr><tr><td><a href="#source-line-165">строка 165</a></td><td>заголовок</td><td>Заголовок примера 200 </td></tr><tr><td><a href="#source-line-166">строка 166</a>–168</td><td>пример json</td><td>Пример успешного ответа <a href="#R-044">R-044</a></td></tr><tr><td><a href="#source-line-169">строка 169</a></td><td>текст</td><td>Связка или </td></tr><tr><td><a href="#source-line-170">строка 170</a>–172</td><td>пример json</td><td>Альтернативный пример ответа <a href="#R-045">R-045</a></td></tr><tr><td><a href="#source-line-174">строка 174</a></td><td>текст</td><td>Описание статуса 401 <a href="#R-046">R-046</a></td></tr><tr><td><a href="#source-line-175">строка 175</a></td><td>текст</td><td>Описание статуса 403 <a href="#R-047">R-047</a></td></tr><tr><td><a href="#source-line-176">строка 176</a></td><td>текст</td><td>Описание статуса 500 <a href="#R-048">R-048</a></td></tr><tr><td><a href="#source-line-178">строка 178</a></td><td>заголовок</td><td>Заголовок неуспешного ответа 400 </td></tr><tr><td><a href="#source-line-179">строка 179</a>–181</td><td>пример json</td><td>Пример JSON для статуса 400 <a href="#R-049">R-049</a></td></tr><tr><td><a href="#source-line-183">строка 183</a></td><td>заголовок</td><td>Заголовок неуспешного ответа 401 </td></tr><tr><td><a href="#source-line-184">строка 184</a>–186</td><td>пример json</td><td>Пример JSON для статуса 401 <a href="#R-050">R-050</a></td></tr><tr><td><a href="#source-line-188">строка 188</a></td><td>заголовок</td><td>Заголовок неуспешного ответа 403 </td></tr><tr><td><a href="#source-line-189">строка 189</a></td><td>текст</td><td>Правило доступа для чужой карты <a href="#R-051">R-051</a></td></tr><tr><td><a href="#source-line-190">строка 190</a></td><td>текст</td><td>Указание кода 404 </td></tr><tr><td><a href="#source-line-191">строка 191</a>–193</td><td>пример json</td><td>Пример JSON для статуса 404 <a href="#R-052">R-052</a></td></tr><tr><td><a href="#source-line-195">строка 195</a></td><td>заголовок</td><td>Заголовок неуспешного ответа 500 </td></tr><tr><td><a href="#source-line-196">строка 196</a>–198</td><td>пример json</td><td>Пример JSON ответа 500 <a href="#R-053">R-053</a></td></tr></tbody></table></details></section>
+<section id="source"><h2>Текст исходного документа</h2><ol class="source-list">
+        <li class="source-row" id="source-line-1" value="1" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>1</span>
+          <span class="source-text"># Уведомление о расходах по карте</span>
+        </li>
+        <li class="source-row" id="source-line-3" value="3" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>3</span>
+          <span class="source-text">Комплект из двух исходных документов. Текст требований не вычитывался и не исправлялся.  </span>
+        </li>
+        <li class="source-row" id="source-line-4" value="4" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>4</span>
+          <span class="source-text">Часть B — дочерняя спецификация, на которую ссылается раздел интеграции в части A.</span>
+        </li>
+        <li class="source-row" id="source-line-6" value="6" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>6</span>
+          <span class="source-text">---</span>
+        </li>
+        <li class="source-row" id="source-line-8" value="8" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>8</span>
+          <span class="source-text">## Часть A. Новый функционал</span>
+        </li>
+        <li class="source-row" id="source-line-10" value="10" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>10</span>
+          <span class="source-text">### Общие сведения</span>
+        </li>
+        <li class="source-row" id="source-line-12" value="12" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>12</span>
+          <span class="source-text">| Поле | Значение |</span>
+        </li>
+        <li class="source-row" id="source-line-13" value="13" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>13</span>
+          <span class="source-text">| :--- | :--- |</span>
+        </li>
+        <li class="source-row" id="source-line-14" value="14" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>14</span>
+          <span class="source-text">| **Наименование задачи** | Месячный порог расходов по карте |</span>
+        </li>
+        <li class="source-row" id="source-line-15" value="15" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>15</span>
+          <span class="source-text">| **Продукт** | Мобильный банк, учебный кейс |</span>
+        </li>
+        <li class="source-row" id="source-line-16" value="16" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>16</span>
+          <span class="source-text">| **Бизнес-процесс** | Информирование держателя карты |</span>
+        </li>
+        <li class="source-row" id="source-line-17" value="17" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>17</span>
+          <span class="source-text">| **Business owner / Product owner / Аналитик** | Учебные роли розничного бизнеса, владельца мобильного банка и аналитика команды |</span>
+        </li>
+        <li class="source-row" id="source-line-18" value="18" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>18</span>
+          <span class="source-text">| **Тип работы** | Новый функционал |</span>
+        </li>
+        <li class="source-row" id="source-line-19" value="19" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>19</span>
+          <span class="source-text">| **Влияние на ИС** | Мобильный банк, карточный процессинг, сервис уведомлений |</span>
+        </li>
+        <li class="source-row" id="source-line-20" value="20" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>20</span>
+          <span class="source-text">| **Задача в JIRA** | Практикум без Jira-задачи |</span>
+        </li>
+        <li class="source-row" id="source-line-22" value="22" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>22</span>
+          <span class="source-text">### Цели</span>
+        </li>
+        <li class="source-row" id="source-line-23" value="23" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>23</span>
+          <span class="source-text">Дать клиенту возможность узнать о достижении личного бюджета в момент покупки.</span><div class="backlinks"><a href="#R-001">↑ R-001</a></div>
+        </li>
+        <li class="source-row" id="source-line-25" value="25" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>25</span>
+          <span class="source-text">### Архитектура решения</span>
+        </li>
+        <li class="source-row" id="source-line-26" value="26" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>26</span>
+          <span class="source-text">Мобильное приложение → сервис настроек. Карточный процессинг → учёт расходов → сервис push.</span><div class="backlinks"><a href="#R-002">↑ R-002</a></div>
+        </li>
+        <li class="source-row" id="source-line-28" value="28" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>28</span>
+          <span class="source-text">### Дизайн процесса UI</span>
+        </li>
+        <li class="source-row" id="source-line-29" value="29" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>29</span>
+          <span class="source-text">Карты → Расходы → Уведомления. На экране видны переключатель, поле «Порог, ₸», сумма за месяц и кнопка «Сохранить». При ошибке ввода сообщение появляется под полем.</span><div class="backlinks"><a href="#D-07">↑ D-07</a><a href="#R-003">↑ R-003</a><a href="#R-004">↑ R-004</a></div>
+        </li>
+        <li class="source-row" id="source-line-31" value="31" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>31</span>
+          <span class="source-text">### Требования к изменениям</span>
+        </li>
+        <li class="source-row" id="source-line-33" value="33" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>33</span>
+          <span class="source-text">#### BPMN схема процесса</span>
+        </li>
+        <li class="source-row" id="source-line-34" value="34" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>34</span>
+          <span class="source-text">Проведение покупки → пересчёт расходов → проверка порога → при достижении отправка push → завершение.</span><div class="backlinks"><a href="#R-005">↑ R-005</a></div>
+        </li>
+        <li class="source-row" id="source-line-36" value="36" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>36</span>
+          <span class="source-text">#### Функциональные требования</span>
+        </li>
+        <li class="source-row" id="source-line-37" value="37" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>37</span>
+          <span class="source-text">* **Ф-1.** Держатель активной карты KZT задаёт целый порог от 1 000 до 1 000 000 ₸ включительно. По умолчанию уведомление выключено.</span><div class="backlinks"><a href="#qa-scenario-1">↑ QA · Первое действие</a><a href="#qa-scenario-4">↑ QA · Граница значения</a><a href="#R-006">↑ R-006</a></div>
+        </li>
+        <li class="source-row" id="source-line-38" value="38" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>38</span>
+          <span class="source-text">* **Ф-2.** Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки. Возврат уменьшает расходы месяца исходной покупки. Переводы и снятие наличных исключаются.</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#conflict-2-outcome-1">↑ Конфликт 2 · исход 1</a><a href="#R-007">↑ R-007</a></div>
+        </li>
+        <li class="source-row" id="source-line-39" value="39" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>39</span>
+          <span class="source-text">* **Ф-3.** Когда расходы переходят от суммы ниже порога к сумме, равной порогу или выше, клиент получает push. На карту приходится максимум один такой push за календарный месяц.</span><div class="backlinks"><a href="#qa-scenario-3">↑ QA · Повторное наступление условия</a><a href="#D-02">↑ D-02</a><a href="#conflict-1-outcome-1">↑ Конфликт 1 · исход 1</a><a href="#R-008">↑ R-008</a></div>
+        </li>
+        <li class="source-row" id="source-line-40" value="40" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>40</span>
+          <span class="source-text">* **Ф-4.** При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки.</span><div class="backlinks"><a href="#qa-scenario-3">↑ QA · Повторное наступление условия</a><a href="#D-02">↑ D-02</a><a href="#conflict-1-outcome-2">↑ Конфликт 1 · исход 2</a><a href="#R-009">↑ R-009</a></div>
+        </li>
+        <li class="source-row" id="source-line-42" value="42" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>42</span>
+          <span class="source-text">### Sequence Diagram</span>
+        </li>
+        <li class="source-row" id="source-line-43" value="43" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>43</span>
+          <span class="source-text">Процессинг → сервис расходов: проведена покупка. Сервис расходов → настройки: получить порог карты. Сервис расходов → push: передать последние четыре цифры карты и сумму при достижении порога.</span><div class="backlinks"><a href="#R-010">↑ R-010</a></div>
+        </li>
+        <li class="source-row" id="source-line-45" value="45" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>45</span>
+          <span class="source-text">### Нефункциональные требования</span>
+        </li>
+        <li class="source-row" id="source-line-46" value="46" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>46</span>
+          <span class="source-text">Сервис передаёт push на отправку в течение минуты после получения события.</span><div class="backlinks"><a href="#R-011">↑ R-011</a></div>
+        </li>
+        <li class="source-row" id="source-line-48" value="48" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>48</span>
+          <span class="source-text">### Требования к данным</span>
+        </li>
+        <li class="source-row" id="source-line-49" value="49" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>49</span>
+          <span class="source-text">Хранить идентификатор карты, месяц, идентификатор операции, сумму покупки в тиынах, признак отправки и порог в тенге.</span><div class="backlinks"><a href="#R-012">↑ R-012</a></div>
+        </li>
+        <li class="source-row" id="source-line-51" value="51" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>51</span>
+          <span class="source-text">### Требования к интеграции</span>
+        </li>
+        <li class="source-row" id="source-line-52" value="52" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>52</span>
+          <span class="source-text">Приложение читает и сохраняет настройки через дочерний документ «Уведомление о расходах по карте — REST API». Повторная доставка одного события процессинга сохраняет исходный итог.</span><div class="backlinks"><a href="#qa-scenario-2">↑ QA · Повтор действия</a><a href="#R-013">↑ R-013</a></div>
+        </li>
+        <li class="source-row" id="source-line-54" value="54" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>54</span>
+          <span class="source-text">### Требования к тестированию</span>
+        </li>
+        <li class="source-row" id="source-line-56" value="56" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>56</span>
+          <span class="source-text">#### Тестирование требований</span>
+        </li>
+        <li class="source-row" id="source-line-57" value="57" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>57</span>
+          <span class="source-text">заполняются тестировщиками</span>
+        </li>
+        <li class="source-row" id="source-line-59" value="59" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>59</span>
+          <span class="source-text">### Критерии приемки</span>
+        </li>
+        <li class="source-row" id="source-line-61" value="61" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>61</span>
+          <span class="source-text">| Исходные условия | Действие | Ожидаемый результат |</span>
+        </li>
+        <li class="source-row" id="source-line-62" value="62" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>62</span>
+          <span class="source-text">| :--- | :--- | :--- |</span>
+        </li>
+        <li class="source-row" id="source-line-63" value="63" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>63</span>
+          <span class="source-text">| Расходы 48 500 ₸, порог 50 000 ₸ | Провести покупку на 1 500 ₸ | Итог 50 000 ₸ и один push |</span><div class="backlinks"><a href="#R-014">↑ R-014</a></div>
+        </li>
+        <li class="source-row" id="source-line-64" value="64" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>64</span>
+          <span class="source-text">| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ |</span><div class="backlinks"><a href="#D-01">↑ D-01</a><a href="#conflict-2-outcome-2">↑ Конфликт 2 · исход 2</a><a href="#R-015">↑ R-015</a></div>
+        </li>
+        <li class="source-row" id="source-line-65" value="65" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>65</span>
+          <span class="source-text">| Расходы 19 900 ₸, порог 20 000 ₸ | Перевести 500 ₸ | Счётчик показывает 19 900 ₸ |</span><div class="backlinks"><a href="#R-016">↑ R-016</a></div>
+        </li>
+        <li class="source-row" id="source-line-67" value="67" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>67</span>
+          <span class="source-text">### Ревью требований</span>
+        </li>
+        <li class="source-row" id="source-line-68" value="68" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>68</span>
+          <span class="source-text">Документ (версия/дата) в источнике не заполнен. Пункты чек-листа приведены как в шаблоне, отметки не проставлены.</span>
+        </li>
+        <li class="source-row" id="source-line-70" value="70" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>70</span>
+          <span class="source-text">| Проверка | Создано или доступно | Проверено | Примечания |</span>
+        </li>
+        <li class="source-row" id="source-line-71" value="71" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>71</span>
+          <span class="source-text">| :--- | :--- | :--- | :--- |</span>
+        </li>
+        <li class="source-row" id="source-line-72" value="72" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>72</span>
+          <span class="source-text">| Техническое требование зафиксировано и покрывает бизнес-требование | Да / Нет | Да / Нет | |</span><div class="backlinks"><a href="#R-017">↑ R-017</a></div>
+        </li>
+        <li class="source-row" id="source-line-73" value="73" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>73</span>
+          <span class="source-text">| Функциональная спецификация имеет структурированное описание (по стандарту, шаблону) | Да / Нет | Да / Нет | |</span>
+        </li>
+        <li class="source-row" id="source-line-74" value="74" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>74</span>
+          <span class="source-text">| Sequence-диаграммы, предусмотрены взаимодействия систем, компонентов и решений | Да / Нет / Не требуется | Да / Нет / Не требуется | |</span>
+        </li>
+        <li class="source-row" id="source-line-75" value="75" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>75</span>
+          <span class="source-text">| Требование покрывает спецификацию UX/UI дизайна | Да / Нет / Не требуется | Да / Нет / Не требуется | |</span>
+        </li>
+        <li class="source-row" id="source-line-76" value="76" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>76</span>
+          <span class="source-text">| Реализация задачи/проекта предусматривает схему отката решений | Да / Нет / Не требуется | Да / Нет / Не требуется | При невозможности отката — варианты скрытия функционала |</span>
+        </li>
+        <li class="source-row" id="source-line-77" value="77" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>77</span>
+          <span class="source-text">| Требование может быть протестировано | Да / Нет | Да / Нет | |</span>
+        </li>
+        <li class="source-row" id="source-line-78" value="78" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>78</span>
+          <span class="source-text">| Требование предусматривает модель данных или поток, содержит описание | Да / Нет / Не требуется | Да / Нет / Не требуется | |</span>
+        </li>
+        <li class="source-row" id="source-line-79" value="79" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>79</span>
+          <span class="source-text">| Требование не имеет противоречий или явных показателей операционных рисков | Да / Нет | Да / Нет | |</span>
+        </li>
+        <li class="source-row" id="source-line-80" value="80" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>80</span>
+          <span class="source-text">| Требование содержит архитектуру и согласовано с архитекторами | Да / Нет / Не требуется | Да / Нет / Не требуется | Для архитектуры — чек-лист |</span>
+        </li>
+        <li class="source-row" id="source-line-81" value="81" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>81</span>
+          <span class="source-text">| Все изменения, влияющие на иные продукты/системы в требовании, согласованы с ответственными лицами | Да / Нет / Не требуется | Да / Нет / Не требуется | |</span>
+        </li>
+        <li class="source-row" id="source-line-82" value="82" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>82</span>
+          <span class="source-text">| Структура требований не несёт изменений и рисков информационной безопасности | Да / Нет | Да / Нет | По информационной безопасности — чек-лист |</span>
+        </li>
+        <li class="source-row" id="source-line-83" value="83" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>83</span>
+          <span class="source-text">| В требовании присутствует схема полного бизнес-процесса и часть реализуемой доработки | Да / Нет | Да / Нет | |</span>
+        </li>
+        <li class="source-row" id="source-line-84" value="84" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>84</span>
+          <span class="source-text">| Требование носит интеграционный характер и имеет четкую постановку реализации интеграционного взаимодействия | Да / Нет / Не требуется | Да / Нет / Не требуется | |</span>
+        </li>
+        <li class="source-row" id="source-line-85" value="85" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>85</span>
+          <span class="source-text">| Поддерживается версионность документа / зафиксирована | Да / Нет | Да / Нет | |</span>
+        </li>
+        <li class="source-row" id="source-line-87" value="87" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>87</span>
+          <span class="source-text">### Блок согласующих</span>
+        </li>
+        <li class="source-row" id="source-line-89" value="89" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>89</span>
+          <span class="source-text">| Подразделение | ФИО ответственного | Подпись |</span>
+        </li>
+        <li class="source-row" id="source-line-90" value="90" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>90</span>
+          <span class="source-text">| :--- | :--- | :--- |</span>
+        </li>
+        <li class="source-row" id="source-line-91" value="91" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>91</span>
+          <span class="source-text">| | | |</span>
+        </li>
+        <li class="source-row" id="source-line-93" value="93" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>93</span>
+          <span class="source-text">---</span>
+        </li>
+        <li class="source-row" id="source-line-95" value="95" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>95</span>
+          <span class="source-text">## Часть B. REST API</span>
+        </li>
+        <li class="source-row" id="source-line-97" value="97" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>97</span>
+          <span class="source-text">Дочерний документ части A: «Уведомление о расходах по карте — REST API».</span>
+        </li>
+        <li class="source-row" id="source-line-99" value="99" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>99</span>
+          <span class="source-text">### Общие параметры</span>
+        </li>
+        <li class="source-row" id="source-line-101" value="101" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>101</span>
+          <span class="source-text">| Поле | Значение |</span>
+        </li>
+        <li class="source-row" id="source-line-102" value="102" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>102</span>
+          <span class="source-text">| :--- | :--- |</span>
+        </li>
+        <li class="source-row" id="source-line-103" value="103" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>103</span>
+          <span class="source-text">| **Description** | Сохранение порога. Функциональные требования: чтение порога |</span><div class="backlinks"><a href="#R-018">↑ R-018</a></div>
+        </li>
+        <li class="source-row" id="source-line-104" value="104" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>104</span>
+          <span class="source-text">| **REST type** | GET |</span><div class="backlinks"><a href="#R-019">↑ R-019</a></div>
+        </li>
+        <li class="source-row" id="source-line-105" value="105" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>105</span>
+          <span class="source-text">| **Authorization** | Bearer, сессия владельца карты |</span><div class="backlinks"><a href="#R-020">↑ R-020</a></div>
+        </li>
+        <li class="source-row" id="source-line-106" value="106" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>106</span>
+          <span class="source-text">| **Controller** | AlertsController |</span>
+        </li>
+        <li class="source-row" id="source-line-107" value="107" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>107</span>
+          <span class="source-text">| **URL type** | Dev / Prod |</span>
+        </li>
+        <li class="source-row" id="source-line-108" value="108" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>108</span>
+          <span class="source-text">| **Request URL** | Dev: `/alerts/saveLimit` . Prod: — |</span><div class="backlinks"><a href="#D-03">↑ D-03</a><a href="#R-021">↑ R-021</a></div>
+        </li>
+        <li class="source-row" id="source-line-109" value="109" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>109</span>
+          <span class="source-text">| **CURL** | `curl -G &quot;$BASE/alerts/saveLimit&quot; -H &quot;Authorization: Bearer $TOKEN&quot; --data &#x27;cardId=demo-42&amp;amount=50000&amp;enabled=1&#x27;` |</span><div class="backlinks"><a href="#qa-scenario-1">↑ QA · Первое действие</a><a href="#R-022">↑ R-022</a></div>
+        </li>
+        <li class="source-row" id="source-line-110" value="110" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>110</span>
+          <span class="source-text">| **Swagger** | — |</span>
+        </li>
+        <li class="source-row" id="source-line-111" value="111" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>111</span>
+          <span class="source-text">| **Gitlab project** | Учебный контур |</span>
+        </li>
+        <li class="source-row" id="source-line-112" value="112" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>112</span>
+          <span class="source-text">| **Framework** | Учебный контур |</span>
+        </li>
+        <li class="source-row" id="source-line-113" value="113" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>113</span>
+          <span class="source-text">| **Author** | Школа тестирования |</span>
+        </li>
+        <li class="source-row" id="source-line-114" value="114" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>114</span>
+          <span class="source-text">| **Developer** | Команда практикума |</span>
+        </li>
+        <li class="source-row" id="source-line-116" value="116" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>116</span>
+          <span class="source-text">### Логика работы метода</span>
+        </li>
+        <li class="source-row" id="source-line-117" value="117" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>117</span>
+          <span class="source-text">1. Проверить пользовательскую сессию.</span><div class="backlinks"><a href="#R-023">↑ R-023</a></div>
+        </li>
+        <li class="source-row" id="source-line-118" value="118" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>118</span>
+          <span class="source-text">2. Проверить принадлежность карты клиенту.</span><div class="backlinks"><a href="#R-024">↑ R-024</a></div>
+        </li>
+        <li class="source-row" id="source-line-119" value="119" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>119</span>
+          <span class="source-text">3. Проверить сумму и переключатель.</span><div class="backlinks"><a href="#R-025">↑ R-025</a></div>
+        </li>
+        <li class="source-row" id="source-line-120" value="120" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>120</span>
+          <span class="source-text">4. Заменить настройку и вернуть результат сохранения.</span><div class="backlinks"><a href="#R-026">↑ R-026</a></div>
+        </li>
+        <li class="source-row" id="source-line-121" value="121" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>121</span>
+          <span class="source-text">5. При отклонении суммы вернуть прежнее состояние и результат ERROR.</span><div class="backlinks"><a href="#R-027">↑ R-027</a></div>
+        </li>
+        <li class="source-row" id="source-line-123" value="123" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>123</span>
+          <span class="source-text">### Особые правила</span>
+        </li>
+        <li class="source-row" id="source-line-124" value="124" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>124</span>
+          <span class="source-text">1. Целое число тенге, обе границы включены.</span><div class="backlinks"><a href="#qa-scenario-4">↑ QA · Граница значения</a><a href="#R-028">↑ R-028</a></div>
+        </li>
+        <li class="source-row" id="source-line-125" value="125" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>125</span>
+          <span class="source-text">2. Повторное сохранение заменяет действующую настройку.</span><div class="backlinks"><a href="#R-029">↑ R-029</a></div>
+        </li>
+        <li class="source-row" id="source-line-126" value="126" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>126</span>
+          <span class="source-text">3. Изменение порога сохраняет накопленные расходы.</span><div class="backlinks"><a href="#R-030">↑ R-030</a></div>
+        </li>
+        <li class="source-row" id="source-line-128" value="128" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>128</span>
+          <span class="source-text">### Схема</span>
+        </li>
+        <li class="source-row" id="source-line-129" value="129" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>129</span>
+          <span class="source-text">```text</span>
+        </li>
+        <li class="source-row" id="source-line-130" value="130" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>130</span>
+          <span class="source-text">Приложение → AlertsController → хранилище настроек → AlertsController → приложение.</span>
+        </li>
+        <li class="source-row" id="source-line-131" value="131" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>131</span>
+          <span class="source-text">```</span>
+        </li>
+        <li class="source-row" id="source-line-133" value="133" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>133</span>
+          <span class="source-text">### Параметры запроса</span>
+        </li>
+        <li class="source-row" id="source-line-135" value="135" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>135</span>
+          <span class="source-text">#### Path-параметры</span>
+        </li>
+        <li class="source-row" id="source-line-136" value="136" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>136</span>
+          <span class="source-text">Не используются.</span><div class="backlinks"><a href="#R-031">↑ R-031</a></div>
+        </li>
+        <li class="source-row" id="source-line-138" value="138" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>138</span>
+          <span class="source-text">#### Query-параметры</span>
+        </li>
+        <li class="source-row" id="source-line-140" value="140" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>140</span>
+          <span class="source-text">| Parameter | Format | Size | Mandatory | Logic | Description | DB field |</span>
+        </li>
+        <li class="source-row" id="source-line-141" value="141" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>141</span>
+          <span class="source-text">| :--- | :--- | :--- | :--- | :--- | :--- | :--- |</span>
+        </li>
+        <li class="source-row" id="source-line-142" value="142" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>142</span>
+          <span class="source-text">| `cardId` | string | 1–64 | Да | Карта клиента | Идентификатор карты | `card_id` |</span><div class="backlinks"><a href="#R-032">↑ R-032</a></div>
+        </li>
+        <li class="source-row" id="source-line-143" value="143" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>143</span>
+          <span class="source-text">| `amount` | integer | 32 bit | Да | 1 000–1 000 000 | Порог в тенге | `limit_kzt` |</span><div class="backlinks"><a href="#R-033">↑ R-033</a></div>
+        </li>
+        <li class="source-row" id="source-line-144" value="144" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>144</span>
+          <span class="source-text">| `enabled` | integer | 1 знак | Да | 0 или 1 | Признак включения | `enabled` |</span><div class="backlinks"><a href="#R-034">↑ R-034</a></div>
+        </li>
+        <li class="source-row" id="source-line-146" value="146" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>146</span>
+          <span class="source-text">#### Request body</span>
+        </li>
+        <li class="source-row" id="source-line-147" value="147" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>147</span>
+          <span class="source-text">* **Content-Type:** `application/json` .</span><div class="backlinks"><a href="#R-035">↑ R-035</a></div>
+        </li>
+        <li class="source-row" id="source-line-148" value="148" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>148</span>
+          <span class="source-text">* Тело не используется.</span><div class="backlinks"><a href="#R-036">↑ R-036</a></div>
+        </li>
+        <li class="source-row" id="source-line-150" value="150" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>150</span>
+          <span class="source-text">### Ответ</span>
+        </li>
+        <li class="source-row" id="source-line-151" value="151" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>151</span>
+          <span class="source-text">Если результат 200 или 201 — успешный. Если результат 400, 401 и далее — неуспешный.</span><div class="backlinks"><a href="#R-037">↑ R-037</a></div>
+        </li>
+        <li class="source-row" id="source-line-153" value="153" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>153</span>
+          <span class="source-text">| Parameter | Format | Logic | Description | DB field |</span>
+        </li>
+        <li class="source-row" id="source-line-154" value="154" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>154</span>
+          <span class="source-text">| :--- | :--- | :--- | :--- | :--- |</span>
+        </li>
+        <li class="source-row" id="source-line-155" value="155" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>155</span>
+          <span class="source-text">| `result` | string | OK / ERROR | Исход сохранения | — |</span><div class="backlinks"><a href="#D-04">↑ D-04</a><a href="#R-038">↑ R-038</a></div>
+        </li>
+        <li class="source-row" id="source-line-156" value="156" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>156</span>
+          <span class="source-text">| `amount` | string | При успехе | Порог в тенге | `limit_kzt` |</span><div class="backlinks"><a href="#R-039">↑ R-039</a></div>
+        </li>
+        <li class="source-row" id="source-line-157" value="157" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>157</span>
+          <span class="source-text">| `enabled` | string | «0» или «1» | Признак включения | `enabled` |</span><div class="backlinks"><a href="#D-05">↑ D-05</a><a href="#R-040">↑ R-040</a></div>
+        </li>
+        <li class="source-row" id="source-line-158" value="158" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>158</span>
+          <span class="source-text">| `message` | string | При ошибке | Описание ошибки | — |</span><div class="backlinks"><a href="#R-041">↑ R-041</a></div>
+        </li>
+        <li class="source-row" id="source-line-160" value="160" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>160</span>
+          <span class="source-text">### Статусы</span>
+        </li>
+        <li class="source-row" id="source-line-162" value="162" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>162</span>
+          <span class="source-text">**200.** Ответ в случае успешного выполнения метода.  </span><div class="backlinks"><a href="#R-042">↑ R-042</a></div>
+        </li>
+        <li class="source-row" id="source-line-163" value="163" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>163</span>
+          <span class="source-text">**400.** Ответ в случае, если параметры запроса заполнены неверно.</span><div class="backlinks"><a href="#R-043">↑ R-043</a></div>
+        </li>
+        <li class="source-row" id="source-line-165" value="165" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>165</span>
+          <span class="source-text">#### 200. Successful — Created</span>
+        </li>
+        <li class="source-row" id="source-line-166" value="166" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>166</span>
+          <span class="source-text">```json</span>
+        </li>
+        <li class="source-row" id="source-line-167" value="167" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>167</span>
+          <span class="source-text">{&quot;result&quot;:&quot;OK&quot;,&quot;amount&quot;:&quot;50000&quot;,&quot;enabled&quot;:&quot;1&quot;}</span><div class="backlinks"><a href="#R-044">↑ R-044</a></div>
+        </li>
+        <li class="source-row" id="source-line-168" value="168" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>168</span>
+          <span class="source-text">```</span>
+        </li>
+        <li class="source-row" id="source-line-169" value="169" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>169</span>
+          <span class="source-text">или</span>
+        </li>
+        <li class="source-row" id="source-line-170" value="170" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>170</span>
+          <span class="source-text">```json</span>
+        </li>
+        <li class="source-row" id="source-line-171" value="171" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>171</span>
+          <span class="source-text">{&quot;result&quot;:&quot;ERROR&quot;,&quot;message&quot;:&quot;Проверьте сумму&quot;}</span><div class="backlinks"><a href="#R-045">↑ R-045</a></div>
+        </li>
+        <li class="source-row" id="source-line-172" value="172" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>172</span>
+          <span class="source-text">```</span>
+        </li>
+        <li class="source-row" id="source-line-174" value="174" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>174</span>
+          <span class="source-text">**401.** Ответ в случае, если запрос выполнен без необходимой авторизации.  </span><div class="backlinks"><a href="#R-046">↑ R-046</a></div>
+        </li>
+        <li class="source-row" id="source-line-175" value="175" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>175</span>
+          <span class="source-text">**403.** Ответ в случае, если на указанный ресурс доступ запрещен.  </span><div class="backlinks"><a href="#D-06">↑ D-06</a><a href="#conflict-3-outcome-1">↑ Конфликт 3 · исход 1</a><a href="#R-047">↑ R-047</a></div>
+        </li>
+        <li class="source-row" id="source-line-176" value="176" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>176</span>
+          <span class="source-text">**500.** Ответ в случае, если произошла внутренняя ошибка сервера.</span><div class="backlinks"><a href="#R-048">↑ R-048</a></div>
+        </li>
+        <li class="source-row" id="source-line-178" value="178" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>178</span>
+          <span class="source-text">#### 400. Unsuccessful — Bad request</span>
+        </li>
+        <li class="source-row" id="source-line-179" value="179" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>179</span>
+          <span class="source-text">```json</span><div class="backlinks"><a href="#D-04">↑ D-04</a><a href="#D-05">↑ D-05</a></div>
+        </li>
+        <li class="source-row" id="source-line-180" value="180" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>180</span>
+          <span class="source-text">{&quot;message&quot;:&quot;Некорректный запрос&quot;}</span><div class="backlinks"><a href="#R-049">↑ R-049</a></div>
+        </li>
+        <li class="source-row" id="source-line-181" value="181" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>181</span>
+          <span class="source-text">```</span>
+        </li>
+        <li class="source-row" id="source-line-183" value="183" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>183</span>
+          <span class="source-text">#### 401. Unsuccessful — Unauthorized</span>
+        </li>
+        <li class="source-row" id="source-line-184" value="184" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>184</span>
+          <span class="source-text">```json</span><div class="backlinks"><a href="#D-04">↑ D-04</a><a href="#D-05">↑ D-05</a></div>
+        </li>
+        <li class="source-row" id="source-line-185" value="185" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>185</span>
+          <span class="source-text">{&quot;message&quot;:&quot;Требуется вход&quot;}</span><div class="backlinks"><a href="#R-050">↑ R-050</a></div>
+        </li>
+        <li class="source-row" id="source-line-186" value="186" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>186</span>
+          <span class="source-text">```</span>
+        </li>
+        <li class="source-row" id="source-line-188" value="188" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>188</span>
+          <span class="source-text">#### 403. Unsuccessful — Forbidden</span>
+        </li>
+        <li class="source-row" id="source-line-189" value="189" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>189</span>
+          <span class="source-text">Для чужой карты возвращается 404, как и для отсутствующей карты.  </span><div class="backlinks"><a href="#D-06">↑ D-06</a><a href="#conflict-3-outcome-2">↑ Конфликт 3 · исход 2</a><a href="#R-051">↑ R-051</a></div>
+        </li>
+        <li class="source-row" id="source-line-190" value="190" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>190</span>
+          <span class="source-text">**404**</span>
+        </li>
+        <li class="source-row" id="source-line-191" value="191" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>191</span>
+          <span class="source-text">```json</span><div class="backlinks"><a href="#D-04">↑ D-04</a><a href="#D-05">↑ D-05</a></div>
+        </li>
+        <li class="source-row" id="source-line-192" value="192" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>192</span>
+          <span class="source-text">{&quot;message&quot;:&quot;Карта не найдена&quot;}</span><div class="backlinks"><a href="#R-052">↑ R-052</a></div>
+        </li>
+        <li class="source-row" id="source-line-193" value="193" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>193</span>
+          <span class="source-text">```</span>
+        </li>
+        <li class="source-row" id="source-line-195" value="195" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>195</span>
+          <span class="source-text">#### 500. Unsuccessful — Internal server error</span>
+        </li>
+        <li class="source-row" id="source-line-196" value="196" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>196</span>
+          <span class="source-text">```json</span><div class="backlinks"><a href="#D-04">↑ D-04</a><a href="#D-05">↑ D-05</a></div>
+        </li>
+        <li class="source-row" id="source-line-197" value="197" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>197</span>
+          <span class="source-text">{&quot;message&quot;:&quot;Ошибка сервиса&quot;}</span><div class="backlinks"><a href="#R-053">↑ R-053</a></div>
+        </li>
+        <li class="source-row" id="source-line-198" value="198" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>198</span>
+          <span class="source-text">```</span>
+        </li></ol></section>
+    <section class="report-section" aria-labelledby="passport">
+      <h2 id="passport" tabindex="-1">Паспорт прогона</h2>
+      <dl class="facts"><div><dt>Документ</dt><dd>requirements.md</dd></div><div><dt>Строк в документе</dt><dd>198</dd></div><div><dt>SHA-256 документа</dt><dd>e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381</dd></div><div><dt>Провайдер</dt><dd>gemini-api</dd></div><div><dt>Модель</dt><dd>gemini-3.5-flash-lite</dd></div><div><dt>Версия агента</dt><dd>75201382d06c</dd></div><div><dt>Начало · UTC</dt><dd>2026-11-27T11:34:45.408421+00:00</dd></div><div><dt>Длительность · с</dt><dd>107.09</dd></div><div><dt>Лимит параллельных запросов</dt><dd>1</dd></div><div><dt>SHA-256 проверяющего кода</dt><dd>e0edf1e5500510cdc49611c47f5e1d6aaab4e17d68c2b9c6bf6c5013d84c1f37</dd></div><div><dt>Версия формата JSON</dt><dd>2</dd></div><div><dt>Новых обращений к модели</dt><dd>23</dd></div><div><dt>Попыток из контрольных точек</dt><dd>0</dd></div></dl>
+      <h3 class="tokens-heading">Токены этого запуска</h3>
+      <dl class="facts"><div><dt>Вход</dt><dd>87937</dd></div><div><dt>Вход из кеша</dt><dd>18322</dd></div><div><dt>Выход</dt><dd>43606</dd></div><div><dt>Рассуждение</dt><dd>29934</dd></div></dl>
+
+      <details class="attempts">
+        <summary>Попытки · 23</summary>
+        <ol>
+        <li>
+          <p><strong>Сценарии · Отклонена · 2.71 с</strong></p><p>Конфликт 1, first: цитата не найдена в строке 104</p>
+          <dl class="facts"><div><dt>Вход</dt><dd>4057</dd></div><div><dt>Вход из кеша</dt><dd>1793</dd></div><div><dt>Выход</dt><dd>264</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Сценарии · Принята · 4.94 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>4280</dd></div><div><dt>Рассуждение</dt><dd>1892</dd></div><div><dt>Выход</dt><dd>2101</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Правила и примеры · Принята · 7.89 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>864</dd></div><div><dt>Рассуждение</dt><dd>2922</dd></div><div><dt>Выход</dt><dd>3686</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Проверка границы · Принята · 0.91 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>588</dd></div><div><dt>Выход</dt><dd>33</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Прогноз по правилам · Принята · 1.09 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>552</dd></div><div><dt>Выход</dt><dd>145</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Сверка примеров · Отклонена · 3.56 с</strong></p><p>Конфликт 1: для двух исходов повторена одна и та же цитата</p>
+          <dl class="facts"><div><dt>Вход</dt><dd>829</dd></div><div><dt>Рассуждение</dt><dd>994</dd></div><div><dt>Выход</dt><dd>1316</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Сверка примеров · Принята · 4.22 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>1188</dd></div><div><dt>Рассуждение</dt><dd>1523</dd></div><div><dt>Выход</dt><dd>1845</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Поля ответов 1–4 · Принята · 6.3 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>4684</dd></div><div><dt>Рассуждение</dt><dd>2151</dd></div><div><dt>Выход</dt><dd>2672</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 1–28 · Принята · 4.45 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>4033</dd></div><div><dt>Вход из кеша</dt><dd>1839</dd></div><div><dt>Рассуждение</dt><dd>1388</dd></div><div><dt>Выход</dt><dd>2155</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 29–45 · Принята · 7.02 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>3923</dd></div><div><dt>Вход из кеша</dt><dd>1833</dd></div><div><dt>Рассуждение</dt><dd>2109</dd></div><div><dt>Выход</dt><dd>3333</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 46–72 · Принята · 3.67 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>3992</dd></div><div><dt>Вход из кеша</dt><dd>1837</dd></div><div><dt>Выход</dt><dd>1284</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 73–83 · Принята · 4.47 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>3968</dd></div><div><dt>Вход из кеша</dt><dd>1836</dd></div><div><dt>Рассуждение</dt><dd>1315</dd></div><div><dt>Выход</dt><dd>1831</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 84–113 · Принята · 6.76 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>4127</dd></div><div><dt>Вход из кеша</dt><dd>1843</dd></div><div><dt>Рассуждение</dt><dd>2654</dd></div><div><dt>Выход</dt><dd>3193</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 114–144 · Принята · 6.39 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>4111</dd></div><div><dt>Вход из кеша</dt><dd>1842</dd></div><div><dt>Рассуждение</dt><dd>2016</dd></div><div><dt>Выход</dt><dd>2956</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 146–172 · Принята · 7.6 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>4042</dd></div><div><dt>Вход из кеша</dt><dd>1839</dd></div><div><dt>Рассуждение</dt><dd>3046</dd></div><div><dt>Выход</dt><dd>3849</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 174–195 · Принята · 2.76 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>3946</dd></div><div><dt>Вход из кеша</dt><dd>1835</dd></div><div><dt>Выход</dt><dd>1074</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 196–198 · Принята · 3.19 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>3755</dd></div><div><dt>Вход из кеша</dt><dd>1825</dd></div><div><dt>Рассуждение</dt><dd>953</dd></div><div><dt>Выход</dt><dd>1033</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Весь документ · Принята · 8.29 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>9263</dd></div><div><dt>Рассуждение</dt><dd>1031</dd></div><div><dt>Выход</dt><dd>3810</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Сценарии QA · Принята · 9.0 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>5648</dd></div><div><dt>Рассуждение</dt><dd>3213</dd></div><div><dt>Выход</dt><dd>3863</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Построение примера D-01 · Принята · 2.9 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>5396</dd></div><div><dt>Рассуждение</dt><dd>743</dd></div><div><dt>Выход</dt><dd>811</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Построение примера D-02 · Принята · 1.67 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>5278</dd></div><div><dt>Выход</dt><dd>72</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Основания примера D-06 · Принята · 3.28 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>4042</dd></div><div><dt>Рассуждение</dt><dd>954</dd></div><div><dt>Выход</dt><dd>1161</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Построение примера D-06 · Принята · 3.53 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>5371</dd></div><div><dt>Рассуждение</dt><dd>1030</dd></div><div><dt>Выход</dt><dd>1119</dd></div></dl>
+        </li>
+        </ol>
+      </details>
+    </section></main><script>const printButton = document.getElementById('print-report');
+printButton.hidden = false;
+printButton.addEventListener('click', () => window.print());
+let openedForPrint = [];
+window.addEventListener('beforeprint', () => {
+  for (const detail of document.querySelectorAll('main details:not([open])')) {
+    openedForPrint.push(detail);
+    detail.open = true;
+  }
+});
+window.addEventListener('afterprint', () => {
+  for (const detail of openedForPrint) detail.open = false;
+  openedForPrint = [];
+});</script></body></html>

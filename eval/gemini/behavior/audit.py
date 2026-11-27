@@ -25,19 +25,22 @@ def assess(report, fixture):
         passed = all(c["structural_check_passed"] for c in checks)
     else:
         pairs = {}
+        aligned = fixture.endswith("-aligned")
+        violations = [f for f in findings if f["category"] == "нарушение"]
         expected = (("workorder", {4, 5}),) if fixture.startswith("workorder") else (
             ("workshop", {5, 15}), ("edition", {9, 16}))
         for label, lines in expected:
             matches = []
-            for finding in critical:
+            for finding in violations if aligned else critical:
                 sources = {item["line"] for item in finding["evidence"]}
                 witnesses = finding["triage"]["witness"]
-                if (lines <= sources and finding["question"].strip().endswith("?") and
-                    any({w[s]["source"]["line"] for s in ("first", "second")} == lines for w in witnesses)):
+                if lines <= sources and (aligned or (
+                    finding["question"].strip().endswith("?") and any(
+                        {w[s]["source"]["line"] for s in ("first", "second")} == lines for w in witnesses))):
                     matches.append(finding["id"])
             pairs[label] = matches
         assigned = [fid for matches in pairs.values() for fid in matches]
-        passed = (not critical if fixture.endswith("-aligned") else
+        passed = (not critical and not assigned if aligned else
                   len(critical) == len(expected) == len(set(assigned)) and all(len(ids) == 1 for ids in pairs.values()))
     result_questions = [f["id"] for f in findings if all(s in f["question"] for s in
                         ("result", "400", "401", "404", "500"))]
