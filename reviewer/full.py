@@ -1,6 +1,7 @@
 """Build an exhaustive, source-linked review and reconcile findings across the document."""
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from hashlib import sha256
 import json
 import re
@@ -9,7 +10,7 @@ import sys
 from tempfile import NamedTemporaryFile
 from time import monotonic
 
-from . import codex_provider, lifecycle, priority, response_fields
+from . import codex_provider, lifecycle, priority, response_fields, source_refs
 from .contract import (
     EVIDENCE, HTTP_STATUS_INSTRUCTIONS, HTTP_STATUS_POLICY, INSTRUCTIONS, REVIEW, TEXT,
     record, source_http_statuses, validate_review, validate_shape, validate_witness_http,
@@ -234,14 +235,16 @@ def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, d
     attempts = []
     message = prompt
     for attempt in range(3):
+        started_utc = datetime.now(timezone.utc).isoformat()
         start = monotonic()
         try:
             result, usage = codex_provider.complete(message, model, schema)
         except ValueError as exc:
             attempts.append({"stage": stage, "status": "failed", "usage": None,
-                             "seconds": round(monotonic() - start, 2)})
+                             "started_utc": started_utc, "seconds": round(monotonic() - start, 2)})
             raise StageProviderError(stage, str(exc), attempts) from exc
-        entry = {"stage": stage, "status": "accepted", "usage": usage, "seconds": round(monotonic() - start, 2)}
+        entry = {"stage": stage, "status": "accepted", "usage": usage, "started_utc": started_utc,
+                 "seconds": round(monotonic() - start, 2)}
         attempts.append(entry)
         try:
             validate_shape(result, schema, stage)
@@ -266,7 +269,7 @@ def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, d
 def local_batches(semantic, source):
     # Bound both the number of units and the amount of text one worker must annotate.
     weights = [50 + sum(len(source.get(i, "")) for i in range(b["start"], b["end"] + 1)) for b in semantic]
-    groups = max(1, (len(semantic) + 21) // 22)
+    groups = max(1, (len(semantic) + 15) // 16)
     target = max(1, sum(weights) // groups)
     batch = []
     weight = 0
@@ -283,6 +286,7 @@ def local_batches(semantic, source):
 
 def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks=()):
     source = {n: text for n, text in enumerate(lines, 1) if text.strip()}
+    refs, extra_refs = source_refs.references(source)
     segments = segment(lines, pdf_json_blocks)
     json_checks = inspect_examples(lines, segments)
     shapes = object_shapes(lines, segments, json_checks)
@@ -294,11 +298,19 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     chunks = list(local_batches(semantic, source))
     print(f"План проверки · групп строк: {len(chunks)}", file=sys.stderr, flush=True)
 
+    def anchored(stage, instructions, data, schema, verify):
+        if extra_refs:
+            data = {**data, "source_fragments": extra_refs}
+        wire, events = call_stage(stage, instructions + source_refs.INSTRUCTIONS, data,
+                                  source_refs.wire_schema(schema),
+                                  lambda r: verify(source_refs.expand(r, refs)), model, checkpoint, digest)
+        return source_refs.expand(wire, refs), events
+
     def local(batch):
         assigned = [{k: v for k, v in b.items() if k != "section"} for b in batch]
-        return call_stage(f"Блоки {batch[0]['start']}–{batch[-1]['end']}", LOCAL,
+        return anchored(f"Блоки {batch[0]['start']}–{batch[-1]['end']}", LOCAL,
                           {"source": source, "assigned": assigned}, BATCH,
-                          lambda result: check_batch(result, batch, source), model, checkpoint, digest)
+                          lambda result: check_batch(result, batch, source))
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         behavioral = pool.submit(call_stage, "Сценарии", INSTRUCTIONS, blocks, REVIEW,
@@ -383,26 +395,34 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         return dict(result, findings=findings)
 
     print("Сверка требований · начата", file=sys.stderr, flush=True)
-    response, events = call_stage("Весь документ", instruction, payload, MODEL_WHOLE,
-                               verify_whole,
-                               model, checkpoint, digest)
+    response, events = anchored("Весь документ", instruction, payload, MODEL_WHOLE, verify_whole)
     whole = materialize(response)
     whole["findings"].sort(key=lambda f: (priority.ORDER[f["priority"]], min(e["line"] for e in f["evidence"])))
     for i, item in enumerate(whole["findings"], 1):
         item["id"] = f"D-{i:02d}"
     qa_context = [{"question": f["question"], "evidence": f["evidence"]} for f in whole["findings"]]
-    checks, qa_events = call_stage(
-        "Сценарии QA", lifecycle.INSTRUCTIONS, {"source": blocks, "review_questions": qa_context},
-        lifecycle.SCHEMA, lambda r: lifecycle.validate(r, source), model, checkpoint, digest)
+    def review_qa():
+        checks, qa_events = call_stage(
+            "Сценарии QA", lifecycle.INSTRUCTIONS, {"source": blocks, "review_questions": qa_context},
+            lifecycle.SCHEMA, lambda r: lifecycle.validate(r, source), model, checkpoint, digest)
+        return lifecycle.materialize(checks), qa_events
+
     from .executable import build
     result = {"segments": segments, "registry": registry, "whole": whole, "json_checks": json_checks,
-              "priority_policy": priority.POLICY, "lifecycle_checks": lifecycle.materialize(checks),
-              **candidates}
+              "priority_policy": priority.POLICY, **candidates}
     if shapes:
         result["example_shapes"] = shapes
     if choices:
         result["response_field_review"] = fields
-    result["executables"], execution_attempts = build(result, source, model, checkpoint, digest, workers)
+    if workers == 1:
+        result["lifecycle_checks"], qa_events = review_qa()
+        result["executables"], execution_attempts = build(result, source, model, checkpoint, digest, workers)
+    else:
+        with ThreadPoolExecutor(max_workers=1) as qa_pool:
+            qa = qa_pool.submit(review_qa)
+            result["executables"], execution_attempts = build(
+                result, source, model, checkpoint, digest, workers - 1, qa_checks=lambda: qa.result()[0])
+            result["lifecycle_checks"], qa_events = qa.result()
     return result, attempts + events + qa_events + execution_attempts
 
 

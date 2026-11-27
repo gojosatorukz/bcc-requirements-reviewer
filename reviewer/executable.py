@@ -129,7 +129,7 @@ def check_both_sources(evidence, witness, lines):
 
 
 def build_one(fid, witness, source, model, checkpoint, digest, *, finding, proposal_model=None,
-              unresolved_actions=()):
+              unresolved_actions=(), audit_actions=None):
     payload = {"source": source, "witness": witness, "final_finding": finding}
     if unresolved_actions:
         payload["unresolved_actions"] = unresolved_actions
@@ -170,8 +170,11 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, finding, propo
             result = witness_vm.execute(program, source, witness)
             audit_input = {"source": source, "witness": witness, "final_finding": finding,
                            "program": program, "computed": result, **scope}
+            if audit_actions is not None:
+                unresolved_actions = audit_actions()
             if unresolved_actions:
                 audit_input["unresolved_actions"] = unresolved_actions
+                payload["unresolved_actions"] = unresolved_actions
             stage = "audit"
             audit, events = call_stage("Проверка смысла " + fid, AUDITOR + OPERATION_CONTEXT, audit_input, AUDIT,
                                        lambda item: check_audit(item, witness, source), model, checkpoint, digest)
@@ -192,19 +195,24 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, finding, propo
     return unsupported()
 
 
-def build(report, lines, model, checkpoint, digest, workers):
+def build(report, lines, model, checkpoint, digest, workers, *, qa_checks=None):
     witnesses = targets(report, VERSION)
     findings = {finding["id"]: finding for finding in report["whole"]["findings"]}
-    open_actions = [{"action": c["action"], "question": c["question"], "evidence": c["evidence"]}
-                    for c in report.get("lifecycle_checks", {}).get("checks", ())
-                    if c["status"] == "needs_decision"]
+    def open_actions():
+        section = qa_checks() if qa_checks else report.get("lifecycle_checks", {})
+        return [{"action": c["action"], "question": c["question"], "evidence": c["evidence"]}
+                for c in section.get("checks", ()) if c["status"] == "needs_decision"]
+
     items, attempts = [], []
     print(f"План расчётов · примеров: {len(witnesses)}", file=sys.stderr, flush=True)
 
     def construct(item):
         fid, witness = item
+        # A critical pair already has two grounded rules. Only its draft may precede QA.
+        defer = qa_checks is not None and findings[fid]["priority"] == "критический"
         result, events = build_one(fid, witness, lines, model, checkpoint, digest, finding=findings[fid],
-                                   unresolved_actions=open_actions)
+                                   unresolved_actions=() if defer else open_actions(),
+                                   audit_actions=open_actions if defer else None)
         status = {"executed": "подтверждён", "unsupported": "не подтверждён",
                   "provider_unavailable": "модель недоступна"}[result["status"]]
         print(f"Исполняемый пример {fid} · {status}", file=sys.stderr, flush=True)

@@ -37,19 +37,19 @@ class FullReviewTest(unittest.TestCase):
     def test_full_pipeline_no_silent_omissions_or_duplicate_count(self):
         lines = ["# Тест", "X-1. Вернуть OK."]
         source = [{"line": i, "text": t} for i, t in enumerate(lines, 1)]
-        ref = {"line": 2, "quote": "Вернуть OK."}
-        unit = {"role": "требование", "statement": "Вернуть OK", "evidence": ref,
+        ref = {"line": 2, "quote": lines[1]}
+        unit = {"role": "требование", "statement": "Вернуть OK", "evidence": 2,
                 "status": "нужно уточнение", "assessment": "Какое условие запускает ответ?"}
         local = {"rows": [{"start": 1, "note": "Название", "items": []},
                           {"start": 2, "note": "Ответ", "items": [unit]}]}
-        gate = {"status": "можно частично", "rationale": "Требуется условие ответа.", "evidence": [ref]}
-        whole = {"dimensions": [{"criterion": axis, "assessment": "Оценён ответ сервиса.", "evidence": [ref]}
+        gate = {"status": "можно частично", "rationale": "Требуется условие ответа.", "evidence": [2]}
+        whole = {"dimensions": [{"criterion": axis, "assessment": "Оценён ответ сервиса.", "evidence": [2]}
                                 for axis in AXES], "development": gate, "testing": gate, "reconciled": [],
                  "findings": [{"title": "Условие", "category": "нарушение",
                                "triage": {"rule": "implementation_or_contract", "witness": []},
                                "criterion": "полнота", "reason": "Не задано событие.", "impact": "Сценарий не определён.",
                                "owner": "Аналитик", "question": "Когда вернуть OK?", "action": "Уточнить событие.",
-                               "requirements": ["R-001"], "candidates": [], "evidence": [ref]}]}
+                               "requirements": ["R-001"], "candidates": [], "evidence": [2]}]}
 
         def complete(prompt, model, schema):
             name = next(iter(schema["properties"]))
