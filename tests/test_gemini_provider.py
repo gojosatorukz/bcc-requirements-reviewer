@@ -31,6 +31,22 @@ def http_error(code, text):
 
 
 class GeminiProviderTests(unittest.TestCase):
+    def test_transient_unavailability_retries_once_while_quota_and_long_waits_do_not(self):
+        schema = {"type": "object"}
+        with patch.object(gemini_provider, "sleep") as delay, patch.object(
+                gemini_provider, "urlopen", side_effect=[http_error(503, "busy"), response({})]) as send:
+            result, _ = gemini_provider.complete("check", MODEL, "low", schema)
+            self.assertEqual(result, {})
+            self.assertEqual(send.call_count, 2)
+            delay.assert_called_once_with(2)
+        for code, wait in ((429, "1"), (503, "60")):
+            error = http_error(code, "busy")
+            error.headers["Retry-After"] = wait
+            with patch.object(gemini_provider, "urlopen", side_effect=error) as send:
+                with self.assertRaisesRegex(ValueError, f"HTTP {code}"):
+                    gemini_provider.complete("check", MODEL, "low", schema)
+                self.assertEqual(send.call_count, 1)
+
     def setUp(self):
         env = patch.dict(os.environ, {"REVIEW_PROVIDER": "gemini", "GEMINI_API_KEY": FAKE_KEY}, clear=True)
         env.start()
@@ -88,7 +104,8 @@ class GeminiProviderTests(unittest.TestCase):
         self.assertIn("Исправь ошибку", json.loads(requests[2].data)["contents"][0]["parts"][0]["text"])
 
     def test_quota_key_and_transport_errors_are_redacted_and_never_routed_to_codex(self):
-        with patch("reviewer.codex_provider.subprocess.run", side_effect=AssertionError("unexpected Codex call")):
+        with (patch("reviewer.codex_provider.subprocess.run", side_effect=AssertionError("unexpected Codex call")),
+              patch.object(gemini_provider, "sleep")):
             for code, expected in [(400, "HTTP 400"), (401, "HTTP 401"), (403, "HTTP 403"),
                                    (429, "HTTP 429 RESOURCE_EXHAUSTED"), (503, "HTTP 503")]:
                 with self.subTest(code=code), patch("reviewer.gemini_provider.urlopen", side_effect=http_error(
@@ -96,7 +113,7 @@ class GeminiProviderTests(unittest.TestCase):
                     with self.assertRaises(ValueError) as error:
                         codex_provider.complete("private", MODEL)
                     self.assertEqual(str(error.exception), "Gemini API: " + expected)
-                    self.assertEqual(wire.call_count, 1)
+                    self.assertEqual(wire.call_count, 2 if code == 503 else 1)
             with patch.dict(os.environ, {"GEMINI_API_KEY": ""}), patch("reviewer.gemini_provider.urlopen") as wire:
                 with self.assertRaisesRegex(ValueError, "ключ не настроен"):
                     codex_provider.complete("private", MODEL)

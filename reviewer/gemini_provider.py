@@ -4,6 +4,7 @@ from http.client import HTTPException
 import json
 import os
 import re
+from time import sleep
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -42,17 +43,32 @@ def wire_schema(schema):
     return node
 
 
+def open_generation(request):
+    try:
+        return urlopen(request, timeout=120)
+    except HTTPError as exc:
+        delay = (exc.headers or {}).get("Retry-After", "2").strip()
+        if exc.code != 503 or not re.fullmatch(r"[0-9]{1,2}", delay) or int(delay) > 10:
+            raise
+        exc.close()
+        sleep(int(delay))
+    return urlopen(request, timeout=120)
+
+
 def request_json(model, key, body):
     request = Request(ENDPOINT + model + ":generateContent", method="POST",
                       data=json.dumps(body, ensure_ascii=False).encode(),
                       headers={"Content-Type": "application/json", "Accept": "application/json"})
     request.add_unredirected_header("x-goog-api-key", key)
     try:
-        with urlopen(request, timeout=120) as response:
+        with open_generation(request) as response:
             raw = response.read(RESPONSE_LIMIT + 1)
     except HTTPError as exc:
         # Provider diagnostics may contain the submitted document. Only fixed messages escape.
-        diagnostic = exc.read(32_768).decode("utf-8", errors="replace").lower()
+        try:
+            diagnostic = exc.read(32_768).decode("utf-8", errors="replace").lower() if exc.code == 400 else ""
+        finally:
+            exc.close()
         if exc.code == 400 and ("api_key_invalid" in diagnostic or "api key not valid" in diagnostic):
             raise ValueError("Gemini API: ключ отклонён") from None
         if (exc.code == 400 and ("schema" in diagnostic or "too many states" in diagnostic)
