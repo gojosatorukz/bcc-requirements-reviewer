@@ -388,7 +388,7 @@ def render_html(report):
                 f'<p><b>В новой редакции.</b> {escape(decision["reason"])}</p>{refs(decision["evidence"], linked=True)}</section>'
             )
         checks.append(
-            f'<article><h2>{escape(row["id"])} · {escape(row["title"])}</h2>'
+            f'<article id="{escape(row["id"])}"><h2>{escape(row["id"])} · {escape(row["title"])}</h2>'
             f'{headline}<p>{escape(row["reason"])}</p>'
             f'{owner_html}<h3>Прежний вывод</h3><p>{escape(row["prior_reason"])}</p>{refs(row["prior_evidence"])}'
             f'<h3>Цитаты из новой версии</h3>{refs(row["revised_evidence"], linked=True)}'
@@ -426,7 +426,7 @@ h2 {{margin-top: 0}} h3 {{margin-bottom: .35em}}
 a {{color: #174ea6}} :target {{background: #fff3bd}}
 pre, ol li {{white-space: pre-wrap; overflow-wrap: anywhere}}
 summary {{cursor: pointer}}
-</style></head><body><main>
+</style></head><body><main id="report">
 <h1>Повторная проверка замечаний</h1><p>{escape(report["scope"])}</p>
 <p>{escape(run["previous_input_name"])} → {escape(run["input_name"])} · Проверено {len(checks)}</p>
 <p><b>Исходные проблемы в тексте</b> {summary}</p>{owner_summary}

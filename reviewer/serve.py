@@ -13,7 +13,7 @@ import signal
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
-from threading import Lock, Thread
+from threading import BoundedSemaphore, Lock, Thread
 from urllib.parse import parse_qs, unquote, urlsplit
 from uuid import uuid4
 
@@ -28,6 +28,8 @@ STATIC_FILES = {
     "/reviewer/guided.css": "text/css; charset=utf-8",
     "/reviewer/guided.js": "text/javascript; charset=utf-8",
     "/reviewer/execution.css": "text/css; charset=utf-8",
+    "/reviewer/assistant.js": "text/javascript; charset=utf-8",
+    "/reviewer/assistant.css": "text/css; charset=utf-8",
     "/reviewer/explorer.js": "text/javascript; charset=utf-8",
     "/design/concepts/index.html": "text/html; charset=utf-8",
     "/design/concepts/gallery.css": "text/css; charset=utf-8",
@@ -262,6 +264,9 @@ class Workbench:
         self.thread = None
         self.dialogues = {}
         self.pending_dialogues = set()
+        self.assistant_history = {}
+        self.assistant_pending = set()
+        self.assistant_slots = BoundedSemaphore(2)
 
     def import_report(self, raw):
         digest = sha256(raw).hexdigest()
@@ -324,6 +329,68 @@ class Workbench:
         except (ValueError, KeyError, TypeError) as exc:
             raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Расчёт из отчёта не прошёл проверку.") from exc
         return {"sha256": sha, "items": items}
+
+    def ask_assistant(self, baseline, sha, payload):
+        from .assistant import MAX_HISTORY, MAX_QUESTION, respond
+
+        if (type(payload) is not dict or set(payload) - {"question", "focus", "previous"}
+                or not isinstance(payload.get("question"), str) or not payload["question"].strip()
+                or len(payload["question"]) > MAX_QUESTION):
+            raise WorkbenchError(HTTPStatus.BAD_REQUEST, f"Введите вопрос длиной от 1 до {MAX_QUESTION} символов.")
+        question, focus, previous = payload["question"].strip(), payload.get("focus"), payload.get("previous")
+        if ((focus is not None and (not isinstance(focus, str) or not re.fullmatch(r"[\w-]{1,64}", focus)))
+                or (previous is not None and (not isinstance(previous, str) or not re.fullmatch(JOB_ID, previous)))):
+            raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Некорректная ссылка на фрагмент или предыдущий ответ.")
+        if not self.assistant_slots.acquire(blocking=False):
+            raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, "Помощница отвечает на другие вопросы. Попробуйте ещё раз.")
+        registered = False
+        try:
+            path = self.reports(baseline) / "review.json"
+            raw = path.read_bytes()
+            if sha256(raw).hexdigest() != sha:
+                raise WorkbenchError(HTTPStatus.CONFLICT, "Открыта другая версия отчёта. Обновите страницу.")
+            model = self.model or os.environ.get("REVIEW_MODEL", "gpt-6.2-astra")
+            identity = (baseline, sha, model)
+            history = []
+            if previous:
+                with self.lock:
+                    saved = self.assistant_history.get(previous)
+                    if not saved or saved[0] != identity:
+                        raise WorkbenchError(HTTPStatus.GONE, "Этот диалог больше недоступен. Начните новый разговор.")
+                    if previous in self.assistant_pending:
+                        raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, "Ответ на этот вопрос ещё готовится.")
+                    history = saved[1]
+                    self.assistant_pending.add(previous)
+                    registered = True
+            try:
+                report = json.loads(raw)
+                answer, references = respond(report, sha, question, focus, history, model)
+            except KeyError as exc:
+                raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Формат отчёта не поддерживается помощницей.") from exc
+            except LookupError as exc:
+                raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Выбранный фрагмент отсутствует в отчёте.") from exc
+            except (TypeError, ValueError, OSError) as exc:
+                hint = next((v for k, v in SAFE_FAILURES.items() if k in str(exc)), None)
+                raise WorkbenchError(HTTPStatus.BAD_GATEWAY, hint or "Не удалось получить подтверждённый ответ модели. Попробуйте ещё раз.") from exc
+            if sha256((self.reports(baseline) / "review.json").read_bytes()).hexdigest() != sha:
+                raise WorkbenchError(HTTPStatus.CONFLICT, "Версия отчёта изменилась, пока готовился ответ.")
+            token = uuid4().hex
+            turn = {"question": question, "answer": answer, "anchors": [r["anchor"] for r in references]}
+            with self.lock:
+                if previous:
+                    self.assistant_history.pop(previous, None)
+                self.assistant_history[token] = (identity, (history + [turn])[-MAX_HISTORY:])
+                if len(self.assistant_history) > 32:
+                    first = next(k for k in self.assistant_history if k not in self.assistant_pending)
+                    self.assistant_history.pop(first)
+            sources = [{"label": r["label"], "excerpt": r["excerpt"],
+                        "href": f"/reports/{baseline}/review.html?sha256={sha}#{r['anchor']}"} for r in references]
+            return {"answer": answer, "sources": sources, "token": token, "sha256": sha}
+        finally:
+            if registered:
+                with self.lock:
+                    self.assistant_pending.discard(previous)
+            self.assistant_slots.release()
 
     def answer(self, baseline, sha, payload):
         from .clarify import MAX_ANSWER, MAX_TURNS, clarify, next_question
@@ -624,9 +691,24 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             if report:
                 name = report[2]
                 directory = app.reports(report[1])
-                download = name if parse_qs(route.query).get("download") == ["1"] else None
-                self.reply(HTTPStatus.OK, (directory / name).read_bytes(), REPORT_FILES[name], download,
-                           report_digest=name == "review.json")
+                params = parse_qs(route.query, keep_blank_values=True)
+                if "sha256" in params:
+                    expected = params["sha256"]
+                    if len(expected) != 1 or not re.fullmatch(r"[0-9a-f]{64}", expected[0]):
+                        raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Некорректная версия отчёта.")
+                    body = (directory / "review.json").read_bytes()
+                    if sha256(body).hexdigest() != expected[0]:
+                        raise WorkbenchError(HTTPStatus.CONFLICT, "Эта ссылка относится к другой версии отчёта.")
+                    if name == "review.html":
+                        from .render import render_report
+                        try:
+                            body = render_report(json.loads(body)).encode("utf-8")
+                        except (KeyError, TypeError, ValueError) as exc:
+                            raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Не удалось открыть эту версию отчёта.") from exc
+                else:
+                    body = (directory / name).read_bytes()
+                download = name if params.get("download") == ["1"] else None
+                self.reply(HTTPStatus.OK, body, REPORT_FILES[name], download, report_digest=name == "review.json")
                 return
             raise WorkbenchError(HTTPStatus.NOT_FOUND, "Страница не найдена.")
         except WorkbenchError as exc:
@@ -648,6 +730,20 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                     raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Получен неполный JSON-файл.")
                 result = self.server.app.import_report(raw)
                 self.json(HTTPStatus.OK if result["reused"] else HTTPStatus.CREATED, result)
+                return
+            assistant = re.fullmatch(rf"/api/assistant/(demo|{JOB_ID})/([0-9a-f]{{64}})", route.path)
+            if assistant:
+                if route.query or self.headers.get_content_type() != "application/json":
+                    raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Передайте вопрос в формате JSON.")
+                length = self.body_size(24_000)
+                raw = self.rfile.read(length)
+                try:
+                    if len(raw) != length:
+                        raise ValueError("partial request")
+                    payload = json.loads(raw.decode("utf-8"))
+                except (ValueError, UnicodeError, RecursionError) as exc:
+                    raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Не удалось прочитать вопрос.") from exc
+                self.json(HTTPStatus.OK, self.server.app.ask_assistant(*assistant.groups(), payload))
                 return
             simulation = re.fullmatch(rf"/api/simulate/(demo|{JOB_ID})/([0-9a-f]{{64}})/({FINDING_ID})", route.path)
             if simulation:

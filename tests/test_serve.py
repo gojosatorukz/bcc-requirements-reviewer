@@ -110,6 +110,31 @@ class WorkbenchTest(unittest.TestCase):
         self.assertEqual(self.request("GET", "/reports/demo/../review.json")[0], 404)
         self.assertEqual(self.calls, [])
 
+    def test_assistant_http_is_bound_to_the_import_and_verified_html(self):
+        raw = (ROOT / "eval/external-bowling/review.json").read_bytes()
+        record = json.loads(raw)
+        fid, question = [record["whole"]["findings"][0][k] for k in ("id", "question")]
+        imported = self.app.import_report(raw)
+        route = f"/api/assistant/{imported['id']}/{imported['sha256']}"
+        headers = {"Origin": self.origin, "Content-Type": "application/json"}
+        body = json.dumps({"question": "О чём спросить?", "focus": fid}).encode()
+        self.assertEqual(self.request("POST", route, body, {"Content-Type": "application/json"})[0], 403)
+        self.assertEqual(self.request("POST", route, b"[]", headers)[0], 400)
+        self.assertEqual(self.request("POST", route, b"{", headers)[0], 400)
+        self.assertEqual(self.request("POST", route, b" " * 24_001, headers)[0], 413)
+        wrong = route.rsplit("/", 1)[0] + "/" + "f" * 64
+        self.assertEqual(self.request("POST", wrong, body, headers)[0], 409)
+        returned = {"status": "answered", "answer": question, "sources": [{"anchor": fid, "quote": question[:90]}]}
+        with patch("reviewer.codex_provider.complete", return_value=(returned, {})):
+            code, data, _ = self.request("POST", route, body, headers)
+        self.assertEqual(code, 200)
+        result = json.loads(data)
+        href, anchor = result["sources"][0]["href"].split("#")
+        code, html, _ = self.request("GET", href)
+        self.assertEqual(code, 200)
+        self.assertIn(f'id="{anchor}"', html.decode())
+        self.assertEqual(self.request("GET", href.replace(imported["sha256"], "f" * 64))[0], 409)
+
     def test_gallery_serves_only_the_bundled_assets(self):
         directory = self.root / "design" / "concepts"
         directory.mkdir(parents=True)
