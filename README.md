@@ -18,6 +18,8 @@ python3 -m reviewer.serve
 
 **Продолжить чужой разбор.** В разделе запуска раскройте «Открыть сохранённый отчёт (.json)» и выберите полный отчёт объёмом до 8 МиБ. Для пробы откройте [ревью API выписки](eval/executable/runs/named-state.json). В карточке D-01 выберите исход «сертификат отклонён». Обе трактовки вернут `REJECTED`. При временной недоступности подписи они дают разные статусы. Импорт и этот пересчёт работают без модели. Отправка нового ответа владельца и проверка новой редакции требуют подключения. [Что произошло после ответа владельца](eval/executable/named-state/README.md#передача-отчёта-другому-аналитику)
 
+![Рабочее место аналитика. Два исхода первого GET, действие для согласования и ссылки на строки спецификации.](docs/workbench.png)
+
 ## Проверить своё ТЗ
 
 Нужны сеть и авторизованный Codex CLI с доступом к модели. Проверенная конфигурация использует GPT-6.2 Astra. CLI должен поддерживать `--ephemeral`, `--ignore-user-config` и `--output-schema`. Авторизацию хранит Codex. Версия CLI в проверенном прогоне — `0.171.0-alpha.13.2`. [Установка Codex CLI](https://developers.openai.com/codex/cli/) · [Настройки модели и браузера](.env.example)
@@ -62,8 +64,9 @@ python3 -m reviewer requirements.md output/official.json --workers 4
 
 ## Подробнее
 
+- [Три повторных прогона BCC и гостиничных правил](eval/executable/stability/README.md) · [Когда агент отказывается считать неизвестное поведение](eval/executable/scope/README.md) · [Проверка состава JSON-ответа](eval/response-contract/README.md)
 - [Прогон на Word-документе с таблицей комиссии и примером API](eval/word-transfer/README.md)
 - [Диалог с владельцем, проверка новой версии, параметры CLI и кэш](docs/analyst-guide.md)
 - [Проверка частичных ответов и третьего варианта на двух сериях прогонов](eval/freeform-owner/README.md)
-- [Сравнение с одним запросом](eval/blind-clearing/README.md) · [Сравнение Astra и Sol](eval/model-choice/README.md)
+- [Сравнение с одним запросом](eval/blind-clearing/README.md) · [Модели для всего ревью](eval/model-choice/README.md) · [Парное сравнение построения примеров Astra и Sol](eval/witness-routing/README.md)
 - [Самопроверка по четырём критериям](research/market/jury-review.md) · [Сверка 26 контрольных тем с отчётом](eval/official-coverage/README.md) · [Сопоставление с конкурентами](research/market/top-three.md) · [Условия задания](https://github.com/BCC-HUB/ai-requirements-validator-task/tree/928c1aa364265426105b69ba7a3444eac11b22db)
