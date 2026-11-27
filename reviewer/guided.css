@@ -120,3 +120,15 @@
 @container (max-width: 420px) {
   #guided-review .with-calculation .guide-sheet > .guide-back {margin-left: .5rem; margin-right: 0}
 }
+#guided-review .guide-sheet h2.guide-long-question {
+  font-size: clamp(1.4rem, .94rem + 1.5cqi, 2.15rem);
+  line-height: 1.12;
+  letter-spacing: -.035em;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+#guided-review .guide-literal {
+  font: 700 .86em/1.15 ui-monospace, monospace;
+  letter-spacing: -.035em;
+  overflow-wrap: anywhere;
+}

@@ -32,7 +32,7 @@ process.stdout.write(root.innerHTML);
 
 @unittest.skipUnless(shutil.which("node"), "Node.js is required to render guided evidence")
 class GuidedPdfContextTests(unittest.TestCase):
-    def evidence(self, pages=None):
+    def render(self, pages=None, question="Как обработать заявку?"):
         source = {
             1: "Начало длинного условия",
             2: "Досрочный выход < 60 дней считается нарушением.",
@@ -58,7 +58,7 @@ class GuidedPdfContextTests(unittest.TestCase):
             ],
             "whole": {"findings": [{
                 "id": "D-01", "priority": "критический", "category": "нарушение",
-                "evidence": [first, second], "question": "Как обработать заявку?",
+                "evidence": [first, second], "question": question,
                 "candidates": [1],
             }]},
             "conflicts": [witness],
@@ -67,13 +67,24 @@ class GuidedPdfContextTests(unittest.TestCase):
             ["node", "-e", HARNESS, str(GUIDED)],
             input=json.dumps(report), check=True, capture_output=True, text=True,
         ).stdout
-        return ElementTree.fromstring(html).findall(".//figure")
+        return ElementTree.fromstring(html)
+
+    def test_long_question_wraps_api_literals_without_changing_its_text(self):
+        question = ("Если внешний сервис отвечает <error> & клиент запрашивает результат до повторной попытки, "
+                    "какой статус вернуть — AWAITING_SIGNATURE или MANUAL_REVIEW?")
+        title = self.render(question=question).find(".//h2")
+        self.assertEqual("".join(title.itertext()), question)
+        self.assertIsNone(title.find("error"))
+        self.assertEqual(title.get("class"), "guide-long-question")
+        self.assertEqual([(code.text, code.find("wbr").tail) for code in title.findall("code")],
+                         [("AWAITING_", "SIGNATURE"), ("MANUAL_", "REVIEW")])
+        self.assertIsNone(self.render().find(".//h2").get("class"))
 
     def test_pdf_shows_quote_and_collapsed_same_page_context(self):
-        first, second = self.evidence([
+        first, second = self.render([
             {"start": 1, "end": 6, "page": 1},
             {"start": 7, "end": 7, "page": 2},
-        ])
+        ]).findall(".//figure")
         cite = first.find("figcaption/a")
         self.assertEqual(cite.text, "Строка 2 · с. 1 ↗")
         self.assertEqual(cite.attrib["href"], "/review.html#source-line-2")
@@ -95,7 +106,7 @@ class GuidedPdfContextTests(unittest.TestCase):
                          ["Условие", "Подтверждено", "Результат", "Открыть доступ"])
 
     def test_markdown_keeps_original_layout_without_pdf_metadata(self):
-        first, second = self.evidence()
+        first, second = self.render().findall(".//figure")
         self.assertEqual(first.find("figcaption/a").text, "Строка 2 ↗")
         self.assertIsNone(first.find("details"))
         self.assertIsNone(second.find("details"))

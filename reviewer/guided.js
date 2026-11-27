@@ -5,6 +5,10 @@
   const stages = ["Ситуация", "Решение", "Критерий QA"];
   const escape = value => String(value ?? "").replace(/[&<>"']/g, char =>
     ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"})[char]);
+  function questionMarkup(text) {
+    return escape(text).replace(/[A-Za-z][A-Za-z0-9]*(?:_+[A-Za-z0-9]+)+/g, literal =>
+      '<code class="guide-literal">' + literal.replace(/_+/g, '$&<wbr/>') + '</code>');
+  }
   let cases = [], index = 0, reportUrl, reportIdentity;
   let positions = [];
   let tableHeaders = new Map(), sourceLines = new Map();
@@ -145,14 +149,15 @@
     const selector = cases.length > 1
       ? `<label class="guide-select">Конфликт <select aria-label="Выбрать конфликт">${cases.map(({finding: f}, i) => `<option value="${i}" ${i === index ? "selected" : ""}>${escape(f.id)} · ${escape(f.title ?? ((i+1) + ' из ' + cases.length))}</option>`).join("")}</select></label>`
       : `<span class="guide-select">Конфликт ${escape(finding.id)}</span>`;
+    const question = questionMarkup(finding.question);
     let body;
     if (stage === 0) {
       const scenario = escape(witness.scenario);
-      body = `<h2 tabindex="-1">${escape(finding.question)}</h2><p class="guide-scenario${calculated ? ' has-fold' : ''}">${scenario}</p>
+      body = `<h2 tabindex="-1"${finding.question.length > 110 ? ' class="guide-long-question"' : ''}>${question}</h2><p class="guide-scenario${calculated ? ' has-fold' : ''}">${scenario}</p>
       ${calculated ? `<details class="guide-scenario-fold"><summary>Общий сценарий</summary><p class="guide-scenario">${scenario}</p></details>` : ''}
       <button type="button" data-act="next" class="guide-primary">${calculated ? 'Выбрать исход' : 'Сравнить исходы'} <span aria-hidden="true">→</span></button>`;
     } else if (stage === 1) {
-      body = `<h2 tabindex="-1">Какой исход принять?</h2><p class="guide-context">${escape(finding.question)}</p>
+      body = `<h2 tabindex="-1">Какой исход принять?</h2><p class="guide-context">${question}</p>
       <fieldset class="guide-options"><legend>Ожидаемый результат</legend>${outcomes.map((outcome,i) =>
         `<label><input name="guide-choice" type="radio" value="${i}" ${side === i ? "checked" : ""}><span>${escape(outcome.outcome)}</span></label>`).join("")}</fieldset>
       <div class="guide-actions"><button type="button" data-act="next" class="guide-primary" ${side === null ? "disabled" : ""}>Подготовить критерий <span aria-hidden="true">→</span></button><button type="button" class="guide-back" data-act="back">Назад</button></div>`;
