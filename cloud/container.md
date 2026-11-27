@@ -21,7 +21,7 @@ docker run --rm --network none razbor-tz:local python -m reviewer.executable rep
 
 ## Проверить новый документ
 
-Для профиля Gemini укажите в локальном файле `.env` переменные `REVIEW_PROVIDER=gemini`, `REVIEW_MODEL=gemini-3.5-flash-lite` и `GEMINI_API_KEY`. Docker прочитает их при старте.
+Для профиля Gemini укажите в локальном файле `.env` переменные `REVIEW_PROVIDER=gemini`, `REVIEW_MODEL=gemini-3.6-flash` и `GEMINI_API_KEY`. Docker прочитает их при старте.
 
 ```sh
 docker run --rm --init --env-file .env -p 127.0.0.1:8765:8765 razbor-tz:local python -m cloud.runtime
