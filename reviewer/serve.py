@@ -1081,4 +1081,6 @@ def main():
 
 
 if __name__ == "__main__":
+    from .settings import load_project_env
+    load_project_env()
     main()
