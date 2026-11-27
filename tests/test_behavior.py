@@ -80,7 +80,8 @@ class BehaviorTests(unittest.TestCase):
         self.assertEqual(count_limits.experiments({4:"At most 3,000 parts."}), [])
         self.assertEqual(count_limits.experiments({4:"Не более двух тысяч деталей."}), [])
         refs = {n:{"line":n,"quote":t} for n,t in rules.items()}
-        effect = {"other":8,"added":1,"observable":"leases","scenario":"A new lease is issued with three active.",
+        effect = {"other":8,"added":1,"observable":"leases","setup":"Three active leases.",
+                  "action":"An arrival is registered.", "triggering_event":"Another lease is issued.",
                   "owner":"Lead","question":"May a fourth be issued?","agreement_control":"Start with two."}
         report = count_limits.review({"probes":[{"case":1,"effects":[effect]}]}, cases, {8:rules[8]}, refs)
         pair, = report["conflicts"]

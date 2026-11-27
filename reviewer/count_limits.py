@@ -15,7 +15,7 @@ NUMBERS = {
 BOUND = re.compile(r"\b(?:максимум|не более|не больше|at most|no more than|a maximum of)\s+"
                    r"(?P<num>[0-9]{1,6}|" + "|".join(NUMBERS) + r")(?![\w.,]\d|\w)", re.I)
 NUMBER = {"type": "integer"}
-EFFECT = record(other=NUMBER, scenario=TEXT, observable=TEXT, added=NUMBER,
+EFFECT = record(other=NUMBER, setup=TEXT, action=TEXT, triggering_event=TEXT, observable=TEXT, added=NUMBER,
                 owner=TEXT, question=TEXT, agreement_control=TEXT)
 SCHEMA = record(probes={"type": "array", "items": record(case=NUMBER, effects={"type": "array", "items": EFFECT})})
 
@@ -24,7 +24,9 @@ PROMPT = """Ты выводишь эффект перехода из задан�
 Для каждого case прочитай ОСТАЛЬНЫЕ инструкции продукта в other_rules. Можно ли выполнить
 при этом исходном количестве последовательность допустимых действий, после которой ДРУГАЯ
 норма прямо требует дополнительное событие или объект того же вида? Приведи весь путь:
-как возникло исходное количество, какое условие изменилось, какое действие в итоге даёт прирост.
+setup — как возникло исходное количество, action — какое условие изменилось, triggering_event —
+какое конкретное последующее действие в итоге даёт прирост. Если действие сразу даёт прирост,
+укажи его непосредственный эффект. Для величин из ТЗ можешь выбрать допустимые иллюстративные значения.
 Ранее учтённые события должны сохраниться в той же области учёта. Не переноси значения
 между объектами, интервалами или категориями. Если текст прямо останавливает действие,
 требует освободить место, отменяет прежний эффект или создаёт другую область — effects пуст.
@@ -64,7 +66,8 @@ def review(result, cases, other_rules, anchors):
             observable = effect["observable"].rstrip(". ")
             conflicts.append({
                 "title": "Ограничение и дополнительное действие · " + observable,
-                "scenario": effect["scenario"],
+                "scenario": (f"Исходный учёт: {case['observation']}. {effect['setup']} "
+                             f"{effect['action']} {effect['triggering_event']}"),
                 "first": {"source": anchors[case["anchor"]], "outcome": f"{observable}: {initial} (верхняя граница)."},
                 "second": {"source": anchors[effect["other"]], "outcome": f"{observable}: {initial} + {added} = {initial + added}."},
                 "owner": effect["owner"], "question": effect["question"], "agreement_control": effect["agreement_control"],

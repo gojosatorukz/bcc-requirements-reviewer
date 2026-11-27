@@ -334,10 +334,26 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                           {"source": source, "assigned": assigned}, BATCH,
                           lambda result: check_batch(result, batch, source))
 
-    tasks = [partial(call_stage, "Сценарии", INSTRUCTIONS, blocks, REVIEW,
-                     lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
-                     model, checkpoint, digest)]
-    if codex_provider.provider_name() == "gemini-api":
+    gemini = codex_provider.provider_name() == "gemini-api"
+
+    def scenarios():
+        try:
+            return call_stage("Сценарии", INSTRUCTIONS, blocks, REVIEW,
+                              lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
+                              model, checkpoint, digest)
+        except InvalidStageResult as exc:
+            if not gemini:
+                raise
+            rejected = exc.attempts
+        # Preserve the full-document search when a reader cannot transcribe its quotations.
+        wire, events = call_stage("Сценарии по ссылкам", INSTRUCTIONS +
+            "\nВ этой форме для каждой стороны выбери anchor — числовой ключ из source. Точную цитату подставит рецензент.",
+            {"source": {n: ref["quote"] for n, ref in refs.items()}}, behavior.SCHEMA,
+            lambda r: behavior.expand(r, refs, source), model, checkpoint, digest)
+        return behavior.expand(wire, refs, source), rejected + events
+
+    tasks = [scenarios]
+    if gemini:
         gemini_stage = partial(call_stage, model=model, checkpoint=checkpoint, digest=digest)
         tasks.append(partial(behavior.discover, segments, source, gemini_stage))
     field_start = len(tasks)
@@ -348,7 +364,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         data = {"source": source, "examples": operations, "candidates": batch}
         def verify_fields(r, batch=batch):
             response_fields.verify(r, batch, source)
-        if codex_provider.provider_name() == "gemini-api":
+        if gemini:
             def addressed_fields(stage=stage, data=data, batch=batch, operations=operations):
                 mentions, sample_lines = response_fields.contract_mentions(batch, operations, source)
                 def verify_addressed(result):

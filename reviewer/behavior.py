@@ -132,7 +132,7 @@ def check_comparisons(result, predictions, anchors, rule_ids):
     for check in result["checks"]:
         n = check["example"]
         equal = check["predicted_value"].strip().casefold() == check["printed_value"].strip().casefold()
-        if (check["verdict"] == "agrees" and not equal) or (check["verdict"] == "disagrees" and equal):
+        if check["verdict"] == "disagrees" and equal:
             raise ValueError(f"Строка {n}: вердикт расходится со сравниваемыми значениями. Нормализуй их в одной шкале.")
         if check["verdict"] == "disagrees" and not any(
             anchors[p[a]["anchor"]]["line"] == n and p[b]["anchor"] in rule_ids
@@ -172,7 +172,7 @@ def discover(segments, source, stage):
         cited = [{c["first"]["anchor"], c["second"]["anchor"]} for c in result["conflicts"]]
         for c in result["checks"]:
             equal = c["first_value"].strip().casefold() == c["second_value"].strip().casefold()
-            if c["relation"] == "compatible" and not equal or c["relation"] == "incompatible" and equal:
+            if c["relation"] == "incompatible" and equal:
                 raise ValueError(f"Пара {c['pair']}: вердикт не соответствует нормализованным значениям одной величины")
             if (c["relation"] == "incompatible") != (checks[c["pair"]] in cited):
                 raise ValueError(f"Сверь решение и обе ссылки для пары {c['pair']}")

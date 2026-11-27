@@ -25,7 +25,9 @@ def assess(report, fixture):
         passed = all(c["structural_check_passed"] for c in checks)
     else:
         pairs = {}
-        for label, lines in (("workshop", {5, 15}), ("edition", {9, 16})):
+        expected = (("workorder", {4, 5}),) if fixture.startswith("workorder") else (
+            ("workshop", {5, 15}), ("edition", {9, 16}))
+        for label, lines in expected:
             matches = []
             for finding in critical:
                 sources = {item["line"] for item in finding["evidence"]}
@@ -34,9 +36,9 @@ def assess(report, fixture):
                     any({w[s]["source"]["line"] for s in ("first", "second")} == lines for w in witnesses)):
                     matches.append(finding["id"])
             pairs[label] = matches
-        passed = (not critical if fixture == "museum-aligned" else
-                  len(critical) == 2 and all(len(ids) == 1 for ids in pairs.values())
-                  and pairs["workshop"] != pairs["edition"])
+        assigned = [fid for matches in pairs.values() for fid in matches]
+        passed = (not critical if fixture.endswith("-aligned") else
+                  len(critical) == len(expected) == len(set(assigned)) and all(len(ids) == 1 for ids in pairs.values()))
     result_questions = [f["id"] for f in findings if all(s in f["question"] for s in
                         ("result", "400", "401", "404", "500"))]
     return {"fixture": fixture, "model": report["run"]["model"], "checks_passed": passed,
@@ -49,7 +51,7 @@ def assess(report, fixture):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("fixture", choices=("bcc", "museum", "museum-aligned"))
+    parser.add_argument("fixture", choices=("bcc", "museum", "museum-aligned", "workorder", "workorder-aligned"))
     parser.add_argument("report", type=Path)
     args = parser.parse_args()
     result = assess(json.loads(args.report.read_bytes()), args.fixture)
