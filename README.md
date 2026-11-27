@@ -4,7 +4,7 @@
 
 > Покупку сделали 31 января в 23:58, а банк провёл её 1 февраля в 00:03. Сколько прибавить к расходам за февраль? По строке 38 официального ТЗ выходит **0 ₸**, по строке 64 — **4 000 ₸**. Агент показывает обе цитаты, пересчитывает оба исхода на одном примере и спрашивает владельца продукта, какое правило верное.
 
-[Открыть сайт](https://razbor-tz.onrender.com/) · [Отчёт по официальному ТЗ](https://razbor-tz.onrender.com/reports/demo/review.html) · [Питч · PDF](presentation/pitch/razbor-tz-pitch.pdf) · [Демо со звуком · 68 с](presentation/bcc-demo.mp4) · [Бизнес-модель](docs/business-model.md) · [Задание BCC-HUB × MNU](https://github.com/BCC-HUB/ai-requirements-validator-task)
+[Открыть сайт](https://razbor-tz.onrender.com/) · [Отчёт по официальному ТЗ](https://razbor-tz.onrender.com/reports/demo/review.html) · [Питч · PDF](presentation/pitch/razbor-tz-pitch.pdf) · [Демо со звуком · 2 мин 12 с](presentation/bcc-demo.mp4) · [Бизнес-модель](docs/business-model.md) · [Задание BCC-HUB × MNU](https://github.com/BCC-HUB/ai-requirements-validator-task)
 
 ![Загрузка своего ТЗ и банковский пример с двумя результатами за февраль: 0 и 4 000 ₸](docs/workbench.png)
 
