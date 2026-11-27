@@ -162,3 +162,27 @@ class BehaviorTests(unittest.TestCase):
         self.assertIn("2 + 1 = 3", finding["impact"])
         self.assertIn("максимум 2 или 3?", finding["question"])
         self.assertEqual(summary["testing"]["status"], "можно частично")
+
+    def test_preserving_existing_badges_does_not_witness_creation_above_the_limit(self):
+        from copy import deepcopy
+        from reviewer import count_limits
+        checks = [{"limit_line": 8, "action_line": 5, "initial_limit": 2, "counted_object": "badges",
+                   "applicability": "same_scope", "added": 0, "retained": 2}]
+        refs = [{"line": 5, "quote": "Existing badges remain valid."}, {"line": 8, "quote": "At most two badges."}]
+        w = {"scenario": "Three badges already exist. Open the account.",
+             "first": {"source": refs[0], "outcome": "Three badges remain valid."},
+             "second": {"source": refs[1], "outcome": "Two badges at most."}}
+        f = {"triage": {"witness": [w]}, "evidence": refs, "candidates": [1], "requirements": ["R-4"]}
+        gate = {"status": "заблокировано", "rationale": "Count conflict.", "evidence": refs}
+        summary = dict(findings=[f], reconciled=[], development=dict(gate), testing=dict(gate))
+        prior = deepcopy(summary)
+        count_limits.retire_unreachable_counts(summary, checks)
+        self.assertEqual(summary["findings"], [])
+        self.assertEqual(summary["reconciled"][0]["candidates"], [1])
+        legitimate = deepcopy(prior)
+        count_limits.retire_unreachable_counts(legitimate, [dict(checks[0], added=1)])
+        self.assertEqual(legitimate, prior)
+        w = prior["findings"][0]["triage"]["witness"][0]
+        w["scenario"] = "Two badges exist. Then another is issued."
+        count_limits.retire_unreachable_counts(prior, checks)
+        self.assertEqual(len(prior["findings"]), 1)

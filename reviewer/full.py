@@ -509,6 +509,8 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     whole = materialize(response)
     if proof_ids:
         count_limits.apply_proofs(whole, proof_ids, candidates["conflicts"], registry)
+    if gemini and product["count_checks"]:
+        count_limits.retire_unreachable_counts(whole, product["count_checks"])
         check_whole(whole, registry, candidates["conflicts"], source, http_status_policy=HTTP_STATUS_POLICY)
         check_critical_sources(whole, candidates["conflicts"])
     whole["findings"].sort(key=lambda f: (priority.ORDER[f["priority"]], min(e["line"] for e in f["evidence"])))
@@ -516,9 +518,14 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         item["id"] = f"D-{i:02d}"
     qa_context = [{"question": f["question"], "evidence": f["evidence"]} for f in whole["findings"]]
     def review_qa():
-        checks, qa_events = call_stage(
-            "Сценарии QA", lifecycle.INSTRUCTIONS, {"source": blocks, "review_questions": qa_context},
-            lifecycle.SCHEMA, lambda r: lifecycle.validate(r, source), model, checkpoint, digest)
+        if gemini:
+            checks, qa_events = anchored("Сценарии QA", lifecycle.INSTRUCTIONS,
+                {"source": source, "review_questions": qa_context},
+                lifecycle.SCHEMA, lambda r: lifecycle.validate(r, source))
+        else:
+            checks, qa_events = call_stage(
+                "Сценарии QA", lifecycle.INSTRUCTIONS, {"source": blocks, "review_questions": qa_context},
+                lifecycle.SCHEMA, lambda r: lifecycle.validate(r, source), model, checkpoint, digest)
         return lifecycle.materialize(checks), qa_events
 
     from .executable import build

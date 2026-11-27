@@ -176,6 +176,50 @@ def retained_count(trace, pair):
     return trace["retained"]
 
 
+def claims_above_bound(outcome, phrase, cap):
+    """Look for a quantified claim about this population in the actual outcome."""
+    words = re.findall(r"[\w]+", outcome.casefold())
+    for i, word in enumerate(words):
+        value = int(word) if word.isascii() and word.isdigit() and len(word) <= 6 else NUMBERS.get(word)
+        if value is not None and value > cap and mentions_counted_object(phrase, " ".join(words[i + 1:i + 5])):
+            return True
+    return False
+
+
+def retire_unreachable_counts(whole, checks):
+    unchanged = {}
+    for check in checks:
+        key = (check["limit_line"], check["initial_limit"], check["counted_object"])
+        if check["applicability"] == "same_scope" and check["added"] == 0 and check["retained"] == key[1]:
+            unchanged.setdefault(key, {key[0]}).add(check["action_line"])
+    retired_lines = set()
+    for finding in whole["findings"][:]:
+        for witness in finding["triage"]["witness"]:
+            lines = {witness[s]["source"]["line"] for s in ("first", "second")}
+            evidence = {e["line"] for e in finding["evidence"]}
+            initial = re.split(r"[.!?;]|\bзатем\b|\bthen\b", witness["scenario"], maxsplit=1, flags=re.I)[0]
+            for (_, cap, phrase), stable_lines in unchanged.items():
+                if not lines <= stable_lines or not evidence <= stable_lines or not claims_above_bound(initial, phrase, cap):
+                    continue
+                if not any(claims_above_bound(witness[s]["outcome"], phrase, cap) for s in ("first", "second")):
+                    continue
+                whole["findings"].remove(finding)
+                whole["reconciled"].append({
+                    "requirements": finding["requirements"], "candidates": finding["candidates"],
+                    "evidence": finding["evidence"],
+                    "reason": f"При исходном количестве {cap} цитируемые действия сохраняют этот итог. "
+                              f"Новых единиц («{phrase}») по этим строкам требуется 0. "
+                              "Большее количество в предложенном сценарии уже предполагалось без основания."})
+                retired_lines.update(evidence)
+                break
+    if retired_lines and not whole["findings"]:
+        for name in ("development", "testing"):
+            gate = whole[name]
+            if {e["line"] for e in gate["evidence"]} <= retired_lines:
+                gate.update(status="можно начинать", rationale="Заявленное превышение предела не подтвердилось. "
+                            "В итоговой проверке документа открытых замечаний нет.")
+
+
 def certified(result, pairs, sources, anchors):
     traces = result["traces"]
     if sorted(t["pair"] for t in traces) != [p["pair"] for p in pairs]:
