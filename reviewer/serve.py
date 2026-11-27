@@ -874,7 +874,10 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                     page = re.sub(r"<!--project-button-->.*?<!--/project-button-->", "", page, flags=re.DOTALL)
                 model = app.model or codex_provider.default_model()
                 fallback = codex_provider.fallback_model(model)
-                disclosure = escape(model)
+                providers = {"codex-cli": "Codex CLI", "gemini-api": "Gemini API",
+                             "openai-responses": "OpenAI API", "cloudflare-workers-ai": "Cloudflare Workers AI"}
+                primary = providers[codex_provider.provider_name(model)]
+                disclosure = f"{primary} ({escape(codex_provider.model_name(model))})"
                 if fallback:
                     provider = "OpenAI API" if fallback.provider == "openai-responses" else "Cloudflare Workers AI"
                     disclosure += f". При лимите Gemini текст получит {provider} (" + escape(fallback.name) + ")"

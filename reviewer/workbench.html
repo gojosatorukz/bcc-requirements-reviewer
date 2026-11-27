@@ -254,7 +254,7 @@ a{color:var(--accent);text-underline-offset:.18em}
           <a id="reuse-report-link">Открыть сохранённый отчёт</a>
           <p id="reuse-report-meta"></p>
         </div>
-        <p class="notice">Для полного ревью ТЗ получит модель <strong><!--review-model-->этого сервера</strong>.</p>
+        <p class="notice">Для полного ревью текст будет передан в <strong><!--review-model-->этого сервера</strong>.</p>
         <p id="upload-error" class="error" role="alert" hidden></p>
         <div class="check-actions"><button id="submit" type="submit">Запустить проверку</button>
           <button id="structure-check" class="text-action" type="button" aria-controls="structure-result">Проверить структуру без ИИ</button></div>
@@ -326,7 +326,7 @@ a{color:var(--accent);text-underline-offset:.18em}
       </details>
       <details id="local-review" class="local-help">
         <summary>Проверить ТЗ на своём компьютере</summary>
-        <p>В разделе «Быстрый старт» файла README.md описано, как установить зависимости и подключить свой ключ Gemini. Подставьте имя своего ТЗ в команду запуска. Если на компьютере настроен Codex CLI, в README есть и команда для Astra.</p>
+        <p>В разделе «Быстрый старт» файла README.md есть команда для своего ТЗ и настройки ключей OpenAI API и Gemini для локального запуска. Для авторизованного Codex CLI приведена команда запуска Astra.</p>
         <pre><code>python -m reviewer "Моё ТЗ.md" review.json</code></pre>
         <p>Подходят MD, TXT, DOCX и текстовый PDF. Когда проверка завершится, <a href="#restore-review" data-open-details="restore-review">импортируйте review.json</a>.</p>
       </details>

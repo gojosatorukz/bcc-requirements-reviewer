@@ -9,8 +9,8 @@ services:
     healthCheckPath: /healthz
     envVars:
       - key: REVIEW_PROVIDER
-        value: gemini
+        value: openai
       - key: REVIEW_MODEL
-        value: gemini-3.5-flash-lite
-      - key: GEMINI_API_KEY
+        value: gpt-6.2-sol
+      - key: OPENAI_API_KEY
         sync: false

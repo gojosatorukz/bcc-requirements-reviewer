@@ -124,7 +124,14 @@ class WorkbenchTest(unittest.TestCase):
         self.assertIn("Model A &amp; B", self.request("GET", "/")[1].decode())
         self.app.model = None
         with patch.dict("os.environ", {"REVIEW_PROVIDER": "gemini", "REVIEW_MODEL": ""}):
-            self.assertIn("gemini-3.5-flash-lite", self.request("GET", "/")[1].decode())
+            self.assertIn("Gemini API (gemini-3.5-flash-lite)", self.request("GET", "/")[1].decode())
+        with patch.dict("os.environ", {"REVIEW_PROVIDER": "openai", "OPENAI_API_KEY": "test-primary-secret",
+                        "REVIEW_FALLBACK_PROVIDER": "openai", "REVIEW_FALLBACK_MODEL": "gpt-6.2-sol"}, clear=True):
+            page = self.request("GET", "/")[1].decode()
+            self.assertIn("OpenAI API (gpt-6.2-sol)", page)
+            self.assertIn("ключей OpenAI API и Gemini", page)
+            self.assertNotIn("При лимите Gemini текст получит", page)
+            self.assertNotIn("test-primary-secret", page)
         reserve = {"REVIEW_PROVIDER": "gemini", "REVIEW_FALLBACK_MODEL": "@cf/openai/gpt-oss-120b",
                    "CLOUDFLARE_ACCOUNT_ID": "0" * 32, "CLOUDFLARE_API_TOKEN": "test-reserve-secret"}
         with patch.dict("os.environ", reserve, clear=True):
