@@ -164,19 +164,40 @@ a{color:var(--accent);text-underline-offset:.18em}
 .result-evidence li{padding:.5rem .7rem;background:var(--paper);border-left:2px solid #ec9978;overflow-wrap:anywhere}
 .result-evidence a{display:inline-block;margin-bottom:.15rem;font-weight:690}
 .result-evidence blockquote{white-space:pre-wrap;margin:0}
-.entry{background:#ff784b;border-bottom:2px solid var(--ink)}
-.entry-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.14fr);gap:clamp(1.2rem,5vw,5rem);padding-block:clamp(1.3rem,3.5vw,3rem)}
-.entry-copy{padding-top:clamp(0rem,2.8vw,2.2rem)}
-.entry-copy h1{margin:0;font-size:clamp(2.55rem,6vw,5.35rem);line-height:.97;letter-spacing:-.075em;font-weight:850}
-.entry-copy h1 span{color:#692e28}.workspace .entry-copy p{max-width:36ch;margin:1rem 0;font-size:clamp(1rem,1.6vw,1.15rem)}
-.entry-copy a{display:inline-block;color:var(--ink);font-weight:700}.entry-copy a span{margin-left:.25rem}
+.entry{background:#ff895c;border-bottom:2px solid var(--ink)}
+.entry-grid{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(1.2rem,5vw,5rem);padding-block:clamp(1.4rem,3.4vw,3rem)}
+.entry-copy{min-width:0;align-self:center}
+.entry-copy .example-origin{margin:0 0 .9rem;font-size:.875rem;font-weight:730}
+.entry-copy h1{margin:0;max-width:16ch;font-size:clamp(2.45rem,4.5vw,4rem);line-height:1.04;letter-spacing:-.042em;font-weight:770;text-wrap:balance}
+.entry-copy .scenario{max-width:39ch;margin:.95rem 0 1.2rem;font-size:clamp(1rem,1.55vw,1.18rem)}
+.example-outcomes{max-width:27rem;margin:0 0 1.35rem}
+.example-outcomes figcaption{font-size:.875rem;font-weight:690}
+.example-outcomes dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:.4rem 0 0;border-block:1px solid #733c30}
+.example-outcomes dl div{padding:.55rem .6rem .65rem 0}
+.example-outcomes dl div+div{padding-left:.9rem;border-left:1px solid #733c30}
+.example-outcomes dt{font-size:.875rem}.example-outcomes dd{margin:.16rem 0 0;font-size:clamp(1.7rem,3vw,2.55rem);font-weight:760;line-height:1.1;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+.entry-copy .entry-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem 1rem}
+.entry-actions a{padding:.55rem 0;color:var(--ink);font-size:.9375rem;font-weight:690}
+.entry-actions .report-action{display:inline-flex;align-items:center;min-height:2.85rem;padding:.6rem 1.15rem;border:2px solid var(--ink);border-radius:2rem;background:var(--ink);color:var(--panel);font-size:1rem;text-decoration:none}
+.report-action:hover{background:#49334e}.entry-actions a:focus-visible{outline-color:var(--ink)}
+.local-help{margin-top:.85rem}.local-help summary{width:fit-content;cursor:pointer;font-weight:660}
+.local-help p,.workspace .local-help pre{margin:.55rem 0}.local-help pre{padding:.6rem .75rem;border-left:3px solid var(--field);background:var(--soft);white-space:pre-wrap;overflow-wrap:anywhere;font-size:.9rem}
+.recovery{margin:.75rem 0;padding:.8rem .9rem;background:#fff0c9;border:1px solid #99753e;border-radius:.6rem}
+.recovery-actions{display:flex;align-items:baseline;flex-wrap:wrap;gap:.35rem .95rem;margin-top:.45rem}
+.recovery-actions a,.text-action{color:var(--accent);font:inherit;font-weight:660;text-decoration:underline;text-underline-offset:.18em}
+.text-action{padding:.2rem 0;background:none;border:0;cursor:pointer}
+.check-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem 1rem}
+#structure-check{min-height:2.75rem;text-align:left}
+.structure-result{margin-top:.95rem;padding:.85rem 1rem;border:1px solid var(--line);border-radius:.65rem;background:var(--soft)}
+.workspace .structure-result p{margin:.4rem 0}.structure-result dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem 1rem;margin:.7rem 0}
+.structure-result dt{font-size:.875rem;color:var(--muted)}.structure-result dd{margin:0;font-size:1.2rem;font-weight:720}.structure-result ul{padding-left:1.3rem;margin:.4rem 0;max-height:12rem;overflow:auto;overflow-wrap:anywhere}
 .source-options{display:flex;gap:3px;width:fit-content;max-width:100%;padding:3px;border:1px solid var(--line);border-radius:1.5rem;background:var(--paper)}
 .source-options label{cursor:pointer;position:relative}.source-options input{position:absolute;opacity:0;pointer-events:none;top:0;left:0;width:1px;height:1px;margin:0}
 .source-options span{display:block;padding:.42rem .82rem;border-radius:1.3rem}.source-options input:checked+span{background:var(--ink);color:var(--panel)}
 .source-options input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}.source-options :disabled+span{opacity:.6}
 #pasted-text{display:block;margin:.3rem 0;width:100%;min-height:5rem;resize:vertical;border:1px solid var(--line);border-radius:.55rem;padding:.6rem .7rem;font:inherit;background:var(--panel);color:var(--ink)}
 .report-workspace{display:block}.report-workspace .aside-cards{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
-@media(max-width:49rem){.entry-grid,.report-workspace .aside-cards{grid-template-columns:minmax(0,1fr)}.entry-copy{padding:0}.entry-copy h1 br{display:none}.workspace .entry-copy p{max-width:52ch;margin:.55rem 0}.entry-grid{gap:1rem}}
+@media(max-width:49rem){.entry-grid,.report-workspace .aside-cards{grid-template-columns:minmax(0,1fr)}.entry-copy h1{max-width:20ch}.entry-grid{gap:1.4rem}.entry-copy .scenario{max-width:48ch}}
 @media(max-width:27rem){.source-options span{padding-inline:.6rem}}
 </style>
 <link rel="stylesheet" href="/reviewer/guided.css">
@@ -195,12 +216,20 @@ a{color:var(--accent);text-underline-offset:.18em}
   <div class="entry">
   <div class="workspace entry-grid" id="workspace" tabindex="-1">
     <div class="entry-copy">
-      <h1>Проверить<br> своё ТЗ<span>.</span></h1>
-      <p>Вставьте текст или загрузите документ. Агент сверит требования, таблицы и примеры API, покажет расхождения и подготовит вопросы владельцу.</p>
-      <a href="#review-title" id="open-worked-example">Разобрать пример из банка <span aria-hidden="true">↓</span></a>
+      <p class="example-origin">Сохранённый пример · BCC-HUB × MNU</p>
+      <h1>К какому месяцу отнести покупку?</h1>
+      <p class="scenario">Клиент заплатил 31 января, банк провёл платёж 1 февраля. Два пункта ТЗ дают разные расходы за февраль.</p>
+      <figure class="example-outcomes">
+        <figcaption>Изменение февральского счётчика</figcaption>
+        <dl><div><dt>По дате покупки</dt><dd>0 ₸</dd></div><div><dt>По дате проведения</dt><dd>4 000 ₸</dd></div></dl>
+      </figure>
+      <div class="entry-actions">
+        <a class="report-action" id="saved-report-link" href="/reports/demo/review.html" target="_blank" rel="noopener" aria-label="Открыть готовый отчёт по примеру в новой вкладке">Открыть готовый отчёт</a>
+        <a href="#review-title" id="open-worked-example">Разобрать пример из банка</a>
+      </div>
     </div>
     <section class="card" aria-labelledby="upload-heading">
-      <h2 id="upload-heading" tabindex="-1">Новая проверка</h2>
+      <h2 id="upload-heading" tabindex="-1">Проверить своё ТЗ</h2>
       <form id="upload-form">
         <fieldset id="input-sources">
           <legend>Источник документа</legend>
@@ -247,20 +276,44 @@ a{color:var(--accent);text-underline-offset:.18em}
           <a id="reuse-report-link">Открыть сохранённый отчёт</a>
           <p id="reuse-report-meta"></p>
         </div>
-        <p class="notice">При запуске текст документа получит модель <strong><!--review-model-->этого сервера</strong>.</p>
+        <p class="notice">Для ревью требований текст получит модель <strong><!--review-model-->этого сервера</strong>. Проверку структуры выполняет сам сервер.</p>
         <p id="upload-error" class="error" role="alert" hidden></p>
-        <button id="submit" type="submit">Запустить проверку</button>
+        <div class="check-actions"><button id="submit" type="submit">Запустить проверку</button>
+          <button id="structure-check" class="text-action" type="button" aria-controls="structure-result">Проверить структуру без ИИ</button></div>
       </form>
+      <section id="structure-result" class="structure-result" aria-labelledby="structure-title" hidden>
+        <h3 id="structure-title" tabindex="-1">Структура документа</h3>
+        <p id="structure-state" role="status" aria-atomic="true"></p>
+        <dl id="structure-counts" hidden></dl>
+        <p id="structure-summary" hidden></p>
+        <ul id="structure-diagnostics" aria-label="Замечания к примерам JSON" hidden></ul>
+      </section>
       <details class="restore-review" id="restore-review">
-        <summary>Открыть сохранённый отчёт (.json)</summary>
+        <summary>Импортировать свой отчёт (.json)</summary>
         <label for="import-file">JSON полного ревью</label>
         <input id="import-file" type="file" accept=".json,application/json" aria-describedby="import-hint import-state">
         <small id="import-hint">До 8 МиБ. При открытии модель не вызывается.</small>
         <p id="import-state" role="status" aria-live="polite"></p>
       </details>
+      <details id="local-review" class="local-help">
+        <summary>Проверить ТЗ на своём компьютере</summary>
+        <p>Понадобится доступ к исходникам проекта и своя модель. Настройте Codex CLI или свой ключ Gemini по <a href="https://github.com/gojosatorukz/bcc-requirements-reviewer#локальный-запуск" target="_blank" rel="noopener">инструкции запуска</a>. Для полного ревью выполните команду из папки проекта, подставив имя своего файла.</p>
+        <pre><code>python -m reviewer "Моё ТЗ.md" review.json</code></pre>
+        <p>Подходят MD, TXT, DOCX и текстовый PDF. Когда проверка завершится, <a href="#restore-review" data-open-details="restore-review">импортируйте review.json</a>.</p>
+      </details>
       <div id="run-status" class="status-box" hidden>
         <h3>Статус проверки</h3>
         <p id="status-message" role="status" aria-atomic="true"></p>
+        <div class="recovery" id="run-recovery" hidden>
+          <strong>Как продолжить со своим ТЗ</strong>
+          <p><a id="recovery-structure" href="#structure-check">Проверить структуру без ИИ</a> можно сейчас. Для смыслового ревью повторите запрос позже или используйте свою модель.</p>
+          <div class="recovery-actions">
+            <button id="download-source" class="text-action" type="button" hidden>Скачать введённый текст</button>
+            <a href="#local-review" data-open-details="local-review">Локальная проверка</a>
+            <a href="#restore-review" data-open-details="restore-review">Импорт JSON</a>
+          </div>
+          <p><a href="/reports/demo/review.html" target="_blank" rel="noopener">Посмотреть сохранённый пример банка</a></p>
+        </div>
         <p id="run-clock" role="timer" aria-live="off" hidden></p>
         <div id="coverage" hidden>
           <label id="coverage-label" for="coverage-meter" aria-live="polite" aria-atomic="true"></label>
@@ -464,6 +517,7 @@ let findingLoad = null;
 let recheckLoad = null;
 let reuseCheck = null;
 let reuseOffer = null;
+let structureRequest = null;
 const reportFingerprints = new Map();
 
 function save() {
@@ -488,6 +542,8 @@ function refreshControls() {
   get('finding-reset').disabled = busy;
   get('use-owner-decisions').disabled = busy;
   get('submit').disabled = busy || (recheck && (!baseline.value || Boolean(findingLoad)));
+  get('structure-check').disabled = busy || Boolean(structureRequest);
+  get('download-source').hidden = !fromText || !pastedText.value.trim();
   get('discussion-recheck').disabled = busy || answering;
   renderDecisionPreflight();
 }
@@ -625,15 +681,39 @@ function activeDocument() {
 }
 
 function syncInputSource() {
+  clearStructure();
   file = activeDocument();
   showError('');
   checkReportReuse();
 }
 
 pastedText.addEventListener('input', () => {
+  clearStructure();
+  get('download-source').hidden = !pastedText.value.trim();
   clearReportReuse();
   file = null;
   showError('');
+});
+
+document.querySelectorAll('[data-open-details]').forEach(link => {
+  link.addEventListener('click', event => {
+    event.preventDefault();
+    const panel = get(link.dataset.openDetails);
+    panel.open = true;
+    panel.querySelector('summary').focus();
+    panel.scrollIntoView({block:'start'});
+  });
+});
+
+get('download-source').addEventListener('click', () => {
+  const source = activeDocument();
+  if (!source || form.elements.source.value !== 'text') return;
+  const url = URL.createObjectURL(source);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = source.name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
 function clearReportReuse() {
@@ -715,10 +795,18 @@ get('reuse-report-link').addEventListener('click', async event => {
 
 function setStatus(message, error = false, running = false) {
   get('run-status').hidden = false;
+  get('run-recovery').hidden = true;
   const target = get('status-message');
   if (target.textContent !== message) target.textContent = message;
   target.classList.toggle('error', error);
   target.toggleAttribute('data-running', running);
+}
+
+function showRunFailure(message, httpStatus) {
+  setStatus(message, true);
+  if (httpStatus === 429 || httpStatus === 503 || /лимит|квот|модел|gemini|codex|агент занят/i.test(message)) {
+    get('run-recovery').hidden = false;
+  }
 }
 
 function showProgress(progress) {
@@ -1118,7 +1206,7 @@ async function poll(run) {
     setCompanionRun(inProgress ? description : '', run.submittedAt, run.name);
     setStatus(label + ' · ' + description, status.state === 'failed', inProgress);
     if (status.state === 'failed') {
-      setStatus(label + ' · ' + (status.error || stateLabels.failed), true);
+      showRunFailure([label, run.name].filter(Boolean).join(' · ') + '. ' + (status.error || stateLabels.failed));
     } else if (status.state === 'done') {
       const reportUrl = '/reports/' + run.id + '/review.html';
       get('run-html').href = reportUrl;
@@ -1199,10 +1287,7 @@ drop.addEventListener('drop', event => {
   selectFile(files[0]);
 });
 
-form.addEventListener('submit', async event => {
-  event.preventDefault();
-  if (busy || (mode() === 'recheck' && findingLoad)) return;
-  dismissRecheck();
+function validatedDocument() {
   const fromText = form.elements.source.value === 'text';
   const selectedFile = activeDocument();
   const input = fromText ? pastedText : fileInput;
@@ -1220,6 +1305,83 @@ form.addEventListener('submit', async event => {
     input.focus();
     return;
   }
+  return selectedFile;
+}
+
+function documentUpload(file) {
+  return {method:'POST', headers:{'X-File-Name':encodeURIComponent(file.name)}, body:file};
+}
+
+function clearStructure() {
+  structureRequest?.abort();
+  structureRequest = null;
+  get('structure-check').disabled = busy;
+  get('structure-result').hidden = true;
+}
+
+function jsonDiagnostic(message) {
+  const messages = {
+    'Expecting value':'Ожидалось значение JSON.',
+    'Expecting property name enclosed in double quotes':'Имя поля должно быть в двойных кавычках.',
+    "Expecting ':' delimiter":'После имени поля ожидается двоеточие.',
+    "Expecting ',' delimiter":'Между элементами ожидается запятая.',
+    'Extra data':'После значения JSON есть лишние данные.',
+    'Unterminated string starting at':'Строка осталась без закрывающей кавычки.',
+  };
+  return Object.hasOwn(messages, message) ? messages[message] : message;
+}
+
+get('structure-check').addEventListener('click', async () => {
+  const selected = validatedDocument();
+  if (!selected || structureRequest) return;
+  const controller = new AbortController();
+  structureRequest = controller;
+  const state = get('structure-state'), counts = get('structure-counts');
+  const summary = get('structure-summary'), list = get('structure-diagnostics');
+  showError('');
+  get('structure-check').disabled = true;
+  get('structure-result').hidden = false;
+  counts.hidden = summary.hidden = list.hidden = true;
+  get('structure-title').focus({preventScroll:true});
+  get('structure-result').scrollIntoView({block:'nearest'});
+  state.classList.remove('error');
+  state.textContent = 'Читаем документ…';
+  try {
+    const result = await request('/api/structure', {...documentUpload(selected), signal:controller.signal});
+    if (structureRequest !== controller) return;
+    counts.replaceChildren(metric('Строк документа', result.lines), metric('Блоков документа', result.units),
+      metric('Строк таблиц', result.tables), metric('Примеров JSON', result.examples));
+    counts.hidden = false;
+    list.replaceChildren(...result.diagnostics.map(item => resultText('li', 'Строка ' + item.line + ' · ' + jsonDiagnostic(item.message))));
+    list.hidden = !result.diagnostics.length;
+    summary.textContent = result.diagnostics.length ? 'Замечания к примерам JSON' :
+      result.examples ? 'В распознанных примерах JSON ошибок синтаксиса не найдено.' : 'В документе не распознано примеров JSON.';
+    summary.hidden = false;
+    state.textContent = '«' + result.filename + '» · Проверка разметки и синтаксиса. Для поиска противоречий запустите ревью требований.';
+  } catch (error) {
+    if (structureRequest !== controller) return;
+    state.classList.add('error');
+    state.textContent = 'Не удалось проверить структуру. ' + error.message;
+  } finally {
+    if (structureRequest === controller) {
+      structureRequest = null;
+      get('structure-check').disabled = busy;
+    }
+  }
+});
+
+get('recovery-structure').addEventListener('click', event => {
+  event.preventDefault();
+  if (structureRequest) get('structure-title').focus();
+  else get('structure-check').click();
+});
+
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (busy || (mode() === 'recheck' && findingLoad)) return;
+  dismissRecheck();
+  const selectedFile = validatedDocument();
+  if (!selectedFile) return;
   const selectedMode = mode();
   const selectedBaseline = baseline.value;
   const params = new URLSearchParams({mode:selectedMode});
@@ -1249,9 +1411,7 @@ form.addEventListener('submit', async event => {
   setCompanionRun('Отправка ТЗ', submittedAt, selectedFile.name);
   setStatus('Загружаем документ…', false, true);
   try {
-    const response = await request('/api/runs?' + params, {
-      method:'POST', headers:{'X-File-Name':encodeURIComponent(selectedFile.name)}, body:selectedFile,
-    });
+    const response = await request('/api/runs?' + params, documentUpload(selectedFile));
     if (!idPattern.test(response.id)) throw new Error('Сервер не вернул номер прогона.');
     session.last = {id:response.id, name:selectedFile.name, mode:selectedMode, findings, submittedAt};
     if (params.has('dialogue_snapshot')) {
@@ -1266,7 +1426,7 @@ form.addEventListener('submit', async event => {
     setBrandState('failed');
     setCompanionRun('');
     if (error.status === 404 && selectedBaseline && selectedBaseline !== 'demo') forget(selectedBaseline);
-    setStatus(error.message || 'Не удалось отправить документ.', true);
+    showRunFailure(error.message || 'Не удалось отправить документ.', error.status);
     busy = false;
     refreshControls();
     checkReportReuse();
@@ -1402,7 +1562,7 @@ function publishReport(report, id, sha) {
   rememberReportFingerprint(id, report);
   const reportUrl = '/reports/' + id + '/review.html';
   showLifecycleChecks(report, reportUrl, key || (reportUrl + report.run.started_utc));
-  get('open-worked-example').textContent = id === 'demo' ? 'Разобрать пример из банка ↓' : 'Открыть текущий разбор ↓';
+  get('open-worked-example').textContent = id === 'demo' ? 'Разобрать пример из банка' : 'К разбору своего ТЗ';
   const activeLink = get('active-report-link');
   activeLink.href = reportUrl;
   activeLink.target = '_blank';
@@ -1412,7 +1572,7 @@ function publishReport(report, id, sha) {
   download.hidden = false;
   activeLink.setAttribute('aria-label', 'Открыть ' + (id === 'demo' ? 'демо-отчёт' : 'текущий отчёт') + ' в новой вкладке');
   const name = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
-  get('review-document').textContent = [id === 'demo' ? 'Демо' : 'Полное ревью', name].filter(Boolean).join(' · ');
+  get('review-document').textContent = [id === 'demo' ? 'Сохранённый пример банка' : 'Полное ревью', name].filter(Boolean).join(' · ');
   const origin = get('review-origin');
   origin.hidden = !session.full.some(item => item.id === id && item.imported);
   if (!origin.hidden) {
