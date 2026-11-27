@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -52,6 +53,10 @@ class FullReviewTest(unittest.TestCase):
 
         def complete(prompt, model, schema):
             name = next(iter(schema["properties"]))
+            if name == "dimensions":
+                entry, = json.loads(prompt.rsplit("\n", 1)[1])["registry"]
+                self.assertEqual(entry["quote"], ref["quote"])
+                self.assertNotIn("statement", entry)
             qa = {"checks": [], "skipped": [{"axis": axis, "reason": "Только безусловный ответ."}
                                              for axis in lifecycle.AXES]}
             return deepcopy({"rows": local, "dimensions": whole, "conflicts": {"conflicts": []},
