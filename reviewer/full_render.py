@@ -540,6 +540,7 @@ def render_full(report):
 .finding-export{display:inline-block;margin:.45rem 0;padding:.25rem .5rem;border:1px solid var(--line);border-radius:3px;font-size:.9rem}
 .finding-export:hover{background:var(--green)}
 .full table{width:100%;border-collapse:collapse}.full td,.full th{padding:.55rem;vertical-align:top;border-bottom:1px solid var(--line);text-align:left}
+.full .print-note{display:none}
 .full th{background:var(--green)}.full summary{cursor:pointer}.full tr:target,.finding:target{background:var(--warm)}
 .full .scroll{overflow:auto}.full td:first-child{min-width:4.6em}.full section>h2{border-top:2px solid var(--deep);padding-top:1rem}
 #response-fields table{table-layout:fixed}#response-fields th:first-child{width:16%}
@@ -561,7 +562,9 @@ def render_full(report):
 @page{size:A4;margin:15mm 15mm 18mm;@bottom-right{content:counter(page) " / " counter(pages);font:9pt sans-serif;color:#52625b}}
 @media print{
  html{font-size:12px}body,main,.full{font-family:Arial,sans-serif;background:white}
- header,nav,.skip-link,.backlinks,.decision-draft,.finding-export,.full .report-toolbar,.registry-nav{display:none}
+ header,nav,.skip-link,.backlinks,.decision-draft,.finding-export,.full .report-toolbar,.registry-nav,
+ .full #coverage details,.full .attempts{display:none}
+ .full .print-note{display:block}
  .full #actions.after-brief{break-before:page}
  main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
  .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
@@ -574,6 +577,7 @@ def render_full(report):
  .full .registry{table-layout:fixed}.full .registry th:first-child{width:10%}.full .registry th:nth-child(2){width:49%}
  .full .registry thead{display:table-header-group}.full .registry tr{display:table-row}.full .registry td{display:table-cell}
  .full td,.full th{padding:4pt}.full .registry td:first-child{white-space:nowrap}
+ .full .registry td p{margin:2pt 0}.full .registry td p:empty{display:none}
  .full .source-row,.full tr,.full blockquote{break-inside:avoid}.full .source-text{font:8.5pt/1.3 Arial,sans-serif}
  .full .finding{padding:6pt 0}.full small{font-size:8pt}.full blockquote{margin:2pt 0}
  .full .facts{display:flex;flex-wrap:wrap;gap:3pt 9pt}.full .facts div{padding:2pt 0}.full .facts dd{margin:1pt 0}
@@ -603,6 +607,7 @@ def render_full(report):
 <section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: {len(scenario_parts)}. У каждого указано решение итогового ревью.</p>
 {''.join(scenario_parts)}{('<h3>Согласованные прочтения</h3><ol>'+''.join(closed)+'</ol>') if closed else ''}</section>
 <section id="coverage"><h2>Карта покрытия исходника</h2><p>Учтено {len(lines)} непустых строк, {len(segments)} блоков, {forms['шапка таблицы']} таблиц, {forms['строка таблицы']} строк данных таблиц и {forms['пример json']} блоков JSON. Структура, шаблоны и контекст имеют отдельные записи.</p>
+<p class="print-note">Подробная карта блоков и журнал обращений к модели доступны в полном HTML и исходном JSON этого прогона.</p>
 <details><summary>Открыть все блоки и основания классификации</summary><table><thead><tr><th>Источник</th><th>Тип</th><th>Назначение и пункты</th></tr></thead><tbody>{''.join(routing)}</tbody></table></details></section>
 <section id="source"><h2>Текст исходного документа</h2><ol class="source-list">{render_source(lines,backlinks,run.get("pages", []),run.get("locations", []))}</ol></section>{render_passport(run,2)}</main><script>{PRINT_SCRIPT}</script></body></html>
 '''
