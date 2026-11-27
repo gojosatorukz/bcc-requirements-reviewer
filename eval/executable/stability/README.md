@@ -48,3 +48,5 @@
 ```bash
 python3 eval/executable/stability/replay.py /путь/к/requirements.md
 ```
+
+Ложное числовое утверждение D-09 воспроизведено на том же базовом JSON и устранено в новой версии движка. [Сопоставление на тех же замечаниях](../scope/README.md)
