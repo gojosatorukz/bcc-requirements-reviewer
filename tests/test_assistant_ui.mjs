@@ -68,3 +68,44 @@ test('a late answer stays with its report and expired continuations preserve the
     assert.equal(await page.locator('#assistant-open').evaluate(el=>document.activeElement===el),true);
   } finally { await browser.close(); }
 });
+
+test('the recheck action discusses the revision while the header retains the full review', {skip:!base}, async () => {
+  const {chromium} = require(process.env.PLAYWRIGHT_PACKAGE || 'playwright');
+  const browser = await chromium.launch({headless:true, executablePath:process.env.CHROME_BINARY});
+  try {
+    const page = await browser.newPage();
+    const id = 'c'.repeat(32);
+    const file = new URL('../runs/bcc-release/owner/wrong-revision.json', import.meta.url);
+    const bytes = await readFile(file);
+    const sha = createHash('sha256').update(bytes).digest('hex');
+    const report = JSON.parse(bytes);
+    await page.addInitScript(({id,name}) => {
+      sessionStorage.setItem('reviewer.workbench.v1',JSON.stringify({last:{id,mode:'recheck',name},full:[]}));
+    },{id,name:report.run.input_name});
+    await page.route('**/api/status/'+id,route=>route.fulfill({json:{state:'done',mode:'recheck',progress:[]}}));
+    await page.route('**/reports/'+id+'/review.json',route=>route.fulfill({
+      body:bytes,headers:{'Content-Type':'application/json','X-Report-SHA256':sha},
+    }));
+    await page.route('**/api/assistant/'+id+'/'+sha,route=>{
+      assert.equal(route.request().postDataJSON().focus,report.checks[0].id);
+      return route.fulfill({json:{answer:'Цитата из новой редакции.',token:'c'.repeat(32),sha256:sha,
+        sources:[{label:'Строка 38',excerpt:'Покупки',href:'/reports/'+id+'/review.html?sha256='+sha+'#line-38'}]}});
+    });
+    await page.goto(base);
+    await page.locator('#assistant-recheck-open').click();
+    assert.match(await page.locator('#assistant-document').innerText(),/Перепроверка/);
+    await page.locator('#assistant-focus').selectOption(report.checks[0].id);
+    await page.locator('#assistant-input').fill('Что изменилось?');
+    await page.locator('#assistant-send').click();
+    const link = page.locator('.assistant-citations a');
+    await link.waitFor();
+    assert.equal(await link.getAttribute('href'),'/reports/'+id+'/review.html?sha256='+sha+'#line-38');
+    await page.keyboard.press('Escape');
+    await page.locator('#assistant-open').click();
+    assert.match(await page.locator('#assistant-document').innerText(),/Полное ревью/);
+    assert.equal(await page.locator('#assistant-log .assistant-turn').count(),0);
+    await page.keyboard.press('Escape');
+    await page.locator('#assistant-recheck-open').click();
+    assert.equal(await page.locator('#assistant-log .assistant-answer-text').innerText(),'Цитата из новой редакции.');
+  } finally { await browser.close(); }
+});
