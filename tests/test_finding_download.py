@@ -1,7 +1,9 @@
-from base64 import b64decode
+from base64 import b64decode, b64encode
+from hashlib import sha256
 from html.parser import HTMLParser
 import json
 from pathlib import Path
+import re
 import unittest
 
 from reviewer.full_render import finding_download, finding_markdown
@@ -93,6 +95,14 @@ class FindingDownloadTest(unittest.TestCase):
         downloads = Downloads(html)
         findings = report["whole"]["findings"]
         self.assertEqual([link["download"] for link in downloads.links], [f'{f["id"]}.md' for f in findings])
-        self.assertNotIn("<script", html)
         for index, finding in enumerate(findings):
             self.assertTrue(downloads.markdown(index).startswith("# " + finding["id"]))
+
+    def test_only_the_fixed_print_helper_is_authorized_to_run_offline(self):
+        path = Path(__file__).resolve().parents[1] / "runs" / "bcc-priority" / "review.json"
+        html = render_report(json.loads(path.read_bytes()))
+        script, = re.findall(r"<script>(.*?)</script>", html, flags=re.S)
+        integrity = b64encode(sha256(script.encode()).digest()).decode()
+        self.assertIn(f"script-src 'sha256-{integrity}';", html)
+        self.assertIn("window.print()", script)
+        self.assertIn('id="print-report"', html)

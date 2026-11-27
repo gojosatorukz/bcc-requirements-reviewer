@@ -67,4 +67,5 @@ class DecisionDraftTest(unittest.TestCase):
         }
         self.assertTrue(expected)
         self.assertEqual(actual, expected)
-        self.assertNotIn("<script", html)
+        for _, content in articles:
+            self.assertNotIn("<script", content)

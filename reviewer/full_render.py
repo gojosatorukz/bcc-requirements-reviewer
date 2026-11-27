@@ -4,6 +4,7 @@ import json
 import re
 from base64 import b64encode
 from collections import Counter, defaultdict
+from hashlib import sha256
 from pathlib import Path
 
 from .contract import source_lines, validate_review, validate_shape
@@ -16,6 +17,23 @@ from . import priority
 from .render import render_conflict, render_passport, render_source, safe
 from .segments import segment
 from . import response_fields
+
+
+PRINT_SCRIPT = """const printButton = document.getElementById('print-report');
+printButton.hidden = false;
+printButton.addEventListener('click', () => window.print());
+let openedForPrint = [];
+window.addEventListener('beforeprint', () => {
+  for (const detail of document.querySelectorAll('main details:not([open])')) {
+    openedForPrint.push(detail);
+    detail.open = true;
+  }
+});
+window.addEventListener('afterprint', () => {
+  for (const detail of openedForPrint) detail.open = false;
+  openedForPrint = [];
+});"""
+PRINT_HASH = b64encode(sha256(PRINT_SCRIPT.encode("utf-8")).digest()).decode("ascii")
 
 
 def validate_report(report):
@@ -213,38 +231,36 @@ def finding_download(finding, run, page_by_line, execution=None):
 def decision_brief(report):
     items = {row["finding_id"]: row for row in report.get("executables", {}).get("items", [])
              if row["status"] == "executed"}
-    if not items:
-        return ""
+    findings = sorted(report["whole"]["findings"], key=lambda f: priority.ORDER[f["priority"]])
+    if not findings:
+        return '<p class="brief-empty">По результатам этого прогона замечаний для согласования нет.</p>'
     cards = []
-    for finding in report["whole"]["findings"]:
-        item = items.get(finding["id"])
-        if not item:
-            continue
-        program = item["program"]
-        states = {s["key"]: s for s in program["states"]}
+    for finding in findings[:2]:
+        fid = finding["id"]
+        item = items.get(fid)
         comparisons = []
-        for key, first, second in first_step_comparisons(item["result"]["scenario"]):
-            field = states[key]
-            amounts = " или ".join(quantity(value, field["unit"]) for value in (first, second))
-            comparisons.append(f'<h3>{safe(field["label"])}</h3><strong>{amounts}</strong>')
-        sources = []
-        for side in ("first", "second"):
-            ref = program[side]["source"]
-            quote = ref["quote"]
-            if len(quote) > 180:
-                quote = quote[:180].rsplit(" ", 1)[0] + "…"
-            sources.append(f'<li>{line_link(ref["line"])} · {safe(quote)}</li>')
-        cards.append(f'<article><small>{link(finding["id"], finding["id"])} · {safe(finding["owner"])}</small>'
+        if item:
+            program = item["program"]
+            states = {s["key"]: s for s in program["states"]}
+            for key, first, second in first_step_comparisons(item["result"]["scenario"]):
+                field = states[key]
+                amounts = " или ".join(quantity(value, field["unit"]) for value in (first, second))
+                comparisons.append(f'<h3>{safe(field["label"])}</h3><strong>{amounts}</strong>')
+            refs = [program[side]["source"] for side in ("first", "second")]
+        else:
+            comparisons.append(f'<h3>{safe(finding["title"])}</h3>')
+            refs = finding["evidence"]
+        if item:
+            links = [f'Правило {letter} · {line_link(ref["line"])}' for letter, ref in zip(("А", "Б"), refs)]
+            links.append(link("execution-" + fid, "Расчёт и контроль"))
+        else:
+            links = [line_link(n) for n in dict.fromkeys(ref["line"] for ref in refs)]
+        cards.append(f'<article><small>{link(fid, fid)} · {safe(finding["priority"])} · {safe(finding["owner"])}</small>'
                      f'{"".join(comparisons)}'
-                     f'<p>{safe(finding["question"])}</p><ul>{"".join(sources)}</ul><p>'
-                     f'{link("execution-" + finding["id"], "Посмотреть расчёт")}</p></article>')
-        if len(cards) == 3:
-            break
-    statuses = " · ".join(label + " — " + safe(report["whole"][key]["status"])
-                           for key, label in (("development", "Разработка"), ("testing", "Тестирование")))
+                     f'<p>{safe(finding["question"])}</p><p><b>Следующий шаг.</b> {safe(finding["action"])}</p>'
+                     f'<p class="brief-refs">Основания · {" · ".join(links)}</p></article>')
     return ('<section class="decision-brief" aria-labelledby="brief-title">'
-            '<h2 id="brief-title">Что согласовать с владельцем</h2><p>' + statuses
-            + '</p>' + "".join(cards) + '</section>')
+            '<h2 id="brief-title">Что согласовать в первую очередь</h2>' + "".join(cards) + '</section>')
 
 
 def reviewed_field_cells(section):
@@ -460,26 +476,35 @@ def render_full(report):
     verdicts = []
     for key, label in (("development", "Разработка"), ("testing", "Тестирование")):
         g = whole[key]
-        verdicts.append(f'<article><small>{label}</small><h3>{safe(g["status"].capitalize())}</h3>'
-                        f'<p>{safe(g["rationale"])}</p>{" · ".join(line_link(e["line"]) for e in g["evidence"])}</article>')
+        refs = " · ".join(line_link(n) for n in dict.fromkeys(e["line"] for e in g["evidence"]))
+        verdicts.append(f'<article><h3>{label}</h3><strong>{safe(g["status"].capitalize())}</strong>'
+                        f'<p>{safe(g["rationale"])}</p><p class="brief-refs">{refs}</p></article>')
     axes = "".join(f'<article class="finding"><h3>{safe(d["criterion"].capitalize())}</h3><p>{safe(d["assessment"])}</p>'
                    f'{evidence(d["evidence"])}</article>' for d in whole["dimensions"])
-    nav = " · ".join(link(k,v) for k,v in [("actions","Замечания"),("register","Реестр"),("quality","Оценка набора"),
-                                            ("coverage","Покрытие"),("source","Исходник"),("passport","Паспорт")])
+    sections = [("actions", "Замечания"), ("register", "Реестр"), ("quality", "Оценка набора"),
+                ("coverage", "Покрытие"), ("source", "Исходник"), ("passport", "Паспорт")]
+    if qa_cases:
+        sections.insert(1, ("qa-scenarios", "Сценарии для QA"))
+    nav = " · ".join(link(k, v) for k, v in sections)
     summary = (f'{roles["требование"]} требований · {roles["приёмочный пример"]} приёмочных примеров · '
                f'{roles["пример контракта"]} примеров контракта')
-    crit_list = "".join(f'<li>{link(f["id"],f["id"]+" · "+f["title"])}</li>' for f in critical)
     styles = Path(__file__).with_name("render.css").read_text(encoding="utf-8")
     if executions:
         styles += Path(__file__).with_name("execution.css").read_text(encoding="utf-8")
     styles += """
 .full nav{margin:1rem 0}.metrics,.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13em),1fr));gap:.8rem;margin:1rem 0}
-.metrics>div,.gates>article{padding:1rem;background:var(--green);border:1px solid var(--line)}
-.metrics strong{font-size:1.65rem;display:block}.full h3{font-size:1.05rem;margin:.35rem 0}
+.metrics>div{padding:.55rem .85rem;border-left:2px solid var(--line)}
+.metrics strong{font-size:1.45rem;display:block}.full h3{font-size:1.05rem;margin:.35rem 0}
+.gates>article{padding:1rem;background:var(--green);border-top:3px solid var(--deep)}
+.gates strong{font-size:1.3rem;color:var(--deep)}.gates p{margin:.4rem 0}
+.full .brief-refs{font-size:.86em;color:var(--muted)}
 .full section{margin:1.6rem 0}.finding{border-top:1px solid var(--line);padding:1rem 0}
-.decision-brief article{border-left:3px solid #c65b31;background:#fff9ed;padding:.7rem 1rem;margin:.65rem 0}
-.decision-brief article>strong{font-size:1.4rem;color:#302026}.decision-brief article p{margin:.45rem 0}
-.decision-brief article{break-inside:avoid}.decision-brief ul{margin:.45rem 0;padding-left:1.2rem}.decision-brief li{margin:.22rem 0}
+.decision-brief{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:.8rem}
+.decision-brief>h2{grid-column:1/-1;margin:0}.decision-brief article{min-width:0;border-left:3px solid #bd582d;background:#fff5e8;padding:.8rem 1rem}
+.decision-brief article>strong{font-size:1.4rem;color:#48271e}.decision-brief article p{margin:.45rem 0}
+.full .report-meta{color:var(--muted)}.full .report-toolbar{display:flex;flex-wrap:wrap;align-items:start;justify-content:space-between;gap:.5rem 1rem}
+.full .report-toolbar nav{margin:0}.full .report-toolbar summary{font-weight:600;color:var(--deep);padding:.4rem 0}
+.full .report-toolbar button{font:inherit;font-weight:600;color:var(--deep);background:white;border:1px solid var(--deep);border-radius:.4rem;cursor:pointer;padding:.4rem .8rem}
 .finding p+p{margin-top:.45rem}.full small{color:var(--muted)}.full blockquote{margin:.45rem 0}
 .finding-export{display:inline-block;margin:.45rem 0;padding:.25rem .5rem;border:1px solid var(--line);border-radius:3px;font-size:.9rem}
 .finding-export:hover{background:var(--green)}
@@ -505,12 +530,15 @@ def render_full(report):
 @page{size:A4;margin:15mm 15mm 18mm;@bottom-right{content:counter(page) " / " counter(pages);font:9pt sans-serif;color:#52625b}}
 @media print{
  html{font-size:12px}body,main,.full{font-family:Arial,sans-serif;background:white}
- header,nav,.skip-link,.backlinks,.decision-draft,.finding-export{display:none}
+ header,nav,.skip-link,.backlinks,.decision-draft,.finding-export,.full .report-toolbar{display:none}
+ .full #actions.after-brief{break-before:page}
  main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
  .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
  .full h2,.full h3{break-after:avoid}.full section{margin:9pt 0}.full section>h2{padding-top:7pt}
  .qa-scenario{break-inside:avoid}
- .decision-brief{break-after:page}.decision-brief article{padding:7pt 10pt}
+ .decision-brief{grid-template-columns:repeat(2,minmax(0,1fr));gap:6pt}.decision-brief article{padding:5pt 7pt}
+ .gates>article{padding:5pt 7pt}.metrics>div{padding:2pt 6pt}.gates p,.decision-brief article p{margin:3pt 0}
+ .full .brief-refs{font-size:8pt}
  .metrics{grid-template-columns:repeat(3,1fr)}.gates{grid-template-columns:repeat(2,1fr)}
  .full .registry{table-layout:fixed}.full .registry th:first-child{width:10%}.full .registry th:nth-child(2){width:49%}
  .full .registry thead{display:table-header-group}.full .registry tr{display:table-row}.full .registry td{display:table-cell}
@@ -523,15 +551,17 @@ def render_full(report):
 """
     return f'''<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-{PRINT_HASH}'; base-uri 'none'; form-action 'none'">
 <title>{safe(title)} · Ревью требований</title><style>{styles}</style></head>
 <body><a class="skip-link" href="#report">К результатам</a><header class="masthead"><div class="masthead-inner"><strong>Разбор ТЗ</strong><span>Отчёт полного прогона</span></div></header>
-<main class="full" id="report"><small>{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {safe(run['model'])}</small>
-<h1>{safe(title)}</h1><nav>{nav}</nav>
+<main class="full" id="report"><small class="report-meta">{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {safe(run['model'])}</small>
+<h1>{safe(title)}</h1>
+<div class="report-toolbar"><nav aria-label="Разделы отчёта"><details><summary>Разделы отчёта</summary>{nav}</details></nav>
+<button id="print-report" type="button" hidden>Печать / сохранить PDF</button></div>
+<section aria-labelledby="readiness-title"><h2 id="readiness-title">Можно ли начинать работу</h2><div class="gates">{''.join(verdicts)}</div></section>
 <div class="metrics"><div><strong>{len(registry)}</strong>пунктов в реестре</div><div><strong>{len(defects)}</strong>нарушений, включая {len(critical)} критических</div><div><strong>{questions}</strong>открытых вопросов</div></div>
-<p>{summary}.</p>{qa_shortcut}{decision_brief(report)}<div class="gates">{''.join(verdicts)}</div>
-<h2>Критические дефекты</h2>{'<ol>'+crit_list+'</ol>' if critical else '<p>Критические дефекты не выявлены.</p>'}
-<section id="actions"><h2>Что исправить в первую очередь</h2><p>Замечания в порядке приоритета. У каждого есть адресат, основание и предлагаемое изменение.</p>
+<p>{summary}.</p>{decision_brief(report)}{qa_shortcut}
+<section id="actions" class="{'after-brief' if len(findings) >= 2 else ''}"><h2>Все замечания · {len(whole["findings"])}</h2>
 {''.join(findings) or '<p>Замечаний не выявлено.</p>'}</section>
 <section id="quality"><h2>Качество набора требований</h2>{axes}</section>
 {render_json_checks(report.get("json_checks", {}), lines, report.get("example_shapes", ()), report["segments"], report.get("response_field_review"))}
@@ -542,5 +572,5 @@ def render_full(report):
 {''.join(scenario_parts)}{('<h3>Согласованные прочтения</h3><ol>'+''.join(closed)+'</ol>') if closed else ''}</section>
 <section id="coverage"><h2>Карта покрытия исходника</h2><p>Учтено {len(lines)} непустых строк, {len(segments)} блоков, {forms['шапка таблицы']} таблиц, {forms['строка таблицы']} строк данных таблиц и {forms['пример json']} блоков JSON. Структура, шаблоны и контекст имеют отдельные записи.</p>
 <details><summary>Открыть все блоки и основания классификации</summary><table><thead><tr><th>Источник</th><th>Тип</th><th>Назначение и пункты</th></tr></thead><tbody>{''.join(routing)}</tbody></table></details></section>
-<section id="source"><h2>Текст исходного документа</h2><ol class="source-list">{render_source(lines,backlinks,run.get("pages", []),run.get("locations", []))}</ol></section>{render_passport(run,2)}</main></body></html>
+<section id="source"><h2>Текст исходного документа</h2><ol class="source-list">{render_source(lines,backlinks,run.get("pages", []),run.get("locations", []))}</ol></section>{render_passport(run,2)}</main><script>{PRINT_SCRIPT}</script></body></html>
 '''

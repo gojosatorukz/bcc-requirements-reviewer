@@ -18,6 +18,19 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExecutionViewTests(TestCase):
+    def test_summary_ranks_non_executable_findings_and_keeps_actions_and_sources(self):
+        fallback = {"id": "D-09", "title": "Не описана отмена", "priority": "существенный",
+                    "question": "Кто отменяет?", "action": "Назвать владельца <отмены>.",
+                    "owner": "Операционный менеджер", "evidence": [{"line": 17}]}
+        findings = [dict(fallback, id="D-08", priority="редакционный"), fallback]
+        section = ElementTree.fromstring(decision_brief({"whole": {"findings": findings}}))
+        self.assertEqual([c.find("small/a").text for c in section.findall("article")], ["D-09", "D-08"])
+        card = section.find("article")
+        self.assertIn(fallback["action"], "".join(card.itertext()))
+        self.assertEqual(card.find("p[@class='brief-refs']/a").get("href"), "#source-line-17")
+        self.assertNotIn("Расчёт и контроль", "".join(card.itertext()))
+        self.assertIn("замечаний для согласования нет", decision_brief({"whole": {"findings": []}}))
+
     def test_first_divergent_step_shows_every_changed_observable_in_card_brief_and_handoff(self):
         report = json.loads((ROOT / "eval/executable/runs/hotel.json").read_bytes())
         item = report["executables"]["items"][0]
