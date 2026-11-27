@@ -703,6 +703,7 @@ class Workbench:
 class WorkbenchHandler(BaseHTTPRequestHandler):
     server_version = "ReviewerWorkbench"
     structure_slot = BoundedSemaphore(1)
+    structure_waiter = BoundedSemaphore(1)
 
     def setup(self):
         self.request.settimeout(20)
@@ -774,7 +775,14 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
     def check_structure(self):
         name, size = self.document_upload()
         if not self.structure_slot.acquire(blocking=False):
-            raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, "Идёт проверка структуры другого файла. Попробуйте ещё раз.")
+            busy = "Идёт проверка структуры другого файла. Попробуйте ещё раз."
+            if not self.structure_waiter.acquire(blocking=False):
+                raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, busy)
+            try:
+                if not self.structure_slot.acquire(timeout=4):
+                    raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, busy)
+            finally:
+                self.structure_waiter.release()
         try:
             body = self.rfile.read(size)
             if len(body) != size:

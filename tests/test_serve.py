@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
-from threading import Event, Thread
+from threading import BoundedSemaphore, Event, Thread
 import time
 import unittest
 from unittest.mock import patch
@@ -114,6 +114,24 @@ class WorkbenchTest(unittest.TestCase):
             self.assertNotIn("test-reserve-secret", page)
             with patch.dict("os.environ", {"CLOUDFLARE_API_TOKEN": ""}):
                 self.assertNotIn("При лимите Gemini текст получит", self.request("GET", "/")[1].decode())
+
+    def test_second_structure_visitor_waits_while_queue_is_bounded(self):
+        queued = Event()
+        class BusyParser(BoundedSemaphore):
+            def acquire(self, blocking=True, timeout=None):
+                if timeout is not None:
+                    queued.set()
+                return super().acquire(blocking, timeout)
+
+        slot = BusyParser(1)
+        with patch.object(self.server.RequestHandlerClass, "structure_slot", slot), ThreadPoolExecutor(1) as pool:
+            with slot:
+                next_visitor = pool.submit(self.upload, "/api/structure", "second.md", b"# Second")
+                self.assertTrue(queued.wait(1))
+                self.assertEqual(self.upload("/api/structure", "third.md")[0], 429)
+            code, body, _ = next_visitor.result(timeout=3)
+            self.assertEqual(code, 200)
+            self.assertEqual(json.loads(body)["filename"], "second.md")
 
     def test_demo_fallback_and_immutable_modes(self):
         benchmark = self.demo.with_name("bcc-benchmark")
