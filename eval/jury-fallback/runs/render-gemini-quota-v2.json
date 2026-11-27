@@ -1,0 +1,16 @@
+{
+  "origin": "https://razbor-tz.onrender.com",
+  "fixture": "packing-v2",
+  "input_sha256": "1c9d4d27cee39eaaa979df6701b23fa9baa6ab43bae0a5b919fee52a648a09d1",
+  "started_utc": "2026-11-27T13:48:19.532Z",
+  "submit_status": 202,
+  "status_text": "Полное ревью · packing-v2.md. Достигнут лимит запросов к модели. Откройте сохранённый пример или повторите запрос позже.",
+  "structure": {
+    "Строк документа": "11",
+    "Блоков документа": "8",
+    "Строк таблиц": "2",
+    "Примеров JSON": "0"
+  },
+  "ready_report_visible": true,
+  "finished_utc": "2026-11-27T13:48:31.596Z"
+}

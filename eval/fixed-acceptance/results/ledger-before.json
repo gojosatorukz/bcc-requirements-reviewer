@@ -1,0 +1,52 @@
+[
+  {
+    "case": "ledger-a",
+    "input_sha256": "be906d81f8c0b08d43d5617c2180a784925ac0c8bd106270f69116e9fdd7a482",
+    "report_sha256": "4e7366034845b3605f0fe8d6e2daff3cb2d4c5be2e94b8942391954ba9cd8ece",
+    "model": "gpt-6.2-astra",
+    "agent_version": "6853673f3f01",
+    "engine_sha256": "aff11c58dce59e022ddebc7268c93f04ba47ed055df548a371cd3ccfd508f86d",
+    "seconds": 77.83,
+    "fresh_calls": 4,
+    "restored_attempts": 0,
+    "violations": 0,
+    "open_questions": 0,
+    "agrees_with_control": true
+  },
+  {
+    "case": "ledger-b",
+    "input_sha256": "271a175221ff98fa606c5404d6ad345536c4325a24cedcb4e9c2f421c0abf863",
+    "report_sha256": "50e590bacd94d8e87a6278b0346018aac6b522c2a0ae3fd48f97057fd002fc96",
+    "model": "gpt-6.2-astra",
+    "agent_version": "6853673f3f01",
+    "engine_sha256": "aff11c58dce59e022ddebc7268c93f04ba47ed055df548a371cd3ccfd508f86d",
+    "seconds": 118.52,
+    "fresh_calls": 5,
+    "restored_attempts": 0,
+    "violations": 1,
+    "open_questions": 0,
+    "matched": [
+      {
+        "id": "D-01",
+        "question": "Какой доступный остаток должен получить владелец кошелька после CAPTURE в этом цикле?",
+        "two_rule_status": "unsupported",
+        "fixed_input_matches": false
+      }
+    ],
+    "unmatched_violations": 0
+  },
+  {
+    "case": "ledger-c",
+    "input_sha256": "756988df182de81e0bf37c48ba44728273093d38a193fae8ae1097d03a44d541",
+    "report_sha256": "6024dab336e170a61063c996926dcc733aafde04c2d4fbc08a3711042ea68e9c",
+    "model": "gpt-6.2-astra",
+    "agent_version": "6853673f3f01",
+    "engine_sha256": "aff11c58dce59e022ddebc7268c93f04ba47ed055df548a371cd3ccfd508f86d",
+    "seconds": 92.14,
+    "fresh_calls": 4,
+    "restored_attempts": 0,
+    "violations": 0,
+    "open_questions": 0,
+    "agrees_with_control": true
+  }
+]

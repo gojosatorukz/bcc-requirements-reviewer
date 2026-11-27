@@ -1,7 +1,10 @@
 """Open the jury release as a new HTTPS visitor; do not call a model."""
 
+import argparse
+import csv
 from hashlib import sha256
 from http.cookiejar import CookieJar
+from io import StringIO
 import json
 from pathlib import Path
 from time import monotonic, sleep
@@ -14,6 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--with-holdout", action="store_true",
+                        help="import both synthetic Astra reviews into this temporary visitor session")
+    options = parser.parse_args()
     client = build_opener(HTTPCookieProcessor(CookieJar()))
 
     def read(path, **arguments):
@@ -40,6 +47,17 @@ def main():
     for filename in ("review.html", "review.pdf", "review.json"):
         assert sha256(read("/reports/demo/" + filename)).hexdigest() == manifest[filename], filename
     print("Ready HTML, PDF and JSON match the release.", flush=True)
+    demo_hash = manifest["review.json"]
+    current = read("/reports/demo/review.html?sha256=" + demo_hash).decode()
+    assert current.count('class="execution-trace execution-boundary"') == 2
+    def tickets(report_id, digest):
+        raw = read(f"/reports/{report_id}/issues.csv?sha256={digest}")
+        return list(csv.DictReader(StringIO(raw.decode("utf-8-sig"))))
+    findings = json.loads((ROOT / "runs/bcc-release/review.json").read_bytes())["whole"]["findings"]
+    demo_tickets = tickets("demo", demo_hash)
+    assert len(demo_tickets) == len(findings)
+    assert all(f["question"] in task["Description"] for task, f in zip(demo_tickets, findings))
+    print(f"Current bank report exposes both replay boundaries and {len(demo_tickets)} Jira tasks.", flush=True)
     gemini = json.loads(read("/reports/demo/gemini.json"))
     assert gemini["run"]["model"].startswith("gemini-")
     assert sha256(read("/reports/demo/gemini.html")).digest() == sha256(
@@ -53,6 +71,23 @@ def main():
     assert [item["line"] for item in broken["diagnostics"]] == [6], broken
     assert check_file("queue.md", sample.replace(b"3,}", b"3}"))["diagnostics"] == []
     print("Fresh specification: a JSON error at line 6 disappears after correction. No LLM request was made.")
+
+    if options.with_holdout:
+        for variant in ("v1", "v2"):
+            raw = (ROOT / f"eval/jury-fallback/runs/astra-{variant}.json").read_bytes()
+            receipt = json.loads(read("/api/import-report", data=raw, headers={
+                "Origin": ORIGIN, "Content-Type": "application/json"}))
+            digest = sha256(raw).hexdigest()
+            assert receipt["sha256"] == digest
+            path = f'/reports/{receipt["id"]}/review'
+            assert read(path + ".json") == raw
+            html = read(path + ".html").decode()
+            report = json.loads(raw)
+            assert report["run"]["input_sha256"] in html
+            findings = report["whole"]["findings"]
+            assert all(f["question"] in html for f in findings)
+            assert len(tickets(receipt["id"], digest)) == len(findings)
+            print(f"Imported packing-{variant}: full HTML, original JSON and {len(findings)} Jira tasks.")
 
 
 if __name__ == "__main__":
