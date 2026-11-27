@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-3x5wzRi6wmPKTOsZIDPW9oN6VqRevLPUlVpa0ocCD3Y='; base-uri 'none'; form-action 'none'">
+<title>Ведомость багажа выездного шахматного турнира · Ревью требований</title><style>:root {
+  color-scheme: light;
+  --canvas: #e7ece6;
+  --paper: #f7f7f3;
+  --ink: #202e2b;
+  --muted: #52625b;
+  --line: #c9d2ca;
+  --deep: #123e34;
+  --green: #e5ece5;
+  --warm: #fbe9d7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font: 1rem/1.55 system-ui, sans-serif;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: #205a48;
+  text-underline-offset: .2em;
+}
+
+:focus-visible {
+  outline: 3px solid #8c5020;
+  outline-offset: 3px;
+}
+
+[id] { scroll-margin-block: 1.25rem; }
+
+p { margin: 0; }
+
+.sr-only,
+.skip-link:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link:focus {
+  position: absolute;
+  z-index: 1;
+  top: .75rem;
+  left: .75rem;
+  padding: .5rem .75rem;
+  background: white;
+}
+
+.masthead {
+  background: var(--deep);
+  color: white;
+}
+
+.masthead-inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+  padding-block: .8rem;
+}
+
+.masthead strong {
+  font-size: 1.3rem;
+  letter-spacing: -.035em;
+}
+
+.masthead span {
+  color: #d0dfd3;
+  font-size: .875rem;
+}
+
+main {
+  width: min(100% - 2rem, 72rem);
+  margin: 1.75rem auto 3rem;
+  padding: clamp(1rem, 3.75vw, 2.75rem);
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.scope,
+.section-note,
+.owner,
+.facts dt { color: var(--muted); }
+
+.scope {
+  font-size: .875rem;
+  font-weight: 650;
+}
+
+h1 {
+  margin: .45rem 0 1rem;
+  font: 500 clamp(2rem, 5vw, 3.5rem)/1.06 Georgia, serif;
+  letter-spacing: -.035em;
+}
+
+h2 {
+  margin: 0 0 .875rem;
+  font-size: clamp(1.3rem, 3vw, 1.85rem);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+}
+
+h3 {
+  margin: 0 0 .45rem;
+  font-size: .875rem;
+  line-height: 1.35;
+}
+
+.overview {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.overview nav,
+.backlinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1rem;
+}
+
+.overview a,
+.citation,
+.backlinks a {
+  display: inline-block;
+  padding-block: .25rem;
+  font-size: .875rem;
+}
+
+.count {
+  padding: .3rem .65rem;
+  border-radius: 3px;
+  background: var(--green);
+  color: var(--deep);
+}
+
+.count strong {
+  margin-inline-start: .35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.conflict,
+.empty,
+.report-section { margin-top: 2rem; }
+
+.conflict + .conflict,
+.report-section {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.scenario,
+.empty {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: var(--green);
+}
+
+.scenario p { max-width: 80ch; }
+
+.outcomes,
+.follow-up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.outcome,
+.question,
+.control {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border-top: 3px solid var(--deep);
+}
+
+.outcome h3 { color: var(--deep); }
+.outcome-text,
+.question-text { font-weight: 600; }
+
+blockquote {
+  margin: .9rem 0 .5rem;
+  padding-left: .75rem;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.citation { margin-top: auto; }
+
+.question {
+  border-color: #e4cdb8;
+  background: var(--warm);
+}
+
+.owner {
+  margin-top: .75rem;
+  font-size: .875rem;
+}
+
+.owner span {
+  display: block;
+  font-weight: 650;
+}
+
+.source-list {
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  list-style: none;
+  background: white;
+}
+
+.source-row {
+  display: grid;
+  grid-template-columns: minmax(3.6rem, max-content) minmax(0, 1fr);
+  column-gap: .75rem;
+  padding: .5rem .75rem .5rem 0;
+}
+
+.source-row + .source-row { border-top: 1px solid var(--line); }
+
+.source-row:target,
+.outcome:target {
+  outline: 2px solid #8c5020;
+  outline-offset: 2px;
+  background: var(--warm);
+}
+
+.line-number {
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.source-text {
+  font: .875rem/1.55 ui-monospace, "Cascadia Code", Menlo, monospace;
+  white-space: pre-wrap;
+  tab-size: 4;
+}
+
+.backlinks { grid-column: 2; }
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: .75rem 1rem;
+  margin: 0;
+}
+
+.facts div {
+  min-width: 0;
+  padding: .65rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.facts dt { font-size: .875rem; }
+.facts dd { margin: .15rem 0 0; }
+.tokens-heading { margin-top: 1.25rem; }
+
+.attempts { margin-top: 1rem; }
+.attempts summary { cursor: pointer; }
+.attempts ol { padding-inline-start: 1.5rem; }
+.attempts li + li { margin-top: .75rem; }
+.attempts .facts { margin-top: .5rem; }
+
+@media (max-width: 45rem) {
+  main {
+    width: calc(100% - 1rem);
+    margin-top: .75rem;
+  }
+
+  .outcomes,
+  .follow-up { grid-template-columns: minmax(0, 1fr); }
+
+  .scenario,
+  .outcome,
+  .question,
+  .control,
+  .empty { padding-inline: .875rem; }
+
+  .source-row {
+    grid-template-columns: minmax(2rem, max-content) minmax(0, 1fr);
+    column-gap: .5rem;
+  }
+}
+
+.source-origin{display:block;font:600 .78em/1.45 system-ui,sans-serif;color:#52625b}
+
+.full nav{margin:1rem 0}.metrics,.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13em),1fr));gap:.8rem;margin:1rem 0}
+.metrics>div{padding:.55rem .85rem;border-left:2px solid var(--line)}
+.metrics strong{font-size:1.45rem;display:block}.full h3{font-size:1.05rem;margin:.35rem 0}
+.gates>article{padding:1rem;background:var(--green);border-top:3px solid var(--deep)}
+.gates strong{font-size:1.3rem;color:var(--deep)}.gates p{margin:.4rem 0}
+.full .brief-refs{font-size:.86em;color:var(--muted)}
+.full section{margin:1.6rem 0}.finding{border-top:1px solid var(--line);padding:1rem 0}
+.decision-brief{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:.8rem}
+.decision-brief>h2{grid-column:1/-1;margin:0}.decision-brief article{min-width:0;border-left:3px solid #bd582d;background:#fff5e8;padding:.8rem 1rem}
+.decision-brief article>strong{font-size:1.4rem;color:#48271e}.decision-brief article p{margin:.45rem 0}
+.full .report-meta{color:var(--muted)}.full .report-toolbar{display:flex;flex-wrap:wrap;align-items:start;justify-content:space-between;gap:.5rem 1rem}
+.full .report-toolbar nav{margin:0}.full .report-toolbar summary{font-weight:600;color:var(--deep);padding:.4rem 0}
+.full .report-toolbar button{font:inherit;font-weight:600;color:var(--deep);background:white;border:1px solid var(--deep);border-radius:.4rem;cursor:pointer;padding:.4rem .8rem}
+.finding p+p{margin-top:.45rem}.full small{color:var(--muted)}.full blockquote{margin:.45rem 0}
+.finding-export{display:inline-block;margin:.45rem 0;padding:.25rem .5rem;border:1px solid var(--line);border-radius:3px;font-size:.9rem}
+.finding-export:hover{background:var(--green)}
+.full table{width:100%;border-collapse:collapse}.full td,.full th{padding:.55rem;vertical-align:top;border-bottom:1px solid var(--line);text-align:left}
+.full th{background:var(--green)}.full summary{cursor:pointer}.full tr:target,.finding:target{background:var(--warm)}
+.full .scroll{overflow:auto}.full td:first-child{min-width:4.6em}.full section>h2{border-top:2px solid var(--deep);padding-top:1rem}
+#response-fields table{table-layout:fixed}#response-fields th:first-child{width:16%}
+@media screen and (max-width:680px){#response-fields table{min-width:38rem}}
+.decision-draft{margin-top:.75rem;padding:.65rem .85rem;border:1px solid var(--line);background:var(--green)}
+.decision-draft summary{font-weight:650;color:var(--deep)}
+.draft-scenario{min-inline-size:0;margin:.8rem 0 0;padding:.65rem;border:1px solid var(--line);background:var(--paper)}
+.draft-scenario legend{padding:0 .3rem;font-weight:650}
+.draft-options{display:grid;grid-template-columns:auto minmax(0,1fr) max-content;gap:.35rem .6rem;margin-top:.45rem;align-items:start}
+.draft-options input{margin:.65rem 0 0;accent-color:var(--deep);cursor:pointer}
+.draft-options label{display:block;padding:.25rem .4rem;border-radius:3px;cursor:pointer}
+.draft-options label span{display:block}
+.draft-options input:checked + label{background:var(--green)}
+.draft-source a{display:inline-block;padding:.4rem 0;font-size:.875rem}
+.draft-result{display:none;grid-column:1/-1;padding:.75rem;border-left:3px solid var(--deep);background:white}
+.draft-result h4{margin:0 0 .35rem}
+.draft-options input[value="1"]:checked ~ .draft-result-1,.draft-options input[value="2"]:checked ~ .draft-result-2{display:block}
+@media(max-width:650px){.full .registry td{display:block;border:0}.full .registry tr{display:block;border-bottom:1px solid var(--line)}.registry thead{display:none}}
+@page{size:A4;margin:15mm 15mm 18mm;@bottom-right{content:counter(page) " / " counter(pages);font:9pt sans-serif;color:#52625b}}
+@media print{
+ html{font-size:12px}body,main,.full{font-family:Arial,sans-serif;background:white}
+ header,nav,.skip-link,.backlinks,.decision-draft,.finding-export,.full .report-toolbar{display:none}
+ .full #actions.after-brief{break-before:page}
+ main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
+ .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
+ .full h2,.full h3{break-after:avoid}.full section{margin:9pt 0}.full section>h2{padding-top:7pt}
+ .qa-scenario{break-inside:avoid}
+ .decision-brief{grid-template-columns:repeat(2,minmax(0,1fr));gap:6pt}.decision-brief article{padding:5pt 7pt}
+ .gates>article{padding:5pt 7pt}.metrics>div{padding:2pt 6pt}.gates p,.decision-brief article p{margin:3pt 0}
+ .full .brief-refs{font-size:8pt}
+ .metrics{grid-template-columns:repeat(3,1fr)}.gates{grid-template-columns:repeat(2,1fr)}
+ .full .registry{table-layout:fixed}.full .registry th:first-child{width:10%}.full .registry th:nth-child(2){width:49%}
+ .full .registry thead{display:table-header-group}.full .registry tr{display:table-row}.full .registry td{display:table-cell}
+ .full td,.full th{padding:4pt}.full .registry td:first-child{white-space:nowrap}
+ .full .source-row,.full tr,.full blockquote{break-inside:avoid}.full .source-text{font:8.5pt/1.3 Arial,sans-serif}
+ .full .finding{padding:6pt 0}.full small{font-size:8pt}.full blockquote{margin:2pt 0}
+ .full .facts{display:flex;flex-wrap:wrap;gap:3pt 9pt}.full .facts div{padding:2pt 0}.full .facts dd{margin:1pt 0}
+ .full .attempts li{break-inside:avoid}.full .attempts .facts div{border:0}
+}
+</style></head>
+<body><a class="skip-link" href="#report">К результатам</a><header class="masthead"><div class="masthead-inner"><strong>Разбор ТЗ</strong><span>Отчёт полного прогона</span></div></header>
+<main class="full" id="report"><small class="report-meta">packing-v2.md · 2026-11-27 UTC · gpt-6.2-astra</small>
+<h1>Ведомость багажа выездного шахматного турнира</h1>
+<div class="report-toolbar"><nav aria-label="Разделы отчёта"><details><summary>Разделы отчёта</summary><a href="#actions">Замечания</a> · <a href="#qa-scenarios">Сценарии для QA</a> · <a href="#register">Реестр</a> · <a href="#quality">Оценка набора</a> · <a href="#coverage">Покрытие</a> · <a href="#source">Исходник</a> · <a href="#passport">Паспорт</a></details></nav>
+<button id="print-report" type="button" hidden>Печать / сохранить PDF</button></div>
+<section aria-labelledby="readiness-title"><h2 id="readiness-title">Можно ли начинать работу</h2><div class="gates"><article><h3>Разработка</h3><strong>Можно начинать</strong><p>Можно реализовать ввод количества часов и показ результата: целую часть от деления на четыре увеличить на один при ненулевом остатке. Этот расчёт даёт ноль для пустой ведомости и охватывает все заявленные случаи.</p><p class="brief-refs"><a href="#source-line-3">строка 3</a> · <a href="#source-line-4">строка 4</a> · <a href="#source-line-5">строка 5</a></p></article><article><h3>Тестирование</h3><strong>Можно начинать</strong><p>Для приёмки заданы наблюдаемые результаты: 0 часов дают 0 ящиков, 12 дают 3, а 13 дают 4. Для остальных допустимых количеств ожидаемый результат однозначно следует из правила упаковки.</p><p class="brief-refs"><a href="#source-line-3">строка 3</a> · <a href="#source-line-4">строка 4</a> · <a href="#source-line-5">строка 5</a> · <a href="#source-line-8">строка 8</a> · <a href="#source-line-10">строка 10</a> · <a href="#source-line-11">строка 11</a></p></article></div></section>
+<div class="metrics"><div><strong>10</strong>пунктов в реестре</div><div><strong>0</strong>нарушений, включая 0 критических</div><div><strong>0</strong>открытых вопросов</div></div>
+<p>8 требований · 2 приёмочных примеров · 0 примеров контракта.</p><p class="brief-empty">По результатам этого прогона замечаний для согласования нет.</p><p><a href="#qa-scenarios">Сценарии для QA · 1</a></p>
+<section id="actions" class=""><h2>Все замечания · 0</h2>
+<p>Замечаний не выявлено.</p></section>
+<section id="quality"><h2>Качество набора требований</h2><article class="finding"><h3>Полнота</h3><p>Для заявленной задачи расчёт описан полностью. Каждая полная четвёрка часов требует одного ящика, остаток занимает ещё один ящик. Для нуля часов результат задан отдельно.</p><blockquote>Организатор вводит число шахматных часов. Ведомость показывает, сколько транспортных ящиков подготовить для всех введённых часов. <a href="#source-line-3">строка 3</a></blockquote><blockquote>В каждый ящик помещается до четырёх часов. Ведомость считает каждый заполненный ящик и ещё один, если после упаковки полных ящиков остались часы. <a href="#source-line-4">строка 4</a></blockquote><blockquote>При нуле часов ведомость показывает ноль ящиков. Все часы одинаковы, запасные ящики не добавляются. <a href="#source-line-5">строка 5</a></blockquote></article><article class="finding"><h3>Согласованность</h3><p>Оба приёмочных примера следуют правилу упаковки. Для 12 часов нужны три полных ящика, а для 13 часов к ним добавляется четвёртый ящик для оставшихся часов.</p><blockquote>В каждый ящик помещается до четырёх часов. Ведомость считает каждый заполненный ящик и ещё один, если после упаковки полных ящиков остались часы. <a href="#source-line-4">строка 4</a></blockquote><blockquote>| Введено часов | Показано ящиков | <a href="#source-line-8">строка 8</a></blockquote><blockquote>| 12 | 3 | <a href="#source-line-10">строка 10</a></blockquote><blockquote>| 13 | 4 | <a href="#source-line-11">строка 11</a></blockquote></article><article class="finding"><h3>Проверяемость</h3><p>Для любого неотрицательного целого количества часов можно однозначно вычислить ожидаемое показание. Ноль, точное заполнение и переход к следующему ящику можно проверить на входах 0, 12 и 13.</p><blockquote>В каждый ящик помещается до четырёх часов. Ведомость считает каждый заполненный ящик и ещё один, если после упаковки полных ящиков остались часы. <a href="#source-line-4">строка 4</a></blockquote><blockquote>При нуле часов ведомость показывает ноль ящиков. Все часы одинаковы, запасные ящики не добавляются. <a href="#source-line-5">строка 5</a></blockquote><blockquote>| Введено часов | Показано ящиков | <a href="#source-line-8">строка 8</a></blockquote><blockquote>| 12 | 3 | <a href="#source-line-10">строка 10</a></blockquote><blockquote>| 13 | 4 | <a href="#source-line-11">строка 11</a></blockquote></article><article class="finding"><h3>Прослеживаемость</h3><p>Столбцы приёмочной таблицы соответствуют тому, что организатор вводит и что ведомость показывает. Пример с 12 часами проверяет подсчёт полных ящиков, пример с 13 часами — добавление ящика при остатке.</p><blockquote>Организатор вводит число шахматных часов. Ведомость показывает, сколько транспортных ящиков подготовить для всех введённых часов. <a href="#source-line-3">строка 3</a></blockquote><blockquote>В каждый ящик помещается до четырёх часов. Ведомость считает каждый заполненный ящик и ещё один, если после упаковки полных ящиков остались часы. <a href="#source-line-4">строка 4</a></blockquote><blockquote>| Введено часов | Показано ящиков | <a href="#source-line-8">строка 8</a></blockquote><blockquote>| 12 | 3 | <a href="#source-line-10">строка 10</a></blockquote><blockquote>| 13 | 4 | <a href="#source-line-11">строка 11</a></blockquote></article><article class="finding"><h3>Границы решения</h3><p>Ведомость рассчитывает число ящиков для введённого количества одинаковых шахматных часов. Вместимость ограничена четырьмя часами, запасные ящики исключены из расчёта.</p><blockquote>Организатор вводит число шахматных часов. Ведомость показывает, сколько транспортных ящиков подготовить для всех введённых часов. <a href="#source-line-3">строка 3</a></blockquote><blockquote>В каждый ящик помещается до четырёх часов. Ведомость считает каждый заполненный ящик и ещё один, если после упаковки полных ящиков остались часы. <a href="#source-line-4">строка 4</a></blockquote><blockquote>При нуле часов ведомость показывает ноль ящиков. Все часы одинаковы, запасные ящики не добавляются. <a href="#source-line-5">строка 5</a></blockquote></article></section>
+
+<section id="qa-scenarios"><h2>Сценарии для QA</h2><article class="finding qa-scenario" id="qa-scenario-1" tabindex="-1">
+<h3>Граница значения</h3><small>Результат следует из ТЗ</small>
+<p><b>Условия.</b> Выбрана граница полного заполнения трёх ящиков — 12 шахматных часов. Вместимость измеряется в часах на ящик, шаг входа — одни целые шахматные часы.</p><p><b>Действие.</b> В двух независимых проверках ввести 11 и 12 шахматных часов соответственно.</p>
+<p><b>Ожидаемый результат.</b> При 11 часах показано 3 ящика: два полных и один с тремя часами. При 12 часах также показано 3 ящика: все три полны. Равенство вместимости включено.</p><blockquote>В каждый ящик помещается до четырёх часов. <a href="#source-line-4">строка 4</a></blockquote><blockquote>Ведомость считает каждый заполненный ящик и ещё один, если после упаковки полных ящиков остались часы. <a href="#source-line-4">строка 4</a></blockquote><blockquote>| 12 | 3 | <a href="#source-line-10">строка 10</a></blockquote></article><details id="qa-skipped"><summary>Почему пропущены ситуации · 4</summary><ul><li><b>Первое действие.</b> Задан результат для введённого нуля, но исходное значение до первого ввода, доступность действия при пустом поле и контракт команды не описаны.</li><li><b>Повтор действия.</b> Описан расчёт числа ящиков по числу часов. Идентификатор обработки и отдельный внешний эффект не заданы.</li><li><b>Повторное наступление условия.</b> Число ящиков зависит от текущего числа часов. Правила однократного срабатывания при переходе через границу нет.</li><li><b>Независимость объектов.</b> Ведомость считает ящики для всех введённых часов вместе. Отдельные объекты с собственными условиями срабатывания не описаны.</li></ul></details></section>
+<section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
+<table class="registry"><thead><tr><th scope="col">ID отчёта<br>ID в ТЗ</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody><tr id="R-001"><td><b>R-001</b><br>—</td>
+<td><small>требование · Ведомость багажа выездного шахматного турнира</small><br><b>Организатор может ввести количество шахматных часов.</b>
+<blockquote>Организатор вводит число шахматных часов. Ведомость показывает, сколько транспортных ящиков подготовить для всех введённых часов. <a href="#source-line-3">строка 3</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить, что организатор может ввести 13 часов.<p></p></td></tr><tr id="R-002"><td><b>R-002</b><br>—</td>
+<td><small>требование · Ведомость багажа выездного шахматного турнира</small><br><b>Ведомость показывает количество транспортных ящиков, необходимое для всех введённых часов.</b>
+<blockquote>Организатор вводит число шахматных часов. Ведомость показывает, сколько транспортных ящиков подготовить для всех введённых часов. <a href="#source-line-3">строка 3</a></blockquote></td>
+<td><small>проверяемо</small><br>При вводе 13 часов проверить, что ведомость показывает 4 ящика.<p></p></td></tr><tr id="R-003"><td><b>R-003</b><br>—</td>
+<td><small>требование · Ведомость багажа выездного шахматного турнира</small><br><b>Вместимость каждого ящика — до четырёх часов включительно.</b>
+<blockquote>В каждый ящик помещается до четырёх часов. Ведомость считает каждый заполненный ящик и ещё один, если после упаковки полных ящиков остались часы. <a href="#source-line-4">строка 4</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить границу вместимости на 4 и 5 часах: для них нужны соответственно 1 и 2 ящика.<p></p></td></tr><tr id="R-004"><td><b>R-004</b><br>—</td>
+<td><small>требование · Ведомость багажа выездного шахматного турнира</small><br><b>Каждая полная группа из четырёх часов учитывается как один заполненный ящик.</b>
+<blockquote>В каждый ящик помещается до четырёх часов. Ведомость считает каждый заполненный ящик и ещё один, если после упаковки полных ящиков остались часы. <a href="#source-line-4">строка 4</a></blockquote></td>
+<td><small>проверяемо</small><br>Для 12 часов проверить результат в 3 ящика.<p></p></td></tr><tr id="R-005"><td><b>R-005</b><br>—</td>
+<td><small>требование · Ведомость багажа выездного шахматного турнира</small><br><b>Если после упаковки полных ящиков остаются часы, ведомость добавляет один ящик для остатка.</b>
+<blockquote>В каждый ящик помещается до четырёх часов. Ведомость считает каждый заполненный ящик и ещё один, если после упаковки полных ящиков остались часы. <a href="#source-line-4">строка 4</a></blockquote></td>
+<td><small>проверяемо</small><br>При вводе 13, 14 и 15 часов проверить, что каждый из трёх возможных ненулевых остатков даёт итог в 4 ящика.<p></p></td></tr><tr id="R-006"><td><b>R-006</b><br>—</td>
+<td><small>требование · Ведомость багажа выездного шахматного турнира</small><br><b>При вводе нуля часов ведомость показывает ноль ящиков.</b>
+<blockquote>При нуле часов ведомость показывает ноль ящиков. Все часы одинаковы, запасные ящики не добавляются. <a href="#source-line-5">строка 5</a></blockquote></td>
+<td><small>проверяемо</small><br>Ввести 0 часов и проверить, что показано 0 ящиков.<p></p></td></tr><tr id="R-007"><td><b>R-007</b><br>—</td>
+<td><small>требование · Ведомость багажа выездного шахматного турнира</small><br><b>В расчёте все шахматные часы считаются одинаковыми.</b>
+<blockquote>При нуле часов ведомость показывает ноль ящиков. Все часы одинаковы, запасные ящики не добавляются. <a href="#source-line-5">строка 5</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить по правилу расчёта, что каждая единица введённого количества занимает одно место в ящике.<p></p></td></tr><tr id="R-008"><td><b>R-008</b><br>—</td>
+<td><small>требование · Ведомость багажа выездного шахматного турнира</small><br><b>Запасные ящики не добавляются к итогу.</b>
+<blockquote>При нуле часов ведомость показывает ноль ящиков. Все часы одинаковы, запасные ящики не добавляются. <a href="#source-line-5">строка 5</a></blockquote></td>
+<td><small>проверяемо</small><br>Для 12 часов проверить, что итог равен ровно 3 ящикам.<p></p></td></tr><tr id="R-009"><td><b>R-009</b><br>—</td>
+<td><small>приёмочный пример · Приёмочные примеры</small><br><b>Организатор вводит 12 часов, ведомость показывает 3 ящика.</b>
+<blockquote>| 12 | 3 | <a href="#source-line-10">строка 10</a></blockquote></td>
+<td><small>проверяемо</small><br>Сверить показанное значение с 3 при вводе 12 часов.<p></p></td></tr><tr id="R-010"><td><b>R-010</b><br>—</td>
+<td><small>приёмочный пример · Приёмочные примеры</small><br><b>Организатор вводит 13 часов, ведомость показывает 4 ящика.</b>
+<blockquote>| 13 | 4 | <a href="#source-line-11">строка 11</a></blockquote></td>
+<td><small>проверяемо</small><br>Сверить показанное значение с 4 при вводе 13 часов.<p></p></td></tr></tbody></table></section>
+<section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: 0. У каждого указано решение итогового ревью.</p>
+</section>
+<section id="coverage"><h2>Карта покрытия исходника</h2><p>Учтено 9 непустых строк, 9 блоков, 1 таблиц, 2 строк данных таблиц и 0 блоков JSON. Структура, шаблоны и контекст имеют отдельные записи.</p>
+<details><summary>Открыть все блоки и основания классификации</summary><table><thead><tr><th>Источник</th><th>Тип</th><th>Назначение и пункты</th></tr></thead><tbody><tr><td><a href="#source-line-1">строка 1</a></td><td>заголовок</td><td>Название ведомости и контекст её применения. </td></tr><tr><td><a href="#source-line-3">строка 3</a></td><td>текст</td><td>Ввод данных и отображение результата. <a href="#R-001">R-001</a> · <a href="#R-002">R-002</a></td></tr><tr><td><a href="#source-line-4">строка 4</a></td><td>текст</td><td>Вместимость ящика и правила подсчёта. <a href="#R-003">R-003</a> · <a href="#R-004">R-004</a> · <a href="#R-005">R-005</a></td></tr><tr><td><a href="#source-line-5">строка 5</a></td><td>текст</td><td>Нулевой ввод, одинаковые часы и исключение запаса из расчёта. <a href="#R-006">R-006</a> · <a href="#R-007">R-007</a> · <a href="#R-008">R-008</a></td></tr><tr><td><a href="#source-line-7">строка 7</a></td><td>заголовок</td><td>Заголовок раздела с приёмочными примерами. </td></tr><tr><td><a href="#source-line-8">строка 8</a></td><td>шапка таблицы</td><td>Названия столбцов. </td></tr><tr><td><a href="#source-line-9">строка 9</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-10">строка 10</a></td><td>строка таблицы · шапка <a href="#source-line-8">строка 8</a></td><td>Приёмка для трёх полных ящиков. <a href="#R-009">R-009</a></td></tr><tr><td><a href="#source-line-11">строка 11</a></td><td>строка таблицы · шапка <a href="#source-line-8">строка 8</a></td><td>Приёмка для трёх полных ящиков и одного оставшегося экземпляра часов. <a href="#R-010">R-010</a></td></tr></tbody></table></details></section>
+<section id="source"><h2>Текст исходного документа</h2><ol class="source-list">
+        <li class="source-row" id="source-line-1" value="1" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>1</span>
+          <span class="source-text"># Ведомость багажа выездного шахматного турнира</span>
+        </li>
+        <li class="source-row" id="source-line-3" value="3" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>3</span>
+          <span class="source-text">Организатор вводит число шахматных часов. Ведомость показывает, сколько транспортных ящиков подготовить для всех введённых часов.</span><div class="backlinks"><a href="#R-001">↑ R-001</a><a href="#R-002">↑ R-002</a></div>
+        </li>
+        <li class="source-row" id="source-line-4" value="4" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>4</span>
+          <span class="source-text">В каждый ящик помещается до четырёх часов. Ведомость считает каждый заполненный ящик и ещё один, если после упаковки полных ящиков остались часы.</span><div class="backlinks"><a href="#qa-scenario-1">↑ QA · Граница значения</a><a href="#qa-scenario-1">↑ QA · Граница значения</a><a href="#R-003">↑ R-003</a><a href="#R-004">↑ R-004</a><a href="#R-005">↑ R-005</a></div>
+        </li>
+        <li class="source-row" id="source-line-5" value="5" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>5</span>
+          <span class="source-text">При нуле часов ведомость показывает ноль ящиков. Все часы одинаковы, запасные ящики не добавляются.</span><div class="backlinks"><a href="#R-006">↑ R-006</a><a href="#R-007">↑ R-007</a><a href="#R-008">↑ R-008</a></div>
+        </li>
+        <li class="source-row" id="source-line-7" value="7" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>7</span>
+          <span class="source-text">## Приёмочные примеры</span>
+        </li>
+        <li class="source-row" id="source-line-8" value="8" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>8</span>
+          <span class="source-text">| Введено часов | Показано ящиков |</span>
+        </li>
+        <li class="source-row" id="source-line-9" value="9" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>9</span>
+          <span class="source-text">| --- | --- |</span>
+        </li>
+        <li class="source-row" id="source-line-10" value="10" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>10</span>
+          <span class="source-text">| 12 | 3 |</span><div class="backlinks"><a href="#qa-scenario-1">↑ QA · Граница значения</a><a href="#R-009">↑ R-009</a></div>
+        </li>
+        <li class="source-row" id="source-line-11" value="11" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>11</span>
+          <span class="source-text">| 13 | 4 |</span><div class="backlinks"><a href="#R-010">↑ R-010</a></div>
+        </li></ol></section>
+    <section class="report-section" aria-labelledby="passport">
+      <h2 id="passport" tabindex="-1">Паспорт прогона</h2>
+      <dl class="facts"><div><dt>Документ</dt><dd>packing-v2.md</dd></div><div><dt>Строк в документе</dt><dd>11</dd></div><div><dt>SHA-256 документа</dt><dd>1c9d4d27cee39eaaa979df6701b23fa9baa6ab43bae0a5b919fee52a648a09d1</dd></div><div><dt>Провайдер</dt><dd>codex-cli</dd></div><div><dt>Модель</dt><dd>gpt-6.2-astra</dd></div><div><dt>Версия агента</dt><dd>313290b9939e+modified</dd></div><div><dt>Начало · UTC</dt><dd>2026-11-27T13:35:00.115220+00:00</dd></div><div><dt>Длительность · с</dt><dd>64.71</dd></div><div><dt>Лимит параллельных запросов</dt><dd>2</dd></div><div><dt>SHA-256 проверяющего кода</dt><dd>aff11c58dce59e022ddebc7268c93f04ba47ed055df548a371cd3ccfd508f86d</dd></div><div><dt>Версия формата JSON</dt><dd>2</dd></div><div><dt>Новых обращений к модели</dt><dd>4</dd></div><div><dt>Попыток из контрольных точек</dt><dd>0</dd></div></dl>
+      <h3 class="tokens-heading">Токены этого запуска</h3>
+      <dl class="facts"><div><dt>Вход</dt><dd>55162</dd></div><div><dt>Вход из кеша</dt><dd>0</dd></div><div><dt>Запись в кеш</dt><dd>0</dd></div><div><dt>Выход</dt><dd>2128</dd></div><div><dt>Рассуждение</dt><dd>0</dd></div></dl>
+
+      <details class="attempts">
+        <summary>Попытки · 4</summary>
+        <ol>
+        <li>
+          <p><strong>Сценарии · Принята · 6.28 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>12852</dd></div><div><dt>Вход из кеша</dt><dd>0</dd></div><div><dt>Запись в кеш</dt><dd>0</dd></div><div><dt>Выход</dt><dd>15</dd></div><div><dt>Рассуждение</dt><dd>0</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 1–11 · Принята · 26.32 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>13337</dd></div><div><dt>Вход из кеша</dt><dd>0</dd></div><div><dt>Запись в кеш</dt><dd>0</dd></div><div><dt>Выход</dt><dd>1045</dd></div><div><dt>Рассуждение</dt><dd>0</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Весь документ · Принята · 19.17 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>15327</dd></div><div><dt>Вход из кеша</dt><dd>0</dd></div><div><dt>Запись в кеш</dt><dd>0</dd></div><div><dt>Выход</dt><dd>628</dd></div><div><dt>Рассуждение</dt><dd>0</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Сценарии QA · Принята · 18.93 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>13646</dd></div><div><dt>Вход из кеша</dt><dd>0</dd></div><div><dt>Запись в кеш</dt><dd>0</dd></div><div><dt>Выход</dt><dd>440</dd></div><div><dt>Рассуждение</dt><dd>0</dd></div></dl>
+        </li>
+        </ol>
+      </details>
+    </section></main><script>const printButton = document.getElementById('print-report');
+printButton.hidden = false;
+printButton.addEventListener('click', () => window.print());
+let openedForPrint = [];
+window.addEventListener('beforeprint', () => {
+  for (const detail of document.querySelectorAll('main details:not([open])')) {
+    openedForPrint.push(detail);
+    detail.open = true;
+  }
+});
+window.addEventListener('afterprint', () => {
+  for (const detail of openedForPrint) detail.open = false;
+  openedForPrint = [];
+});</script></body></html>
