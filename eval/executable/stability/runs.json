@@ -1,0 +1,86 @@
+[
+  {
+    "report": "initial/hotel.json",
+    "sha256": "a46322796b66dffa02dd83723890cbe6df5858c9bfcb3ef4c8cff476e7183428",
+    "input_sha256": "1fa6bdbf13936a8dca643757c21c59ee59188eaf5190bd46a0ea5ab91f9b1798",
+    "commit": "f6f0616c6258",
+    "utc_start": "2026-11-26T20:03:50.918360+00:00",
+    "utc_end": "2026-11-26T20:06:38.906522+00:00",
+    "exit_code": 0,
+    "fresh_calls": 5,
+    "restored_attempts": 0,
+    "elapsed_seconds": 167.93
+  },
+  {
+    "report": "initial/official.json",
+    "sha256": "bb3b5338f3e8c76a1f51f3c68c64317a165ac9c20f7899208b5e60c4f598f297",
+    "input_sha256": "e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381",
+    "commit": "f6f0616c6258",
+    "utc_start": "2026-11-26T20:03:51.022465+00:00",
+    "utc_end": "2026-11-26T20:09:16.354445+00:00",
+    "exit_code": 0,
+    "fresh_calls": 12,
+    "restored_attempts": 0,
+    "elapsed_seconds": 325.3
+  },
+  {
+    "report": "recovered/aligned.json",
+    "sha256": "923726f73b322e42a06ff6e5a43f3b10638abc3b45c80363eb25bf3518e08936",
+    "input_sha256": "8f1fd01653c66e1413c1b8e6b55a2dc5e1ca74dfa38a04b545d22845b89d13ef",
+    "commit": "e4d3db591d1a",
+    "utc_start": "2026-11-27T03:06:40.405760+00:00",
+    "utc_end": "2026-11-27T03:08:40.198415+00:00",
+    "exit_code": 0,
+    "fresh_calls": 3,
+    "restored_attempts": 0,
+    "elapsed_seconds": 119.78
+  },
+  {
+    "report": "recovered/hotel.json",
+    "sha256": "a488fc8ce85164ff0243044020ff2eaf746ef30ebb862b9ccd08b2c6af82bf18",
+    "input_sha256": "1fa6bdbf13936a8dca643757c21c59ee59188eaf5190bd46a0ea5ab91f9b1798",
+    "commit": "e4d3db591d1a",
+    "utc_start": "2026-11-27T03:03:39.981867+00:00",
+    "utc_end": "2026-11-27T03:06:40.288065+00:00",
+    "exit_code": 0,
+    "fresh_calls": 5,
+    "restored_attempts": 0,
+    "elapsed_seconds": 180.29
+  },
+  {
+    "report": "recovered/ledger.json",
+    "sha256": "39857ec3e930a5720c1c23a76eacd106558de9ed528a1715a05ff4226bc4432d",
+    "input_sha256": "d795152a745d3d1674d28ae5ebc7548015c92f4743a17435efbd8d8e9b29def0",
+    "commit": "e4d3db591d1a",
+    "utc_start": "2026-11-27T03:08:40.315807+00:00",
+    "utc_end": "2026-11-27T03:10:58.657430+00:00",
+    "exit_code": 0,
+    "fresh_calls": 4,
+    "restored_attempts": 0,
+    "elapsed_seconds": 138.33
+  },
+  {
+    "report": "recovered/named-state.json",
+    "sha256": "7df586038f45d32623ce27081ff0d3adb39bb6571785b49a8a66db61018ba3d8",
+    "input_sha256": "e8548c745218a259ef0fa61850ce51327dba7ee81e68cf71952121fb33190f3d",
+    "commit": "e4d3db591d1a",
+    "utc_start": "2026-11-27T03:09:39.422821+00:00",
+    "utc_end": "2026-11-27T03:13:06.167455+00:00",
+    "exit_code": 0,
+    "fresh_calls": 6,
+    "restored_attempts": 0,
+    "elapsed_seconds": 206.73
+  },
+  {
+    "report": "recovered/official.json",
+    "sha256": "0dfb276185ce9005bffa27bb481062c18c8105fae5808a088de4e0bfde018372",
+    "input_sha256": "e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381",
+    "commit": "e4d3db591d1a",
+    "utc_start": "2026-11-27T03:03:40.143701+00:00",
+    "utc_end": "2026-11-27T03:09:39.292609+00:00",
+    "exit_code": 0,
+    "fresh_calls": 15,
+    "restored_attempts": 0,
+    "elapsed_seconds": 359.13
+  }
+]

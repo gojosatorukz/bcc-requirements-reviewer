@@ -1,0 +1,101 @@
+[
+  {
+    "round": 2,
+    "commit": "f6f0616c62582d0092d95ccda39c7f1d39c3e746",
+    "provider_signal": "usage_limit",
+    "log_sha256": "7dc74289054f245081432f28e958100fe20c7dbd0a309b24f4086b5fea5161f2",
+    "document": "bcc",
+    "start": "2026-11-26T20:58:51.086613+00:00",
+    "end": "2026-11-26T20:59:00.139093+00:00",
+    "exit_code": 1,
+    "input_sha256": "e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381"
+  },
+  {
+    "round": 2,
+    "commit": "f6f0616c62582d0092d95ccda39c7f1d39c3e746",
+    "provider_signal": "usage_limit",
+    "log_sha256": "b5d99f6d0b70e7ba1962581c26f34f79056dbead86bd316026c4fa913f25fccb",
+    "document": "aligned",
+    "start": "2026-11-26T20:58:51.086758+00:00",
+    "end": "2026-11-26T20:58:55.928508+00:00",
+    "exit_code": 1,
+    "input_sha256": "8f1fd01653c66e1413c1b8e6b55a2dc5e1ca74dfa38a04b545d22845b89d13ef"
+  },
+  {
+    "round": 2,
+    "commit": "f6f0616c62582d0092d95ccda39c7f1d39c3e746",
+    "provider_signal": "usage_limit",
+    "log_sha256": "212f9a392af1c9be4b2f53ef7e5734b50fc228588aa1c4c446e86a40a37752de",
+    "document": "ledger",
+    "start": "2026-11-26T20:58:55.929485+00:00",
+    "end": "2026-11-26T20:59:01.003888+00:00",
+    "exit_code": 1,
+    "input_sha256": "d795152a745d3d1674d28ae5ebc7548015c92f4743a17435efbd8d8e9b29def0"
+  },
+  {
+    "round": 3,
+    "commit": "f6f0616c62582d0092d95ccda39c7f1d39c3e746",
+    "provider_signal": "usage_limit",
+    "log_sha256": "7dc74289054f245081432f28e958100fe20c7dbd0a309b24f4086b5fea5161f2",
+    "document": "bcc",
+    "start": "2026-11-26T21:53:51.065299+00:00",
+    "end": "2026-11-26T21:54:00.233914+00:00",
+    "exit_code": 1,
+    "input_sha256": "e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381"
+  },
+  {
+    "round": 3,
+    "commit": "f6f0616c62582d0092d95ccda39c7f1d39c3e746",
+    "provider_signal": "usage_limit",
+    "log_sha256": "b5d99f6d0b70e7ba1962581c26f34f79056dbead86bd316026c4fa913f25fccb",
+    "document": "capture",
+    "start": "2026-11-26T21:53:51.065401+00:00",
+    "end": "2026-11-26T21:53:55.731686+00:00",
+    "exit_code": 1,
+    "input_sha256": "1fa6bdbf13936a8dca643757c21c59ee59188eaf5190bd46a0ea5ab91f9b1798"
+  },
+  {
+    "round": 4,
+    "commit": "e4d3db591d1a73433324039e20616308046f1189",
+    "provider_signal": "usage_limit",
+    "log_sha256": "7dc74289054f245081432f28e958100fe20c7dbd0a309b24f4086b5fea5161f2",
+    "document": "bcc",
+    "start": "2026-11-26T22:58:51.133432+00:00",
+    "end": "2026-11-26T22:59:00.033689+00:00",
+    "exit_code": 1,
+    "input_sha256": "e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381"
+  },
+  {
+    "round": 4,
+    "commit": "e4d3db591d1a73433324039e20616308046f1189",
+    "provider_signal": "usage_limit",
+    "log_sha256": "b5d99f6d0b70e7ba1962581c26f34f79056dbead86bd316026c4fa913f25fccb",
+    "document": "capture",
+    "start": "2026-11-26T22:58:51.133723+00:00",
+    "end": "2026-11-26T22:58:56.110631+00:00",
+    "exit_code": 1,
+    "input_sha256": "1fa6bdbf13936a8dca643757c21c59ee59188eaf5190bd46a0ea5ab91f9b1798"
+  },
+  {
+    "round": 4,
+    "commit": "e4d3db591d1a73433324039e20616308046f1189",
+    "provider_signal": "usage_limit",
+    "log_sha256": "b5d99f6d0b70e7ba1962581c26f34f79056dbead86bd316026c4fa913f25fccb",
+    "document": "aligned",
+    "start": "2026-11-26T22:58:56.111622+00:00",
+    "end": "2026-11-26T22:59:00.058976+00:00",
+    "exit_code": 1,
+    "input_sha256": "8f1fd01653c66e1413c1b8e6b55a2dc5e1ca74dfa38a04b545d22845b89d13ef"
+  },
+  {
+    "round": 4,
+    "commit": "e4d3db591d1a73433324039e20616308046f1189",
+    "provider_signal": "usage_limit",
+    "log_sha256": "212f9a392af1c9be4b2f53ef7e5734b50fc228588aa1c4c446e86a40a37752de",
+    "document": "ledger",
+    "start": "2026-11-26T22:59:00.035028+00:00",
+    "end": "2026-11-26T22:59:04.661706+00:00",
+    "exit_code": 1,
+    "input_sha256": "d795152a745d3d1674d28ae5ebc7548015c92f4743a17435efbd8d8e9b29def0"
+  }
+]

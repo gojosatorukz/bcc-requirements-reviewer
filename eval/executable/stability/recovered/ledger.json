@@ -1,0 +1,1542 @@
+{
+  "schema_version": 2,
+  "scope": "Полное ревью требований",
+  "run": {
+    "started_utc": "2026-11-27T03:08:40.315807+00:00",
+    "elapsed_seconds": 138.33,
+    "provider": "codex-cli",
+    "model": "gpt-6.2-astra",
+    "agent_version": "e4d3db591d1a",
+    "engine_sha256": "d9a59e05ff2c5ac1e56f0d230fe366b6a6adc8f65305fbd0140f2ab7c12f3af6",
+    "input_name": "post-pending.md",
+    "input_sha256": "d795152a745d3d1674d28ae5ebc7548015c92f4743a17435efbd8d8e9b29def0",
+    "input_lines": 48,
+    "usage": {
+      "input_tokens": 57940,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 9566,
+      "reasoning_output_tokens": 46
+    },
+    "current_usage": {
+      "input_tokens": 57940,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 9566,
+      "reasoning_output_tokens": 46
+    },
+    "fresh_calls": 4,
+    "restored_attempts": 0,
+    "attempts": [
+      {
+        "stage": "Сценарии",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 13407,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 671,
+          "reasoning_output_tokens": 20
+        },
+        "seconds": 18.42
+      },
+      {
+        "stage": "Блоки 1–27",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 13754,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2421,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 53.04
+      },
+      {
+        "stage": "Блоки 28–48",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 13735,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2638,
+          "reasoning_output_tokens": 26
+        },
+        "seconds": 56.57
+      },
+      {
+        "stage": "Весь документ",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 17044,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3836,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 81.72
+      }
+    ],
+    "max_workers": 4
+  },
+  "http_status_policy": "explicit-http-v1",
+  "source": [
+    {
+      "line": 1,
+      "text": "# Two-Phase Transfers"
+    },
+    {
+      "line": 3,
+      "text": "A two-phase transfer moves funds in stages:"
+    },
+    {
+      "line": 5,
+      "text": "1. Reserve funds ([pending](#reserve-funds-pending-transfer))"
+    },
+    {
+      "line": 6,
+      "text": "2. Resolve funds ([post](#post-pending-transfer), [void](#void-pending-transfer), or"
+    },
+    {
+      "line": 7,
+      "text": "   [expire](#expire-pending-transfer))"
+    },
+    {
+      "line": 9,
+      "text": "The name \"two-phase transfer\" is a reference to the"
+    },
+    {
+      "line": 10,
+      "text": "[two-phase commit protocol for distributed transactions](https://en.wikipedia.org/wiki/Two-phase_commit_protocol)."
+    },
+    {
+      "line": 12,
+      "text": "## Reserve Funds (Pending Transfer)"
+    },
+    {
+      "line": 14,
+      "text": "A pending transfer, denoted by [`flags.pending`](../reference/transfer.md#flagspending),"
+    },
+    {
+      "line": 15,
+      "text": "reserves its `amount` in the debit/credit accounts'"
+    },
+    {
+      "line": 16,
+      "text": "[`debits_pending`](../reference/account.md#debits_pending)/[`credits_pending`](../reference/account.md#credits_pending)"
+    },
+    {
+      "line": 17,
+      "text": "fields, respectively. Pending transfers leave the `debits_posted`/`credits_posted` unmodified."
+    },
+    {
+      "line": 19,
+      "text": "## Resolve Funds"
+    },
+    {
+      "line": 21,
+      "text": "Pending transfers can be posted, voided, or they may time out."
+    },
+    {
+      "line": 23,
+      "text": "### Post-Pending Transfer"
+    },
+    {
+      "line": 25,
+      "text": "A post-pending transfer, denoted by"
+    },
+    {
+      "line": 26,
+      "text": "[`flags.post_pending_transfer`](../reference/transfer.md#flagspost_pending_transfer), causes a"
+    },
+    {
+      "line": 27,
+      "text": "pending transfer to \"post\", transferring some or all of the pending transfer's reserved amount to"
+    },
+    {
+      "line": 28,
+      "text": "its destination."
+    },
+    {
+      "line": 30,
+      "text": "- If the posted [`amount`](../reference/transfer.md#amount) is less than the pending transfer's"
+    },
+    {
+      "line": 31,
+      "text": "  amount, then only this amount is posted, and the remainder is restored to its original accounts."
+    },
+    {
+      "line": 32,
+      "text": "- If the posted [`amount`](../reference/transfer.md#amount) is equal to the pending transfer's"
+    },
+    {
+      "line": 33,
+      "text": "  amount or equal to `AMOUNT_MAX` (`2^128 - 1`), the full pending transfer's amount is posted."
+    },
+    {
+      "line": 34,
+      "text": "- If the posted [`amount`](../reference/transfer.md#amount) is greater than the pending transfer's"
+    },
+    {
+      "line": 35,
+      "text": "  amount (but less than `AMOUNT_MAX`),"
+    },
+    {
+      "line": 36,
+      "text": "  [`exceeds_pending_transfer_amount`](../reference/requests/create_transfers.md#exceeds_pending_transfer_amount)"
+    },
+    {
+      "line": 37,
+      "text": "  is returned."
+    },
+    {
+      "line": 39,
+      "text": "<details>"
+    },
+    {
+      "line": 40,
+      "text": "<summary>Client &lt; 0.16.0</summary>"
+    },
+    {
+      "line": 42,
+      "text": "- If the posted [`amount`](../reference/transfer.md#amount) is 0, the full pending transfer's"
+    },
+    {
+      "line": 43,
+      "text": "  amount is posted."
+    },
+    {
+      "line": 44,
+      "text": "- If the posted [`amount`](../reference/transfer.md#amount) is nonzero, then only this amount"
+    },
+    {
+      "line": 45,
+      "text": "  is posted, and the remainder is restored to its original accounts. It must be less than or equal"
+    },
+    {
+      "line": 46,
+      "text": "  to the pending transfer's amount."
+    },
+    {
+      "line": 48,
+      "text": "</details>"
+    }
+  ],
+  "segments": [
+    {
+      "start": 1,
+      "end": 1,
+      "kind": "заголовок",
+      "section": "Two-Phase Transfers",
+      "note": "Название спецификации.",
+      "requirements": []
+    },
+    {
+      "start": 3,
+      "end": 3,
+      "kind": "текст",
+      "section": "Two-Phase Transfers",
+      "note": "Общий порядок фаз перевода.",
+      "requirements": [
+        "R-001"
+      ]
+    },
+    {
+      "start": 5,
+      "end": 5,
+      "kind": "текст",
+      "section": "Two-Phase Transfers",
+      "note": "Первый шаг процесса.",
+      "requirements": [
+        "R-002"
+      ]
+    },
+    {
+      "start": 6,
+      "end": 6,
+      "kind": "текст",
+      "section": "Two-Phase Transfers",
+      "note": "Два способа завершения резерва на втором шаге.",
+      "requirements": [
+        "R-003",
+        "R-004"
+      ]
+    },
+    {
+      "start": 7,
+      "end": 7,
+      "kind": "текст",
+      "section": "Two-Phase Transfers",
+      "note": "Третий способ завершения резерва.",
+      "requirements": [
+        "R-005"
+      ]
+    },
+    {
+      "start": 9,
+      "end": 9,
+      "kind": "текст",
+      "section": "Two-Phase Transfers",
+      "note": "Начало пояснения о происхождении термина.",
+      "requirements": []
+    },
+    {
+      "start": 10,
+      "end": 10,
+      "kind": "текст",
+      "section": "Two-Phase Transfers",
+      "note": "Ссылка на протокол, от которого происходит название.",
+      "requirements": []
+    },
+    {
+      "start": 12,
+      "end": 12,
+      "kind": "заголовок",
+      "section": "Two-Phase Transfers / Reserve Funds (Pending Transfer)",
+      "note": "Заголовок раздела о резервировании средств.",
+      "requirements": []
+    },
+    {
+      "start": 14,
+      "end": 14,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Reserve Funds (Pending Transfer)",
+      "note": "Признак операции резервирования.",
+      "requirements": [
+        "R-006"
+      ]
+    },
+    {
+      "start": 15,
+      "end": 15,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Reserve Funds (Pending Transfer)",
+      "note": "Размер резерва на участвующих счетах.",
+      "requirements": [
+        "R-007"
+      ]
+    },
+    {
+      "start": 16,
+      "end": 16,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Reserve Funds (Pending Transfer)",
+      "note": "Соответствие полей резерва сторонам перевода задано порядком перечисления и словом respectively в следующей строке.",
+      "requirements": [
+        "R-008",
+        "R-009"
+      ]
+    },
+    {
+      "start": 17,
+      "end": 17,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Reserve Funds (Pending Transfer)",
+      "note": "Резервирование сохраняет значения проведённых оборотов.",
+      "requirements": [
+        "R-010",
+        "R-011"
+      ]
+    },
+    {
+      "start": 19,
+      "end": 19,
+      "kind": "заголовок",
+      "section": "Two-Phase Transfers / Resolve Funds",
+      "note": "Заголовок раздела о завершении резервирования.",
+      "requirements": []
+    },
+    {
+      "start": 21,
+      "end": 21,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds",
+      "note": "Допустимые исходы для pending-перевода.",
+      "requirements": [
+        "R-012",
+        "R-013",
+        "R-014"
+      ]
+    },
+    {
+      "start": 23,
+      "end": 23,
+      "kind": "заголовок",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Заголовок подраздела о проведении pending-перевода.",
+      "requirements": []
+    },
+    {
+      "start": 25,
+      "end": 25,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Вводная часть определения операции post-pending. Сам флаг указан в следующей строке.",
+      "requirements": []
+    },
+    {
+      "start": 26,
+      "end": 26,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Признак операции проведения ранее созданного перевода.",
+      "requirements": [
+        "R-015"
+      ]
+    },
+    {
+      "start": 27,
+      "end": 27,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Результат post-pending и поддерживаемые объёмы проведения.",
+      "requirements": [
+        "R-016",
+        "R-017",
+        "R-018"
+      ]
+    },
+    {
+      "start": 28,
+      "end": 28,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Окончание правила о получателе средств при проведении.",
+      "requirements": [
+        "R-019"
+      ]
+    },
+    {
+      "start": 30,
+      "end": 30,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Нижняя ветвь сравнения запрошенной суммы с резервом.",
+      "requirements": [
+        "R-020"
+      ]
+    },
+    {
+      "start": 31,
+      "end": 31,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Два наблюдаемых результата частичного проведения.",
+      "requirements": [
+        "R-021",
+        "R-022"
+      ]
+    },
+    {
+      "start": 32,
+      "end": 32,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Первое из двух условий полного проведения.",
+      "requirements": [
+        "R-023"
+      ]
+    },
+    {
+      "start": 33,
+      "end": 33,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Результат полного проведения и специальное значение суммы.",
+      "requirements": [
+        "R-024"
+      ]
+    },
+    {
+      "start": 34,
+      "end": 34,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Нижняя граница диапазона ошибки превышения.",
+      "requirements": [
+        "R-025"
+      ]
+    },
+    {
+      "start": 35,
+      "end": 35,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Верхняя граница диапазона ошибки превышения.",
+      "requirements": [
+        "R-026"
+      ]
+    },
+    {
+      "start": 36,
+      "end": 36,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Точный идентификатор ошибки.",
+      "requirements": [
+        "R-027"
+      ]
+    },
+    {
+      "start": 37,
+      "end": 37,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Окончание правила о возврате ошибки.",
+      "requirements": [
+        "R-028"
+      ]
+    },
+    {
+      "start": 39,
+      "end": 39,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Открывающий тег раскрываемого раздела документации.",
+      "requirements": []
+    },
+    {
+      "start": 40,
+      "end": 40,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Заголовок задаёт область действия следующих правил.",
+      "requirements": [
+        "R-029"
+      ]
+    },
+    {
+      "start": 42,
+      "end": 42,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Условие полного проведения для старых клиентов.",
+      "requirements": [
+        "R-030"
+      ]
+    },
+    {
+      "start": 43,
+      "end": 43,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Результат проведения при нулевой сумме для старого клиента.",
+      "requirements": [
+        "R-031"
+      ]
+    },
+    {
+      "start": 44,
+      "end": 44,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Условие проведения явно указанной ненулевой суммы.",
+      "requirements": [
+        "R-032"
+      ]
+    },
+    {
+      "start": 45,
+      "end": 45,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Размер проведения, возврат остатка и включительная граница суммы для старых клиентов.",
+      "requirements": [
+        "R-033",
+        "R-034",
+        "R-035"
+      ]
+    },
+    {
+      "start": 46,
+      "end": 46,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Уточняет, с какой суммой сравнивают ненулевой `amount` старого клиента.",
+      "requirements": [
+        "R-036"
+      ]
+    },
+    {
+      "start": 48,
+      "end": 48,
+      "kind": "текст",
+      "section": "Two-Phase Transfers / Resolve Funds / Post-Pending Transfer",
+      "note": "Закрывающий тег раздела о клиентах версии ниже 0.16.0.",
+      "requirements": []
+    }
+  ],
+  "registry": [
+    {
+      "role": "требование",
+      "statement": "Перевод проходит две фазы по порядку: сначала средства резервируются, затем определяется судьба резерва.",
+      "evidence": {
+        "line": 3,
+        "quote": "A two-phase transfer moves funds in stages:"
+      },
+      "status": "проверяемо",
+      "assessment": "Проследить один перевод от создания резерва до его завершения и проверить порядок фаз.",
+      "id": "R-001",
+      "start": 3,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "На первом шаге перевод pending резервирует средства.",
+      "evidence": {
+        "line": 5,
+        "quote": "1. Reserve funds"
+      },
+      "status": "проверяемо",
+      "assessment": "Создать pending-перевод на известную сумму и проверить появление резерва до второй фазы.",
+      "id": "R-002",
+      "start": 5,
+      "original_id": "1"
+    },
+    {
+      "role": "требование",
+      "statement": "На втором шаге резерв можно провести операцией post.",
+      "evidence": {
+        "line": 6,
+        "quote": "[post](#post-pending-transfer)"
+      },
+      "status": "проверяемо",
+      "assessment": "Провести ранее зарезервированную сумму и проверить её перевод получателю.",
+      "id": "R-003",
+      "start": 6,
+      "original_id": "2"
+    },
+    {
+      "role": "требование",
+      "statement": "На втором шаге резерв можно отменить операцией void.",
+      "evidence": {
+        "line": 6,
+        "quote": "[void](#void-pending-transfer)"
+      },
+      "status": "проверяемо",
+      "assessment": "Применить void к pending-переводу и проверить отмену резерва.",
+      "id": "R-004",
+      "start": 6,
+      "original_id": "2"
+    },
+    {
+      "role": "требование",
+      "statement": "Вторая фаза может завершиться истечением срока pending-перевода.",
+      "evidence": {
+        "line": 7,
+        "quote": "[expire](#expire-pending-transfer)"
+      },
+      "status": "проверяемо",
+      "assessment": "Для перевода с известным сроком проверить, что резерв завершается по тайм-ауту без вызова post или void.",
+      "id": "R-005",
+      "start": 7,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Флаг `flags.pending` обозначает pending-перевод.",
+      "evidence": {
+        "line": 14,
+        "quote": "A pending transfer, denoted by [`flags.pending`]"
+      },
+      "status": "проверяемо",
+      "assessment": "Создать перевод с этим флагом и проверить, что он обрабатывается как резервирование.",
+      "id": "R-006",
+      "start": 14,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Pending-перевод резервирует на каждом из двух счетов полную сумму своего поля `amount`.",
+      "evidence": {
+        "line": 15,
+        "quote": "reserves its `amount` in the debit/credit accounts'"
+      },
+      "status": "проверяемо",
+      "assessment": "Для ненулевого `amount` сравнить прирост резерва на каждом счёте с переданным значением.",
+      "id": "R-007",
+      "start": 15,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "На дебетуемом счёте pending-перевод увеличивает `debits_pending` на `amount`.",
+      "evidence": {
+        "line": 16,
+        "quote": "[`debits_pending`](../reference/account.md#debits_pending)"
+      },
+      "status": "проверяемо",
+      "assessment": "В отсутствие других операций разность значений `debits_pending` дебетуемого счёта после и до резервирования должна равняться `amount`.",
+      "id": "R-008",
+      "start": 16,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "На кредитуемом счёте pending-перевод увеличивает `credits_pending` на `amount`.",
+      "evidence": {
+        "line": 16,
+        "quote": "[`credits_pending`](../reference/account.md#credits_pending)"
+      },
+      "status": "проверяемо",
+      "assessment": "В отсутствие других операций разность значений `credits_pending` кредитуемого счёта после и до резервирования должна равняться `amount`.",
+      "id": "R-009",
+      "start": 16,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Pending-перевод оставляет `debits_posted` без изменений.",
+      "evidence": {
+        "line": 17,
+        "quote": "Pending transfers leave the `debits_posted`/`credits_posted` unmodified."
+      },
+      "status": "проверяемо",
+      "assessment": "Сравнить `debits_posted` до и после отдельного pending-перевода.",
+      "id": "R-010",
+      "start": 17,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Pending-перевод оставляет `credits_posted` без изменений.",
+      "evidence": {
+        "line": 17,
+        "quote": "`credits_posted` unmodified."
+      },
+      "status": "проверяемо",
+      "assessment": "Сравнить `credits_posted` до и после отдельного pending-перевода.",
+      "id": "R-011",
+      "start": 17,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Pending-перевод можно провести.",
+      "evidence": {
+        "line": 21,
+        "quote": "Pending transfers can be posted"
+      },
+      "status": "проверяемо",
+      "assessment": "Провести существующий pending-перевод на полную сумму и проверить зачисление получателю.",
+      "id": "R-012",
+      "start": 21,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Pending-перевод можно отменить.",
+      "evidence": {
+        "line": 21,
+        "quote": "voided"
+      },
+      "status": "проверяемо",
+      "assessment": "Отменить существующий pending-перевод и проверить снятие резерва.",
+      "id": "R-013",
+      "start": 21,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Pending-перевод может завершиться по тайм-ауту.",
+      "evidence": {
+        "line": 21,
+        "quote": "they may time out."
+      },
+      "status": "проверяемо",
+      "assessment": "Оставить перевод с известным сроком в состоянии pending и проверить завершение резерва по истечении срока.",
+      "id": "R-014",
+      "start": 21,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Флаг `flags.post_pending_transfer` обозначает операцию post-pending.",
+      "evidence": {
+        "line": 26,
+        "quote": "[`flags.post_pending_transfer`](../reference/transfer.md#flagspost_pending_transfer)"
+      },
+      "status": "проверяемо",
+      "assessment": "Для существующего резерва отправить корректную операцию с этим флагом и проверить, что система проводит указанный pending-перевод.",
+      "id": "R-015",
+      "start": 26,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Операция post-pending проводит ранее зарезервированные средства в пользу получателя исходного перевода.",
+      "evidence": {
+        "line": 27,
+        "quote": "pending transfer to \"post\", transferring some or all of the pending transfer's reserved amount to"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить счёт зачисления со счётом назначения pending-перевода и проверить прирост проведённой суммы.",
+      "id": "R-016",
+      "start": 27,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Операция post-pending допускает проведение части зарезервированной суммы.",
+      "evidence": {
+        "line": 27,
+        "quote": "some or all of the pending transfer's reserved amount"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 провести 40. Получателю должно поступить 40, а оставшиеся 60 должны быть высвобождены на исходных счетах.",
+      "id": "R-017",
+      "start": 27,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Операция post-pending допускает проведение всей зарезервированной суммы.",
+      "evidence": {
+        "line": 27,
+        "quote": "all of the pending transfer's reserved amount"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 указать сумму проведения 100 и проверить зачисление всех 100 получателю.",
+      "id": "R-018",
+      "start": 27,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При проведении вся резервированная сумма или её проводимая часть поступает на счёт назначения исходного перевода.",
+      "evidence": {
+        "line": 28,
+        "quote": "its destination."
+      },
+      "status": "проверяемо",
+      "assessment": "При частичном и полном проведении проверить счёт зачисления и зачисленную сумму.",
+      "id": "R-019",
+      "start": 28,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "По основному правилу `amount` строго меньше суммы исходного перевода означает частичное проведение на указанную сумму с возвратом остатка.",
+      "evidence": {
+        "line": 30,
+        "quote": "is less than the pending transfer's"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 запросить 99 и проверить проведение 99 с возвратом 1. Для клиента версии ниже 0.16.0 отдельно задано поведение при нуле.",
+      "id": "R-020",
+      "start": 30,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Если запрошенная сумма меньше резервированной, по основному правилу проводится ровно запрошенная сумма.",
+      "evidence": {
+        "line": 31,
+        "quote": "then only this amount is posted"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 и `amount` 40 проверить изменение проведённых сумм на 40.",
+      "id": "R-021",
+      "start": 31,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При таком частичном проведении весь непроведённый остаток возвращается на исходные счета.",
+      "evidence": {
+        "line": 31,
+        "quote": "the remainder is restored to its original accounts."
+      },
+      "status": "проверяемо",
+      "assessment": "При проведении 40 из 100 проверить высвобождение оставшихся 60 на исходных счетах.",
+      "id": "R-022",
+      "start": 31,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Если `amount` равен сумме исходного перевода, проводится весь резерв.",
+      "evidence": {
+        "line": 32,
+        "quote": "is equal to the pending transfer's"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 указать 100 и проверить проведение всей сотни.",
+      "id": "R-023",
+      "start": 32,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "По основному правилу при `amount`, равном резерву либо `AMOUNT_MAX` (`2^128 - 1`), проводится вся сумма исходного перевода.",
+      "evidence": {
+        "line": 33,
+        "quote": "amount or equal to `AMOUNT_MAX` (`2^128 - 1`), the full pending transfer's amount is posted."
+      },
+      "status": "проверяемо",
+      "assessment": "Для двух резервов по 100 указать соответственно 100 и `2^128 - 1`. В каждом случае должно быть проведено 100.",
+      "id": "R-024",
+      "start": 33,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "По основному правилу, если `amount` строго больше резерва и строго меньше `AMOUNT_MAX`, возвращается `exceeds_pending_transfer_amount`.",
+      "evidence": {
+        "line": 34,
+        "quote": "is greater than the pending transfer's"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 запросить 101 и сверить код ошибки. Значение 100 относится к полному проведению.",
+      "id": "R-025",
+      "start": 34,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Для `amount` больше резерва ошибка `exceeds_pending_transfer_amount` по основному правилу применяется при строгом условии `amount < AMOUNT_MAX`. На самой границе проводится весь резерв.",
+      "evidence": {
+        "line": 35,
+        "quote": "(but less than `AMOUNT_MAX`)"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 сравнить результаты для `AMOUNT_MAX - 1` и `AMOUNT_MAX`. Ожидаются соответственно ошибка превышения и проведение 100.",
+      "id": "R-026",
+      "start": 35,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "По основному правилу результат для суммы строго между резервом и `AMOUNT_MAX` имеет код `exceeds_pending_transfer_amount`.",
+      "evidence": {
+        "line": 36,
+        "quote": "`exceeds_pending_transfer_amount`"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить идентификатор в результате запроса с указанным кодом.",
+      "id": "R-027",
+      "start": 36,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "По основному правилу запрос с `amount` больше резерва, но меньше `AMOUNT_MAX`, возвращает вызывающей стороне `exceeds_pending_transfer_amount`.",
+      "evidence": {
+        "line": 37,
+        "quote": "is returned."
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить код в ответе на запрос проведения 101 при резерве 100.",
+      "id": "R-028",
+      "start": 37,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Правила проведения для нулевой и ненулевой суммы в этом разделе применяются к версиям клиента строго ниже 0.16.0.",
+      "evidence": {
+        "line": 40,
+        "quote": "Client &lt; 0.16.0"
+      },
+      "status": "проверяемо",
+      "assessment": "Сравнить проведение с `amount` 0 при положительном резерве для клиента версии ниже 0.16.0 и для версии 0.16.0. В первом случае проводится весь резерв, во втором по основному правилу проводится 0.",
+      "id": "R-029",
+      "start": 40,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Для клиента версии ниже 0.16.0 значение `amount` 0 при проведении означает всю сумму исходного перевода.",
+      "evidence": {
+        "line": 42,
+        "quote": "is 0, the full pending transfer's"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 отправить `amount` 0 со старого клиента и проверить проведение 100.",
+      "id": "R-030",
+      "start": 42,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Запрос с `amount` 0 от клиента версии ниже 0.16.0 проводит весь резерв.",
+      "evidence": {
+        "line": 43,
+        "quote": "amount is posted."
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить, что изменение проведённых сумм равно положительной сумме исходного перевода.",
+      "id": "R-031",
+      "start": 43,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Для клиента версии ниже 0.16.0 при ненулевом `amount`, не превышающем резерв, проводится ровно указанная сумма.",
+      "evidence": {
+        "line": 44,
+        "quote": "is nonzero, then only this amount"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 запросить проведение 1 и проверить проведение ровно 1.",
+      "id": "R-032",
+      "start": 44,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Для клиента версии ниже 0.16.0 допустимая ненулевая сумма запроса проводится в указанном размере.",
+      "evidence": {
+        "line": 45,
+        "quote": "is posted"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 и `amount` 40 проверить проведение 40.",
+      "id": "R-033",
+      "start": 45,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При проведении допустимой ненулевой суммы клиентом версии ниже 0.16.0 остаток резерва возвращается на исходные счета.",
+      "evidence": {
+        "line": 45,
+        "quote": "the remainder is restored to its original accounts."
+      },
+      "status": "проверяемо",
+      "assessment": "При проведении 40 из 100 проверить высвобождение 60 на исходных счетах.",
+      "id": "R-034",
+      "start": 45,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Для клиента версии ниже 0.16.0 ненулевой `amount` должен быть меньше суммы исходного перевода или равен ей.",
+      "evidence": {
+        "line": 45,
+        "quote": "It must be less than or equal"
+      },
+      "status": "проверяемо",
+      "assessment": "При резерве 100 проверить допустимость 100 и отклонение 101.",
+      "id": "R-035",
+      "start": 45,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Верхняя включительная граница ненулевой суммы проведения для клиента версии ниже 0.16.0 равна сумме соответствующего исходного перевода.",
+      "evidence": {
+        "line": 46,
+        "quote": "to the pending transfer's amount."
+      },
+      "status": "проверяемо",
+      "assessment": "Для резервов 50 и 100 проверить запросы на 75. Для первого перевода сумма превышает границу, для второго допустима.",
+      "id": "R-036",
+      "start": 46,
+      "original_id": "—"
+    }
+  ],
+  "whole": {
+    "dimensions": [
+      {
+        "criterion": "полнота",
+        "assessment": "Резервирование и проведение описаны до уровня сумм и полей счетов. Для двух других заявленных способов завершения, void и expire, в предоставленном тексте нет сопоставимого описания условий и результата.",
+        "evidence": [
+          {
+            "line": 17,
+            "quote": "Pending transfers leave the `debits_posted`/`credits_posted` unmodified."
+          },
+          {
+            "line": 21,
+            "quote": "Pending transfers can be posted, voided, or they may time out."
+          },
+          {
+            "line": 31,
+            "quote": "only this amount is posted, and the remainder is restored to its original accounts."
+          }
+        ]
+      },
+      {
+        "criterion": "согласованность",
+        "assessment": "Оба кандидата разрешаются областью действия правил. Для клиентов ниже 0.16.0 отдельно заданы и значение нуля, и верхняя граница ненулевой суммы. В основном правиле AMOUNT_MAX также однозначно отделён от диапазона ошибки строгим неравенством.",
+        "evidence": [
+          {
+            "line": 40,
+            "quote": "<summary>Client &lt; 0.16.0</summary>"
+          },
+          {
+            "line": 42,
+            "quote": "is 0, the full pending transfer's"
+          },
+          {
+            "line": 45,
+            "quote": "It must be less than or equal"
+          },
+          {
+            "line": 46,
+            "quote": "to the pending transfer's amount."
+          },
+          {
+            "line": 33,
+            "quote": "or equal to `AMOUNT_MAX` (`2^128 - 1`), the full pending transfer's amount is posted."
+          },
+          {
+            "line": 35,
+            "quote": "(but less than `AMOUNT_MAX`)"
+          }
+        ]
+      },
+      {
+        "criterion": "проверяемость",
+        "assessment": "Для post можно составить тесты с точными суммами, проверить возврат остатка и код ошибки в указанном диапазоне. Для expire нельзя по этому тексту выбрать момент проверки и установить ожидаемое состояние счетов на границе срока.",
+        "evidence": [
+          {
+            "line": 31,
+            "quote": "only this amount is posted, and the remainder is restored to its original accounts."
+          },
+          {
+            "line": 36,
+            "quote": "`exceeds_pending_transfer_amount`"
+          },
+          {
+            "line": 21,
+            "quote": "or they may time out."
+          }
+        ]
+      },
+      {
+        "criterion": "прослеживаемость",
+        "assessment": "Флаг post и именованная ошибка связаны со справочными записями. Для void и expire оглавление ссылается на конкретные разделы, но в предоставленном тексте проследить эти ссылки до правил приёмки нельзя.",
+        "evidence": [
+          {
+            "line": 26,
+            "quote": "[`flags.post_pending_transfer`](../reference/transfer.md#flagspost_pending_transfer)"
+          },
+          {
+            "line": 36,
+            "quote": "[`exceeds_pending_transfer_amount`](../reference/requests/create_transfers.md#exceeds_pending_transfer_amount)"
+          },
+          {
+            "line": 6,
+            "quote": "[void](#void-pending-transfer)"
+          },
+          {
+            "line": 7,
+            "quote": "[expire](#expire-pending-transfer)"
+          }
+        ]
+      },
+      {
+        "criterion": "границы решения",
+        "assessment": "Предмет документа — резерв и его последующее разрешение. Флаги и версия клиента относятся к наблюдаемому контракту. Ссылка на протокол двухфазной фиксации объясняет название. Оснований требовать реализацию этого протокола или оценивать HTTP-методы и статусы в тексте нет.",
+        "evidence": [
+          {
+            "line": 3,
+            "quote": "A two-phase transfer moves funds in stages:"
+          },
+          {
+            "line": 9,
+            "quote": "The name \"two-phase transfer\" is a reference to the"
+          },
+          {
+            "line": 10,
+            "quote": "two-phase commit protocol for distributed transactions"
+          },
+          {
+            "line": 40,
+            "quote": "<summary>Client &lt; 0.16.0</summary>"
+          }
+        ]
+      }
+    ],
+    "findings": [
+      {
+        "title": "Для void отсутствует контракт отмены действующего резерва",
+        "category": "нарушение",
+        "criterion": "полнота и проверяемость",
+        "reason": "Отмена включена во вторую фазу. В предоставленном тексте не описаны команда отмены и ожидаемые изменения зарезервированных и проведённых сумм.",
+        "impact": "Для обычной отмены нельзя составить сквозную проверку от запроса клиента до состояния обоих счетов.",
+        "owner": "Владелец контракта API двухфазных переводов",
+        "question": "Каким запросом клиент отменяет действующий резерв и какие значения полей обоих счетов подтверждают успешную отмену?",
+        "action": "Предоставить раздел void с параметрами запроса, результатом успешной отмены и изменениями полей pending и posted относительно состояния до отмены.",
+        "requirements": [
+          "R-004",
+          "R-013"
+        ],
+        "candidates": [],
+        "evidence": [
+          {
+            "line": 6,
+            "quote": "[void](#void-pending-transfer)"
+          },
+          {
+            "line": 21,
+            "quote": "Pending transfers can be posted, voided, or they may time out."
+          },
+          {
+            "line": 17,
+            "quote": "Pending transfers leave the `debits_posted`/`credits_posted` unmodified."
+          }
+        ],
+        "triage": {
+          "rule": "implementation_or_contract",
+          "witness": []
+        },
+        "priority": "существенный",
+        "id": "D-01"
+      },
+      {
+        "title": "Для expire отсутствуют условие истечения и результат для счетов",
+        "category": "нарушение",
+        "criterion": "полнота и проверяемость",
+        "reason": "Истечение срока заявлено как самостоятельный исход. В предоставленном тексте не определено, как устанавливается срок, от какого события он отсчитывается и когда становятся видны последствия для резерва.",
+        "impact": "Разработчик и тестировщик могут выбрать разные моменты, с которых средства снова доступны или post уже невозможен.",
+        "owner": "Владелец правил истечения резерва",
+        "question": "По какому условию резерв считается истёкшим и какое состояние обоих счетов должно наблюдаться с этого момента?",
+        "action": "Включить целевой раздел expire или доступную нормативную ссылку с правилами задания срока, его границы и изменения полей обоих счетов.",
+        "requirements": [
+          "R-005",
+          "R-014"
+        ],
+        "candidates": [],
+        "evidence": [
+          {
+            "line": 7,
+            "quote": "[expire](#expire-pending-transfer)"
+          },
+          {
+            "line": 21,
+            "quote": "or they may time out."
+          }
+        ],
+        "triage": {
+          "rule": "implementation_or_contract",
+          "witness": []
+        },
+        "priority": "существенный",
+        "id": "D-02"
+      },
+      {
+        "title": "Не определён результат повторного разрешения одного резерва",
+        "category": "открытый вопрос",
+        "criterion": "полнота контракта второй фазы",
+        "reason": "Описаны альтернативные способы завершения и возврат остатка при частичном post. Не указан наблюдаемый результат следующей операции над тем же переводом, в том числе когда две операции претендуют на ещё действующий резерв.",
+        "impact": "Нельзя согласовать обработку повторной команды и проверить итоговые суммы при конкуренции post, void и expire.",
+        "owner": "Владелец операций двухфазного перевода",
+        "question": "Какой результат получает каждая попытка разрешения одного резерва, если другая попытка уже завершилась или выполняется одновременно?",
+        "action": "Зафиксировать допустимые переходы для действующего и разрешённого резерва, результат каждой команды и итоговые изменения счетов, включая случай после частичного post.",
+        "requirements": [
+          "R-001",
+          "R-012",
+          "R-013",
+          "R-014",
+          "R-022"
+        ],
+        "candidates": [],
+        "evidence": [
+          {
+            "line": 21,
+            "quote": "Pending transfers can be posted, voided, or they may time out."
+          },
+          {
+            "line": 31,
+            "quote": "only this amount is posted, and the remainder is restored to its original accounts."
+          }
+        ],
+        "triage": {
+          "rule": "implementation_or_contract",
+          "witness": []
+        },
+        "priority": "существенный",
+        "id": "D-03"
+      },
+      {
+        "title": "Не показано, как запрос post указывает исходный резерв",
+        "category": "открытый вопрос",
+        "criterion": "прослеживаемость интеграционного контракта",
+        "reason": "Текст задаёт флаг операции и привязывает сумму и получателя к исходному переводу. Параметр этой связи или правило выбора исходного перевода в предоставленном материале не показаны.",
+        "impact": "При двух действующих резервах между теми же счетами по этому описанию нельзя построить запрос на проведение конкретного из них.",
+        "owner": "Владелец схемы запроса перевода",
+        "question": "Как запрос post однозначно указывает тот pending-перевод, из которого нужно провести средства?",
+        "action": "Указать соответствующий элемент схемы запроса или дать точную ссылку на его определение и показать привязку на одном примере.",
+        "requirements": [
+          "R-015",
+          "R-016",
+          "R-019"
+        ],
+        "candidates": [],
+        "evidence": [
+          {
+            "line": 26,
+            "quote": "[`flags.post_pending_transfer`](../reference/transfer.md#flagspost_pending_transfer)"
+          },
+          {
+            "line": 27,
+            "quote": "transferring some or all of the pending transfer's reserved amount to"
+          },
+          {
+            "line": 28,
+            "quote": "its destination."
+          }
+        ],
+        "triage": {
+          "rule": "implementation_or_contract",
+          "witness": []
+        },
+        "priority": "существенный",
+        "id": "D-04"
+      },
+      {
+        "title": "Для старого клиента задан предел суммы, но не результат его нарушения",
+        "category": "открытый вопрос",
+        "criterion": "проверяемость версионного контракта",
+        "reason": "Для клиента ниже 0.16.0 ненулевое значение выше резерва недопустимо. В частности, при превышении резерва значением AMOUNT_MAX основной диапазон именованной ошибки также не охватывает границу. Текст не позволяет определить наблюдаемый результат такого вызова.",
+        "impact": "Негативный тест для старого клиента может установить нарушение предусловия, но не ожидаемую реакцию клиентского интерфейса.",
+        "owner": "Владелец клиентского API",
+        "question": "Какой результат наблюдает вызывающая сторона, если клиент ниже 0.16.0 передаёт AMOUNT_MAX для резерва в 100 единиц?",
+        "action": "Дополнить версионное правило описанием поведения при нарушении верхней границы либо сослаться на соответствующий контракт валидации.",
+        "requirements": [
+          "R-026",
+          "R-029",
+          "R-035",
+          "R-036"
+        ],
+        "candidates": [],
+        "evidence": [
+          {
+            "line": 35,
+            "quote": "(but less than `AMOUNT_MAX`)"
+          },
+          {
+            "line": 40,
+            "quote": "<summary>Client &lt; 0.16.0</summary>"
+          },
+          {
+            "line": 45,
+            "quote": "It must be less than or equal"
+          },
+          {
+            "line": 46,
+            "quote": "to the pending transfer's amount."
+          }
+        ],
+        "triage": {
+          "rule": "implementation_or_contract",
+          "witness": []
+        },
+        "priority": "существенный",
+        "id": "D-05"
+      }
+    ],
+    "reconciled": [
+      {
+        "requirements": [
+          "R-020",
+          "R-021",
+          "R-022",
+          "R-029",
+          "R-030",
+          "R-031",
+          "R-032",
+          "R-034"
+        ],
+        "candidates": [
+          1
+        ],
+        "reason": "Для клиента 0.15.0 действует выделенное версионное правило. При резерве 100 ноль проводит все 100. Для клиента 0.16.0 действует основное правило меньшей суммы, поэтому проводятся 0 и возвращаются 100. Соседний случай amount = 40 даёт одинаковый результат в обеих версиях — проведение 40 и возврат 60.",
+        "evidence": [
+          {
+            "line": 30,
+            "quote": "is less than the pending transfer's"
+          },
+          {
+            "line": 31,
+            "quote": "only this amount is posted, and the remainder is restored to its original accounts."
+          },
+          {
+            "line": 40,
+            "quote": "<summary>Client &lt; 0.16.0</summary>"
+          },
+          {
+            "line": 42,
+            "quote": "is 0, the full pending transfer's"
+          },
+          {
+            "line": 43,
+            "quote": "amount is posted."
+          },
+          {
+            "line": 44,
+            "quote": "is nonzero, then only this amount"
+          },
+          {
+            "line": 45,
+            "quote": "is posted, and the remainder is restored to its original accounts."
+          }
+        ]
+      },
+      {
+        "requirements": [
+          "R-023",
+          "R-024",
+          "R-026",
+          "R-029",
+          "R-032",
+          "R-035",
+          "R-036"
+        ],
+        "candidates": [
+          2
+        ],
+        "reason": "При резерве 100 значение AMOUNT_MAX у клиента 0.15.0 выходит за разрешённый для ненулевой суммы диапазон. В основной ветке это же значение означает проведение всех 100 единиц. Версия разграничивает области применения. При amount = 100 обе ветки проводят все 100. Конкретная реакция на недопустимый ввод старого клиента остаётся отдельным вопросом контракта.",
+        "evidence": [
+          {
+            "line": 32,
+            "quote": "is equal to the pending transfer's"
+          },
+          {
+            "line": 33,
+            "quote": "amount or equal to `AMOUNT_MAX` (`2^128 - 1`), the full pending transfer's amount is posted."
+          },
+          {
+            "line": 40,
+            "quote": "<summary>Client &lt; 0.16.0</summary>"
+          },
+          {
+            "line": 44,
+            "quote": "is nonzero, then only this amount"
+          },
+          {
+            "line": 45,
+            "quote": "It must be less than or equal"
+          },
+          {
+            "line": 46,
+            "quote": "to the pending transfer's amount."
+          }
+        ]
+      }
+    ],
+    "development": {
+      "status": "можно частично",
+      "rationale": "Можно реализовать резервирование на двух счетах и расчёт результата post для известного исходного резерва с учётом версии клиента. Для полной реализации по этому материалу нужны привязка запроса к резерву, контракты void и expire, правила повторного разрешения и обработки недопустимой суммы старого клиента.",
+      "evidence": [
+        {
+          "line": 15,
+          "quote": "reserves its `amount` in the debit/credit accounts'"
+        },
+        {
+          "line": 16,
+          "quote": "[`debits_pending`](../reference/account.md#debits_pending)/[`credits_pending`](../reference/account.md#credits_pending)"
+        },
+        {
+          "line": 17,
+          "quote": "Pending transfers leave the `debits_posted`/`credits_posted` unmodified."
+        },
+        {
+          "line": 31,
+          "quote": "only this amount is posted, and the remainder is restored to its original accounts."
+        },
+        {
+          "line": 40,
+          "quote": "<summary>Client &lt; 0.16.0</summary>"
+        },
+        {
+          "line": 21,
+          "quote": "Pending transfers can be posted, voided, or they may time out."
+        }
+      ]
+    },
+    "testing": {
+      "status": "можно частично",
+      "rationale": "Можно подготовить проверки полей при резервировании и таблицу post для версий 0.15.0 и 0.16.0. При резерве 100 значения 0, 40, 100, 101 и AMOUNT_MAX покрывают версионные различия и границы. Для основной ветки при 101 задана конкретная ошибка. Полной сквозной приёмке мешают неопределённые результаты void, expire и повторных операций, а также недостающие детали запроса и валидации старого клиента.",
+      "evidence": [
+        {
+          "line": 17,
+          "quote": "Pending transfers leave the `debits_posted`/`credits_posted` unmodified."
+        },
+        {
+          "line": 21,
+          "quote": "Pending transfers can be posted, voided, or they may time out."
+        },
+        {
+          "line": 33,
+          "quote": "or equal to `AMOUNT_MAX` (`2^128 - 1`), the full pending transfer's amount is posted."
+        },
+        {
+          "line": 34,
+          "quote": "is greater than the pending transfer's"
+        },
+        {
+          "line": 35,
+          "quote": "(but less than `AMOUNT_MAX`)"
+        },
+        {
+          "line": 36,
+          "quote": "`exceeds_pending_transfer_amount`"
+        },
+        {
+          "line": 40,
+          "quote": "<summary>Client &lt; 0.16.0</summary>"
+        },
+        {
+          "line": 42,
+          "quote": "is 0, the full pending transfer's"
+        }
+      ]
+    }
+  },
+  "json_checks": {
+    "version": 1,
+    "examples": []
+  },
+  "priority_policy": "impact-v1",
+  "conflicts": [
+    {
+      "title": "Нулевой amount при положительном резерве",
+      "scenario": "Клиент версии 0.15.0 отправляет post_pending_transfer с amount = 0 для действующего резерва в 100 единиц.",
+      "first": {
+        "source": {
+          "line": 31,
+          "quote": "amount, then only this amount is posted, and the remainder is restored to its original accounts."
+        },
+        "outcome": "По общему правилу 0 < 100, поэтому проводится 0 единиц, а все 100 возвращаются на исходные счета."
+      },
+      "second": {
+        "source": {
+          "line": 42,
+          "quote": "- If the posted [`amount`](../reference/transfer.md#amount) is 0, the full pending transfer's"
+        },
+        "outcome": "По правилу для клиента версии ниже 0.16.0 ноль означает полную проводку. Получателю переводятся все 100 единиц."
+      },
+      "owner": "Владелец контракта API двухфазных переводов",
+      "question": "При amount = 0 у клиента версии 0.15.0 следует вернуть все 100 единиц на исходные счета или перевести их получателю?",
+      "agreement_control": "При том же резерве и amount = 40 оба правила проводят 40 единиц и возвращают 60 на исходные счета."
+    },
+    {
+      "title": "AMOUNT_MAX при резерве меньше максимума",
+      "scenario": "Клиент версии 0.15.0 отправляет post_pending_transfer с amount = AMOUNT_MAX (2^128 − 1) для действующего резерва в 100 единиц.",
+      "first": {
+        "source": {
+          "line": 33,
+          "quote": "amount or equal to `AMOUNT_MAX` (`2^128 - 1`), the full pending transfer's amount is posted."
+        },
+        "outcome": "По общему правилу AMOUNT_MAX означает полную проводку. Получателю переводятся 100 единиц."
+      },
+      "second": {
+        "source": {
+          "line": 45,
+          "quote": "It must be less than or equal"
+        },
+        "outcome": "По правилу для клиента версии ниже 0.16.0 ненулевой amount должен укладываться в резерв. AMOUNT_MAX больше 100, поэтому проводка с таким значением недопустима."
+      },
+      "owner": "Владелец контракта API двухфазных переводов",
+      "question": "Для клиента версии 0.15.0 следует принять AMOUNT_MAX как указание провести весь резерв или отклонить запрос из-за превышения резерва?",
+      "agreement_control": "При том же резерве и amount = 100 оба правила допускают проводку всех 100 единиц."
+    }
+  ],
+  "executables": {
+    "version": "witness-v2",
+    "items": []
+  }
+}
