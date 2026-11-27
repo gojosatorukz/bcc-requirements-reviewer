@@ -1,0 +1,73 @@
+[
+  {
+    "case": "ledger-a",
+    "input_sha256": "be906d81f8c0b08d43d5617c2180a784925ac0c8bd106270f69116e9fdd7a482",
+    "report_sha256": "da31b0e624ff82e5096165c48e3a606839db595cb3eced3da64329332707c58f",
+    "model": "gpt-6.2-astra",
+    "agent_version": "94d898b43322",
+    "engine_sha256": "fa742fca5cca265ca5a26b7575893d53e4d99ee443013aeda85c773b5f447796",
+    "seconds": 97.92,
+    "fresh_calls": 4,
+    "restored_attempts": 0,
+    "violations": 0,
+    "open_questions": 0,
+    "agrees_with_control": true
+  },
+  {
+    "case": "ledger-b",
+    "input_sha256": "271a175221ff98fa606c5404d6ad345536c4325a24cedcb4e9c2f421c0abf863",
+    "report_sha256": "9b695c78a9903d23f36ce27fa190fcb99f6ee4a854c4cc7f3fd253d4a237247c",
+    "model": "gpt-6.2-astra",
+    "agent_version": "abca60e723e8+modified",
+    "engine_sha256": "437900a67bdc4d99987bb553326ea39068d21cca5dcadd851d20bb192f10d004",
+    "seconds": 150.22,
+    "fresh_calls": 7,
+    "restored_attempts": 0,
+    "violations": 1,
+    "open_questions": 0,
+    "matched": [
+      {
+        "id": "D-01",
+        "question": "Какой доступный остаток должен видеть владелец кошелька сразу после CAPTURE в этом цикле?",
+        "two_rule_status": "unsupported",
+        "fixed_input_matches": true,
+        "computed": 500,
+        "expected": 100,
+        "unit": "₸",
+        "expected_source_line": 19,
+        "steps": [
+          {
+            "line": 11,
+            "before": 0,
+            "after": 900
+          },
+          {
+            "line": 13,
+            "before": 900,
+            "after": 500
+          },
+          {
+            "line": 15,
+            "before": 500,
+            "after": 500
+          }
+        ]
+      }
+    ],
+    "unmatched_violations": 0
+  },
+  {
+    "case": "ledger-c",
+    "input_sha256": "756988df182de81e0bf37c48ba44728273093d38a193fae8ae1097d03a44d541",
+    "report_sha256": "73b52ec6d4c4f642117ab7b911c02d19d1045bbbfd8941a26744685fbe1e177c",
+    "model": "gpt-6.2-astra",
+    "agent_version": "94d898b43322",
+    "engine_sha256": "fa742fca5cca265ca5a26b7575893d53e4d99ee443013aeda85c773b5f447796",
+    "seconds": 103.16,
+    "fresh_calls": 4,
+    "restored_attempts": 0,
+    "violations": 0,
+    "open_questions": 0,
+    "agrees_with_control": true
+  }
+]

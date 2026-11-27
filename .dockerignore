@@ -13,6 +13,10 @@
 !eval/jury-fallback/runs/astra-v1.json
 !eval/jury-fallback/runs/astra-v2.html
 !eval/jury-fallback/runs/astra-v2.json
+!eval/fixed-acceptance/results/recorder-v1.html
+!eval/fixed-acceptance/results/recorder-v1.json
+!eval/fixed-acceptance/results/recorder-v2.html
+!eval/fixed-acceptance/results/recorder-v2.json
 !design/concepts/index.html
 !design/concepts/gallery.css
 !design/concepts/case.js

@@ -30,7 +30,9 @@ SAVED_EXAMPLES = {
     f"/reports/{route}.{ext}": f"{source}.{ext}"
     for route, source in (("demo/gemini", "eval/gemini/behavior/bcc-release"),
                           ("packing/before", "eval/jury-fallback/runs/astra-v1"),
-                          ("packing/after", "eval/jury-fallback/runs/astra-v2"))
+                          ("packing/after", "eval/jury-fallback/runs/astra-v2"),
+                          ("recorder/before", "eval/fixed-acceptance/results/recorder-v1"),
+                          ("recorder/after", "eval/fixed-acceptance/results/recorder-v2"))
     for ext in ("html", "json")
 }
 STATIC_FILES = {
