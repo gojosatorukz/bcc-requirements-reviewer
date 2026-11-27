@@ -41,6 +41,11 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 .intro-copy h1{font-size:clamp(1.3rem,2.1vw,1.9rem);line-height:1.1;font-weight:830;letter-spacing:-.045em}
 .intro-copy p{max-width:61ch;margin:0;padding-inline-start:.85rem;border-left:1px solid var(--ink);font-weight:560;font-size:clamp(.85rem,1.2vw,1rem)}
 .intro-copy small{flex-basis:100%;font-size:.84rem;color:var(--ink);overflow-wrap:anywhere}
+.active-qa{width:fit-content;max-width:100%;margin:0 0 1rem;padding:.55rem .85rem;border:1.5px solid var(--ink);border-radius:.6rem;background:var(--panel);color:var(--ink)}
+.active-qa[open]{width:min(48rem,100%)}.active-qa summary{cursor:pointer;font-weight:700}
+.active-qa label,.active-qa select{display:block;margin:.6rem 0 .3rem}.active-qa select{max-width:100%;font:inherit;padding:.4rem}
+.active-qa p,.active-qa blockquote{margin:.45rem 0;overflow-wrap:anywhere}.active-qa blockquote{padding-left:.7rem;border-left:2px solid var(--ink)}
+.active-qa a{color:var(--ink);text-underline-offset:.15em}.active-qa [aria-live]{margin:.6rem 0}
 .active-summary{width:fit-content;max-width:100%;padding:1rem 1.2rem;border:2px solid var(--ink);border-radius:.8rem;background:var(--panel);box-shadow:0 .25rem 0 var(--ink)}
 .active-summary dl{display:flex;flex-wrap:wrap;gap:.65rem 2rem;margin:0}
 .active-summary dt{font-size:.83rem;color:var(--muted);font-weight:650}
@@ -177,6 +182,13 @@ a{color:var(--accent);text-underline-offset:.18em}
         <p id="review-document">Загрузите документ или откройте демо-отчёт.</p>
         <small id="review-origin" hidden></small>
       </div>
+      <details id="active-qa" class="active-qa" hidden>
+        <summary id="qa-summary">Сценарии для QA</summary>
+        <div id="qa-picker"><label for="qa-select">Сценарий</label><select id="qa-select"></select></div>
+        <div id="qa-content" aria-live="polite" aria-atomic="true"></div>
+        <a id="qa-full-link" target="_blank" rel="noopener">Открыть этот сценарий в отчёте ↗</a>
+        <p id="qa-skip-row" hidden><a id="qa-skip-link" target="_blank" rel="noopener"></a></p>
+      </details>
       <section id="guided-review" aria-label="Согласование" hidden></section>
       <div id="active-summary" class="active-summary" hidden>
         <dl id="active-gates"></dl>
@@ -1185,12 +1197,70 @@ function rememberBaselineVersion(id, report, sha) {
   return id + ':' + sha;
 }
 
+function showLifecycleChecks(report, reportUrl, identity) {
+  const panel = get('active-qa'), select = get('qa-select'), content = get('qa-content');
+  if (panel.dataset.report === identity) return;
+  panel.dataset.report = identity;
+  panel.open = false;
+  const checks = report.lifecycle_checks?.checks ?? [];
+  const skipped = report.lifecycle_checks?.skipped ?? [];
+  panel.hidden = !checks.length && !skipped.length;
+  select.onchange = null;
+  const fullLink = get('qa-full-link');
+  fullLink.removeAttribute('href');
+  fullLink.hidden = !checks.length;
+  get('qa-picker').hidden = !checks.length;
+  get('qa-skip-row').hidden = !skipped.length;
+  select.replaceChildren();
+  content.replaceChildren();
+  if (skipped.length) {
+    const skippedLink = get('qa-skip-link');
+    skippedLink.href = reportUrl + '#qa-skipped';
+    skippedLink.textContent = 'Почему пропущены ситуации · ' + skipped.length + ' ↗';
+  }
+  get('qa-summary').textContent = checks.length ? 'Сценарии для QA · ' + checks.length : 'Применимость сценариев для QA';
+  if (!checks.length) return;
+  const labels = {initial_action:'Первое действие', retry_effect:'Повтор действия',
+    reentry:'Повторное наступление условия', boundary:'Граница значения', isolation:'Независимость объектов'};
+  checks.forEach((check, index) => {
+    const disposition = check.status === 'needs_decision' ? 'нужен ответ' : 'ожидание описано';
+    select.add(new Option(labels[check.axis] + ' · ' + disposition, String(index)));
+  });
+  select.selectedIndex = Math.max(0, checks.findIndex(check => check.axis === 'initial_action'));
+  function paragraph(label, value) {
+    const p = document.createElement('p'), b = document.createElement('b');
+    b.textContent = label + '. ';
+    p.append(b, value);
+    return p;
+  }
+  function showSelected() {
+    const index = select.selectedIndex, check = checks[index];
+    const needsDecision = check.status === 'needs_decision';
+    content.replaceChildren(paragraph('Условия', check.situation), paragraph('Действие', check.action),
+      paragraph(needsDecision ? 'Что следует из ТЗ' : 'Ожидаемый результат', check.observation));
+    if (needsDecision) content.append(paragraph('Вопрос владельцу', check.question));
+    for (const ref of check.evidence) {
+      const quote = document.createElement('blockquote'), link = document.createElement('a');
+      link.href = reportUrl + '#source-line-' + ref.line;
+      link.target = '_blank'; link.rel = 'noopener';
+      const page = report.run.pages?.find(p => p.start <= ref.line && ref.line <= p.end);
+      link.textContent = 'Строка ' + ref.line + (page ? ' · с. ' + page.page : '');
+      quote.append(ref.quote + ' ', link);
+      content.append(quote);
+    }
+    fullLink.href = reportUrl + '#qa-scenario-' + (index + 1);
+  }
+  select.onchange = showSelected;
+  showSelected();
+}
+
 function publishReport(report, id, sha) {
   const key = rememberBaselineVersion(id, report, sha);
   guidedBaseline = key ? {key} : null;
   renderDecisionPreflight();
   rememberReportFingerprint(id, report);
   const reportUrl = '/reports/' + id + '/review.html';
+  showLifecycleChecks(report, reportUrl, key || (reportUrl + report.run.started_utc));
   const activeLink = get('active-report-link');
   activeLink.href = reportUrl;
   activeLink.target = '_blank';

@@ -19,6 +19,9 @@ from .segments import segment
 
 def validate_report(report):
     lines = source_lines(report)
+    if "lifecycle_checks" in report:
+        from .lifecycle import validate_saved
+        validate_saved(report["lifecycle_checks"], lines)
     raw_lines = [lines.get(i, "") for i in range(1, report["run"]["input_lines"] + 1)]
     expected = segment(raw_lines, report["run"].get("pdf_json_blocks", ()))
     segments, registry, whole = report["segments"], report["registry"], report["whole"]
@@ -82,6 +85,35 @@ def line_link(n):
 
 def evidence(refs):
     return "".join(f'<blockquote>{safe(r["quote"])} {line_link(r["line"])}</blockquote>' for r in refs)
+
+
+QA_AXES = {"initial_action": "Первое действие", "retry_effect": "Повтор действия",
+           "reentry": "Повторное наступление условия", "boundary": "Граница значения",
+           "isolation": "Независимость объектов"}
+
+
+def render_lifecycle(checks, backlinks, skipped=()):
+    cards = []
+    for index, check in enumerate(checks, 1):
+        anchor = f"qa-scenario-{index}"
+        label = QA_AXES[check["axis"]]
+        needs_decision = check["status"] == "needs_decision"
+        observation_label = "Что следует из ТЗ" if needs_decision else "Ожидаемый результат"
+        question = (f'<p><b>Вопрос владельцу.</b> {safe(check["question"])}</p>'
+                    if needs_decision else "")
+        for ref in check["evidence"]:
+            backlinks[ref["line"]].append((anchor, f"QA · {label}"))
+        cards.append(f'''<article class="finding qa-scenario" id="{anchor}" tabindex="-1">
+<h3>{label}</h3><small>{"Нужно решение владельца" if needs_decision else "Ожидание описано в ТЗ"}</small>
+<p><b>Условия.</b> {safe(check['situation'])}</p><p><b>Действие.</b> {safe(check['action'])}</p>
+<p><b>{observation_label}.</b> {safe(check['observation'])}</p>{question}{evidence(check['evidence'])}</article>''')
+    if skipped:
+        reasons = "".join(f'<li><b>{QA_AXES[item["axis"]]}.</b> {safe(item["reason"])}</li>' for item in skipped)
+        if not cards:
+            cards.append('<p>Для рассмотренных ситуаций отдельные сценарии неприменимы.</p>')
+        cards.append(f'<details id="qa-skipped"><summary>Почему пропущены ситуации · {len(skipped)}</summary>'
+                     f'<ul>{reasons}</ul></details>')
+    return ('<section id="qa-scenarios"><h2>Сценарии для QA</h2>' + "".join(cards) + '</section>') if cards else ""
 
 
 def markdown_text(text):
@@ -276,6 +308,17 @@ def render_full(report):
     roles = Counter(r["role"] for r in registry)
     forms = Counter(s["kind"] for s in segments)
     backlinks = defaultdict(list)
+    lifecycle = report.get("lifecycle_checks", {})
+    qa_checks = lifecycle.get("checks", [])
+    qa_cases = render_lifecycle(qa_checks, backlinks, lifecycle.get("skipped", ()))
+    qa_shortcut = ""
+    if qa_cases:
+        first = next((i for i, check in enumerate(qa_checks, 1) if check["axis"] == "initial_action"), None)
+        caption = f"Сценарии для QA · {len(qa_checks)}" if qa_checks else "Применимость сценариев для QA"
+        qa_shortcut = link("qa-scenarios", caption)
+        if first:
+            qa_shortcut += " · " + link(f"qa-scenario-{first}", "Первое действие")
+        qa_shortcut = f"<p>{qa_shortcut}</p>"
     related = defaultdict(list)
     decisions = {}
     findings = []
@@ -390,6 +433,7 @@ def render_full(report):
  main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
  .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
  .full h2,.full h3{break-after:avoid}.full section{margin:9pt 0}.full section>h2{padding-top:7pt}
+ .qa-scenario{break-inside:avoid}
  .decision-brief{break-after:page}.decision-brief article{padding:7pt 10pt}
  .metrics{grid-template-columns:repeat(3,1fr)}.gates{grid-template-columns:repeat(2,1fr)}
  .full .registry{table-layout:fixed}.full .registry th:first-child{width:10%}.full .registry th:nth-child(2){width:49%}
@@ -409,12 +453,13 @@ def render_full(report):
 <main class="full" id="report"><small>{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {safe(run['model'])}</small>
 <h1>{safe(title)}</h1><nav>{nav}</nav>
 <div class="metrics"><div><strong>{len(registry)}</strong>пунктов в реестре</div><div><strong>{len(defects)}</strong>нарушений, включая {len(critical)} критических</div><div><strong>{questions}</strong>открытых вопросов</div></div>
-<p>{summary}.</p>{decision_brief(report)}<div class="gates">{''.join(verdicts)}</div>
+<p>{summary}.</p>{qa_shortcut}{decision_brief(report)}<div class="gates">{''.join(verdicts)}</div>
 <h2>Критические дефекты</h2>{'<ol>'+crit_list+'</ol>' if critical else '<p>Критические дефекты не выявлены.</p>'}
 <section id="actions"><h2>Что исправить в первую очередь</h2><p>Замечания в порядке приоритета. У каждого есть адресат, основание и предлагаемое изменение.</p>
 {''.join(findings) or '<p>Замечаний не выявлено.</p>'}</section>
 <section id="quality"><h2>Качество набора требований</h2>{axes}</section>
 {render_json_checks(report.get("json_checks", {}), lines, report.get("example_shapes", ()))}
+{qa_cases}
 <section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
 <table class="registry"><thead><tr><th scope="col">ID отчёта<br>ID в ТЗ</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
 <section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: {len(scenario_parts)}. У каждого указано решение итогового ревью.</p>
