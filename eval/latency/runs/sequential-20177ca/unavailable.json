@@ -1,0 +1,119 @@
+{
+  "agent_version": "20177ca",
+  "mode": "New cold run for each, separate initially empty checkpoints; the two planetarium reviews started sequentially",
+  "model": "gpt-6.2-astra",
+  "provider": "codex-cli",
+  "attempts": [
+    {
+      "name": "official",
+      "workers": 6,
+      "input_sha256": "e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381",
+      "earliest_recorded_provider_start_utc": "2026-11-27T08:45:44.543121+00:00",
+      "end_utc_approximately": "2026-11-27T08:59:47+00:00",
+      "exit_code": 1,
+      "report_written": false,
+      "cli_error": "Блоки 81–106: Codex CLI не завершил запрос за 480 секунд",
+      "accepted_checkpoint_calls": [
+        {
+          "stage": "Сценарии",
+          "status": "accepted",
+          "started_utc": "2026-11-27T08:45:44.543121+00:00",
+          "seconds": 353.08
+        },
+        {
+          "stage": "Блоки 28–42",
+          "status": "accepted",
+          "started_utc": "2026-11-27T08:45:44.544472+00:00",
+          "seconds": 353.94
+        },
+        {
+          "stage": "Блоки 1–26",
+          "status": "accepted",
+          "started_utc": "2026-11-27T08:45:44.544785+00:00",
+          "seconds": 326.34
+        },
+        {
+          "stage": "Блоки 43–65",
+          "status": "accepted",
+          "started_utc": "2026-11-27T08:45:44.544839+00:00",
+          "seconds": 358.1
+        },
+        {
+          "stage": "Блоки 67–80",
+          "status": "accepted",
+          "started_utc": "2026-11-27T08:45:44.544852+00:00",
+          "seconds": 319.06
+        }
+      ]
+    },
+    {
+      "name": "planetarium",
+      "source_sha256": "44e6c8a3b50c68361093d6595670b306930254ea297897cdaca9695e63bd821f",
+      "start_utc": "2026-11-27T08:44:28.730124+00:00",
+      "checkpoint_empty": true,
+      "exit_code": 1,
+      "end_utc": "2026-11-27T08:52:37.835020+00:00",
+      "log": [
+        "План проверки · групп строк: 2",
+        "Сценарии · проверено",
+        "Поля ответов 7–7 · проверено",
+        "Поля ответов 1–6 · проверено",
+        "Блоки 1–17 · проверено",
+        "Прогон не завершён: Блоки 19–59: Codex CLI не завершил запрос за 480 секунд"
+      ],
+      "workers": 4,
+      "accepted_checkpoint_calls": [
+        {
+          "stage": "Сценарии",
+          "status": "accepted",
+          "started_utc": "2026-11-27T08:44:29.223284+00:00",
+          "seconds": 8.57
+        },
+        {
+          "stage": "Поля ответов 1–6",
+          "status": "accepted",
+          "started_utc": "2026-11-27T08:44:29.223729+00:00",
+          "seconds": 29.21
+        },
+        {
+          "stage": "Поля ответов 7–7",
+          "status": "accepted",
+          "started_utc": "2026-11-27T08:44:29.224030+00:00",
+          "seconds": 9.57
+        },
+        {
+          "stage": "Блоки 1–17",
+          "status": "accepted",
+          "started_utc": "2026-11-27T08:44:29.224101+00:00",
+          "seconds": 58.91
+        }
+      ],
+      "report_written": false,
+      "observed_elapsed_seconds": 489.105
+    },
+    {
+      "name": "planetarium-aligned",
+      "source_sha256": "dd7c19cbfd5746fe5591d27406887bfeb5f04807c429337ba2a9a3b36002ff2a",
+      "start_utc": "2026-11-27T08:52:37.837480+00:00",
+      "checkpoint_empty": true,
+      "exit_code": 1,
+      "end_utc": "2026-11-27T09:01:50.883536+00:00",
+      "log": [
+        "План проверки · групп строк: 2",
+        "Блоки 19–59 · проверено",
+        "Прогон не завершён: Блоки 1–17: Codex CLI не завершил запрос за 480 секунд"
+      ],
+      "workers": 4,
+      "accepted_checkpoint_calls": [
+        {
+          "stage": "Блоки 19–59",
+          "status": "accepted",
+          "started_utc": "2026-11-27T09:00:38.023770+00:00",
+          "seconds": 72.84
+        }
+      ],
+      "report_written": false,
+      "observed_elapsed_seconds": 553.046
+    }
+  ]
+}
