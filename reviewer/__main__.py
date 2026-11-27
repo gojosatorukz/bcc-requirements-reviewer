@@ -140,7 +140,7 @@ def main():
                 raise
             from .partial import build_partial
             write_report(args.report, build_partial(args.document.name, lines, input_hash, input_metadata, args.model))
-            print("Частичный отчёт по локальным правилам сохранён")
+            print(f"Частичный отчёт по локальным правилам сохранён: {args.report}")
             return
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
                "provider": codex_provider.provider_name(used), "model": codex_provider.model_name(used),

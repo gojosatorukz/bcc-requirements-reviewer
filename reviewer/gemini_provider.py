@@ -122,7 +122,10 @@ def complete(prompt, model, effort, schema):
         raise ValueError("Gemini API: укажите идентификатор модели gemini-* в REVIEW_MODEL или --model")
     key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not key or not key.strip():
-        raise ValueError("Gemini API: ключ не настроен")
+        raise ValueError(
+            "Gemini API: ключ не настроен. Укажите GEMINI_API_KEY в .env. "
+            "Без своего ключа запустите python -m reviewer.serve и выберите «Проверить через сервер проекта»."
+        )
     key = key.strip()
     if not re.fullmatch(r"[!-~]{1,512}", key):
         raise ValueError("Gemini API: ключ отклонён")

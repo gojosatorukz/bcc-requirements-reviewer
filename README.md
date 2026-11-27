@@ -14,7 +14,7 @@
 | --- | --- |
 | Отчёт агента по выданному ТЗ | [PDF](runs/bcc-jury/review.pdf) · [HTML](https://razbor-tz.onrender.com/reports/demo/review.html) · [исходный JSON и паспорт](runs/bcc-jury/README.md) |
 | Запуск одной командой | `python -m reviewer <путь к ТЗ> <путь к отчёту>`, см. [Быстрый старт](#быстрый-старт) |
-| Повторить расчёт без ключа и модели | `python -m reviewer.executable replay runs/bcc-jury/review.json --source requirements.md` |
+| Повторить расчёт без ключа и модели | Из корня клона: `python3 -m reviewer.executable replay runs/bcc-jury/review.json`. Для сверки с оригиналом скачайте его на шаге 4 и добавьте `--source requirements.md` |
 | Попробовать без установки | [razbor-tz.onrender.com](https://razbor-tz.onrender.com/): загрузите PDF, DOCX, MD или TXT |
 | Архитектура | [Как устроен агент](#как-устроен-агент) · [подробно](docs/architecture-and-evaluation.md) |
 | Бизнес-модель и питч | [Бизнес-модель](#бизнес-модель) · [питч и слайд для вопросов](presentation/pitch/razbor-tz-pitch.pdf) |
@@ -23,7 +23,7 @@
 
 ## Быстрый старт
 
-Нужны Git и Python 3.10+. Команды для macOS и Linux. В Windows создайте окружение через `py -3 -m venv .venv` и активируйте через `.\.venv\Scripts\Activate.ps1`.
+Нужны Git и Python 3.10+. Проверенный вариант — Python 3.12. Команды для macOS и Linux. В Windows создайте окружение через `py -3 -m venv .venv` и активируйте через `.\.venv\Scripts\Activate.ps1`.
 
 **1. Установить.**
 
@@ -35,7 +35,9 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-**2. Получить ключ LLM.** Создайте бесплатный ключ Gemini в [Google AI Studio](https://aistudio.google.com/apikey). Модель по умолчанию — **Gemini 3.5 Flash-Lite**, доступность полного прогона зависит от оставшейся квоты. [Условия Gemini API](https://ai.google.dev/gemini-api/docs/pricing)
+**Без собственного ключа.** Выполните `python -m reviewer.serve` и откройте [рабочее место на своём компьютере](http://127.0.0.1:8765/). Выберите свой документ и нажмите «Проверить через сервер проекта». Текст получит публичный сервис проекта для проверки через Gemini. При исчерпании квоты откроется частичный отчёт по локальным правилам. Для полностью автономной проверки готового результата используйте команду `replay` из таблицы выше.
+
+**2. Получить ключ для локального запуска.** Создайте бесплатный ключ Gemini в [Google AI Studio](https://aistudio.google.com/apikey). Модель по умолчанию — **Gemini 3.5 Flash-Lite**, доступность полного прогона зависит от оставшейся квоты. [Условия Gemini API](https://ai.google.dev/gemini-api/docs/pricing)
 
 **3. Положить ключ.** Скопируйте пример конфига и впишите ключ в строку `GEMINI_API_KEY=`. Агент сам читает `.env`, файл исключён из Git.
 
@@ -47,10 +49,10 @@ cp .env.example .env
 
 ```sh
 curl -fL https://raw.githubusercontent.com/BCC-HUB/ai-requirements-validator-task/928c1aa364265426105b69ba7a3444eac11b22db/docs/requirements.md -o requirements.md
-python -m reviewer requirements.md output/review.html --workers 1
+python -m reviewer requirements.md output/review.html --workers 1 --partial-on-quota
 ```
 
-**5. Открыть отчёт.** Он ляжет в `output/review.html`. Формат определяется расширением второго пути: `.html`, `.json` или `.pdf` (для PDF нужен Chrome или Chromium). Флаг `--partial-on-quota` сохраняет частичный отчёт, если закончилась квота Gemini.
+**5. Открыть отчёт.** Откройте `output/review.html` в браузере. У полного отчёта есть паспорт прогона и реестр требований. При исчерпании квоты команда сохраняет отчёт с заголовком «Частичный» и указывает, какие проверки выполнены. Формат вывода выбирается расширением второго пути: `.html`, `.json` или `.pdf` (для PDF нужен Chrome или Chromium).
 
 Веб-интерфейс на своём компьютере: `python -m reviewer.serve`, затем [127.0.0.1:8765](http://127.0.0.1:8765/). [Docker и другие способы запуска](cloud/container.md)
 
