@@ -259,7 +259,7 @@ a{color:var(--accent);text-underline-offset:.18em}
         <div class="check-actions"><button id="submit" type="submit">Запустить проверку</button>
           <button id="structure-check" class="text-action" type="button" aria-controls="structure-result">Проверить структуру без ИИ</button></div>
         <!--project-button--><section id="project-review" class="local-help" aria-labelledby="project-submit">
-          <p id="project-hint">Без своего ключа отправьте ТЗ на <strong>razbor-tz.onrender.com</strong>. Его получит Gemini Flash-Lite.</p>
+          <p id="project-hint">Без своего ключа отправьте ТЗ на <a href="https://razbor-tz.onrender.com/" target="_blank" rel="noopener">razbor-tz.onrender.com</a>. Для анализа сервер может передать текст в Gemini, OpenAI API или Cloudflare Workers AI. Текущие модели указаны на сайте до загрузки.</p>
           <button type="submit" class="text-action" id="project-submit" aria-describedby="project-hint">Проверить через сервер проекта</button>
         </section><!--/project-button-->
       </form>
@@ -297,7 +297,7 @@ a{color:var(--accent);text-underline-offset:.18em}
         </section>
         <section class="recovery" id="partial-report" aria-labelledby="partial-title" hidden>
           <h3 id="partial-title">Частичный отчёт</h3>
-          <p>Gemini достиг лимита. Замечания собраны по локальным правилам.</p>
+          <p>Модель достигла лимита. Замечания собраны по локальным правилам.</p>
           <p id="partial-count" role="status"></p>
           <ul id="partial-questions"></ul>
           <div class="actions"><a class="action" id="partial-html" target="_blank" rel="noopener">Открыть отчёт с цитатами</a>

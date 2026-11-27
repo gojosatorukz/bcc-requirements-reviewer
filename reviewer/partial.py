@@ -1,9 +1,10 @@
-"""Source-backed checks that can finish when a full Gemini review hits its quota."""
+"""Source-backed checks that can finish when the full review reaches a model quota."""
 
 from html import escape
 import re
 
 from .json_examples import inspect_examples
+from .openai_provider import MODEL_ID as OPENAI_MODEL_ID
 from .partial_boundary import boundary_questions
 from .partial_contract import contract_questions
 from .segments import segment
@@ -33,6 +34,12 @@ def cells(text):
 
 def brief(text):
     return text if len(text) <= 160 else text[:157] + "…"
+
+
+def valid_reserve(receipt):
+    return (isinstance(receipt, dict) and set(receipt) == {"model", "reason"}
+            and isinstance(receipt["model"], str) and OPENAI_MODEL_ID.fullmatch(receipt["model"]) is not None
+            and isinstance(receipt["reason"], str) and receipt["reason"] in RESERVE_REASONS)
 
 
 def build_partial(name, lines, digest, metadata, model, *, reserve=None, openai_quota=False):
@@ -115,7 +122,9 @@ def build_partial(name, lines, digest, metadata, model, *, reserve=None, openai_
 def render_partial(report):
     reserve = report.get("attempted_openai_reserve")
     reserve_note = ""
-    if reserve:
+    if reserve is not None:
+        if not valid_reserve(reserve) or report.get("reason") != "gemini_quota":
+            raise ValueError("Неизвестный резерв в частичном отчёте.")
         detail = RESERVE_REASONS[reserve["reason"]]
         reserve_note = f' Резерв OpenAI API ({escape(reserve["model"])}) также был вызван, {detail}.'
     findings = []

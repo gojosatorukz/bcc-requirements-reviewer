@@ -165,6 +165,18 @@ class OpenAIProviderTests(TestCase):
         self.assertIn("полный отчёт получить не удалось", render_report(result))
         self.assertNotIn("run", result)
 
+    def test_invalid_backup_key_preserves_verified_partial_and_hides_the_remote_error_message(self):
+        self.reserve_replies.append((401, {"error": {"message": TOKEN}}))
+        result = self.run_cli(flags=["--partial-on-quota"])
+        self.assertEqual(result["report_type"], "partial")
+        self.assertEqual(result["attempted_openai_reserve"], {"model": MODEL, "reason": "review_failed"})
+        self.assertEqual(len([p for p, _, _ in self.events if p == "/v1/responses"]), 1)
+        self.assertNotIn(TOKEN, self.out.read_text())
+        self.assertNotIn(TOKEN, render_report(result))
+        for receipt in ({}, {"model": MODEL, "reason": []}, {"model": "<b>", "reason": "review_failed"}):
+            with self.subTest(receipt=receipt), self.assertRaisesRegex(ValueError, "Неизвестный резерв"):
+                render_report(dict(result, attempted_openai_reserve=receipt))
+
     def test_prepaid_credit_exhaustion_on_402_or_429_produces_local_report_without_a_retry(self):
         for provider in ("openai", "gemini"):
             for status in (402, 429):

@@ -133,6 +133,13 @@ class WorkbenchTest(unittest.TestCase):
             self.assertNotIn("test-reserve-secret", page)
             with patch.dict("os.environ", {"CLOUDFLARE_API_TOKEN": ""}):
                 self.assertNotIn("При лимите Gemini текст получит", self.request("GET", "/")[1].decode())
+        with patch.dict("os.environ", {"REVIEW_PROVIDER": "gemini", "REVIEW_FALLBACK_PROVIDER": "openai",
+                        "REVIEW_FALLBACK_MODEL": "gpt-6.2-sol", "OPENAI_API_KEY": "test-paid-secret"}, clear=True):
+            page = self.request("GET", "/")[1].decode()
+            self.assertIn("При лимите Gemini текст получит OpenAI API (gpt-6.2-sol)", page)
+            self.assertNotIn("test-paid-secret", page)
+            with patch.dict("os.environ", {"OPENAI_API_KEY": ""}):
+                self.assertNotIn("При лимите Gemini текст получит", self.request("GET", "/")[1].decode())
 
     def test_project_review_is_a_separate_explicit_run_with_normal_local_artifacts(self):
         (self.root / "reviewer" / "workbench.html").write_text((ROOT / "reviewer/workbench.html").read_text())
@@ -145,7 +152,7 @@ class WorkbenchTest(unittest.TestCase):
             home = self.request("GET", "/")[1].decode()
             self.assertIn('id="project-submit"', home)
             self.assertIn("razbor-tz.onrender.com", home)
-            self.assertIn("Его получит Gemini Flash-Lite.", home)
+            self.assertIn("может передать текст в Gemini, OpenAI API или Cloudflare Workers AI", home)
             self.assertEqual(self.upload("/api/project-runs?target=another-site")[0], 400)
             self.assertEqual(self.upload("/api/project-runs", Origin="https://other.example")[0], 403)
             self.assertEqual(self.upload("/api/structure")[0], 200)

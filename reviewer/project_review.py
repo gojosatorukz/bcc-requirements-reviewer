@@ -113,7 +113,7 @@ def project_worker(mode, document, baseline, json_report, html_report, model, pr
                   limit=IMPORT_LIMIT, mime="application/json")
     if state == "partial":
         from .input import load_document
-        from .partial import build_partial, render_partial, RESERVE_REASONS
+        from .partial import build_partial, render_partial, valid_reserve
         from .openai_provider import MODEL_ID
         report = json_object(raw)
         model = report.get("attempted_model")
@@ -123,9 +123,7 @@ def project_worker(mode, document, baseline, json_report, html_report, model, pr
             raise SafeWorkerError("Неизвестная модель в частичном отчёте сервера проекта.")
         lines, digest, metadata = load_document(document)
         reserve = report.get("attempted_openai_reserve")
-        if reserve is not None and (direct or not isinstance(reserve, dict) or set(reserve) != {"model", "reason"}
-                or not isinstance(reserve["model"], str) or not MODEL_ID.fullmatch(reserve["model"])
-                or not isinstance(reserve["reason"], str) or reserve["reason"] not in RESERVE_REASONS):
+        if reserve is not None and (direct or not valid_reserve(reserve)):
             raise SafeWorkerError("Неизвестный резерв в частичном отчёте сервера проекта.")
         expected = build_partial(document.name, lines, digest, metadata, model, reserve=reserve, openai_quota=direct)
         if report != expected:
