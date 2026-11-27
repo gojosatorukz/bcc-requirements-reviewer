@@ -27,7 +27,7 @@ COPY runs/bcc-jury/owner/dialogue.json runs/bcc-jury/owner/dialogue.html runs/bc
 COPY cloud/runtime.py cloud/public.py cloud/
 COPY eval/quota-review/after.* eval/quota-review/control.* eval/quota-review/
 COPY eval/gemini/behavior/bcc-release.html eval/gemini/behavior/bcc-release.json eval/gemini/behavior/
-COPY eval/jury-walkthrough/openai.html eval/jury-walkthrough/openai.json eval/jury-walkthrough/
+COPY eval/jury-walkthrough/ eval/jury-walkthrough/
 COPY eval/jury-fallback/runs/astra-v1.* eval/jury-fallback/runs/astra-v2.* eval/jury-fallback/runs/
 COPY eval/hosted-reserve/runs/site/review.* eval/hosted-reserve/runs/site/
 COPY eval/route-decisions/runs/ eval/route-decisions/runs/

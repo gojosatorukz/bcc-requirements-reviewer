@@ -17,6 +17,8 @@
 !eval/gemini/behavior/bcc-release.json
 !eval/jury-walkthrough/openai.html
 !eval/jury-walkthrough/openai.json
+!eval/jury-walkthrough/openai-primary.html
+!eval/jury-walkthrough/openai-primary.json
 !eval/jury-fallback/runs/astra-v1.html
 !eval/jury-fallback/runs/astra-v1.json
 !eval/jury-fallback/runs/astra-v2.html

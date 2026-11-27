@@ -81,11 +81,12 @@ def main():
         (ROOT / "eval/gemini/behavior/bcc-release.html").read_bytes()).digest()
     homepage = read("/").decode()
     assert "Проверить структуру без ИИ" in homepage
-    assert "/reports/rehearsal/openai.html#execution-D-01" in homepage
-    for extension in ("html", "json"):
-        assert read(f"/reports/rehearsal/openai.{extension}") == (
-            ROOT / "eval/jury-walkthrough" / f"openai.{extension}").read_bytes()
-    print("The full hosted Sol report on the music school opens in HTML and JSON.", flush=True)
+    assert "/reports/rehearsal/openai-primary.html#execution-D-01" in homepage
+    for run in ("openai-primary", "openai"):
+        for extension in ("html", "json"):
+            assert read(f"/reports/rehearsal/{run}.{extension}") == (
+                ROOT / "eval/jury-walkthrough" / f"{run}.{extension}").read_bytes()
+    print("Both direct and fallback Sol reports on the music school match the archived HTML and JSON.", flush=True)
     print("Gemini examples and the upload form open.", flush=True)
 
     sample = b'# Export\n| Key | Unit |\n| --- | --- |\n| rate | ms |\n~~~json\n{"delay":3,}\n~~~'
