@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 import time
 
-from . import codex_provider, gemini_provider, witness_vm
+from . import acceptance_example, codex_provider, gemini_provider, witness_vm
 from .contract import EVIDENCE, TEXT, record, validate_shape
 from .full import InvalidStageResult, StageProviderError, array, call_stage, choice, citations
 
@@ -21,6 +21,8 @@ PROVIDER_FAILURES = {
     "scope": "Модель не завершила проверку того, что обе цитаты задают исход одной операции. Расчёт можно повторить.",
     "proposal": "Модель не завершила построение правил. Повторите расчёт, когда доступ к модели восстановится.",
     "audit": "Правила построены, но модель не завершила их сверку с ТЗ. Повторите расчёт, когда доступ к модели восстановится.",
+    "acceptance_proposal": "Модель не завершила построение расчёта для фиксированного приёмочного входа.",
+    "acceptance_audit": "Приёмочный пример не прошёл независимую сверку из-за недоступности модели.",
 }
 PROPOSAL = record(programs=array(witness_vm.PROGRAM), reason=TEXT)
 AUDIT = record(verdict=choice("accepted", "rejected"), first_rule=TEXT, second_rule=TEXT,
@@ -136,8 +138,33 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, finding, propo
     reason = ""
     scope = {}
 
+    def unavailable(stage, exc):
+        if isinstance(exc.__cause__, gemini_provider.QuotaExceeded) and codex_provider.fallback_model(model):
+            raise exc
+        attempts.extend(exc.attempts)
+        return {"finding_id": fid, "status": "provider_unavailable", "stage": stage, **scope}, attempts
+
     def unsupported():
-        return {"finding_id": fid, "status": "unsupported", "reason": reason, **scope}, attempts
+        row = {"finding_id": fid, "status": "unsupported", "reason": reason, **scope}
+        if (scope.get("scope_assessment", {}).get("relation") == "not_established"
+                or not acceptance_example.eligible(witness, source)):
+            return row, attempts
+        context = {"source": source, "witness": witness, "final_finding": finding}
+        actions = audit_actions() if audit_actions is not None else unresolved_actions
+        if actions:
+            context["unresolved_actions"] = actions
+        try:
+            example = acceptance_example.build(fid, context, model, checkpoint, digest, attempts)
+        except InvalidStageResult as exc:
+            attempts.extend(exc.attempts)
+            return row, attempts
+        except StageProviderError as exc:
+            stage = ("acceptance_audit" if exc.attempts[-1]["stage"] == "Сверка приёмочного примера " + fid
+                     else "acceptance_proposal")
+            return unavailable(stage, exc)
+        if example is not None:
+            row["acceptance_example"] = example
+        return row, attempts
 
     def verify_proposal(proposal):
         if len(proposal["programs"]) > 1:
@@ -183,11 +210,7 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, finding, propo
             reason = f"Проверка вычислимого примера исчерпала попытки: {exc}"
             return unsupported()
         except StageProviderError as exc:
-            if (isinstance(exc.__cause__, gemini_provider.QuotaExceeded)
-                    and codex_provider.fallback_model(model)):
-                raise
-            attempts.extend(exc.attempts)
-            return {"finding_id": fid, "status": "provider_unavailable", "stage": stage, **scope}, attempts
+            return unavailable(stage, exc)
         if audit["verdict"] == "accepted":
             return {"finding_id": fid, "status": "executed", "program": program, "result": result,
                     "audit": audit, **scope}, attempts
@@ -217,6 +240,8 @@ def build(report, lines, model, checkpoint, digest, workers, *, qa_checks=None):
                                    audit_actions=open_actions if defer else None)
         status = {"executed": "подтверждён", "unsupported": "не подтверждён",
                   "provider_unavailable": "модель недоступна"}[result["status"]]
+        if "acceptance_example" in result:
+            status = "сверен на фиксированном входе"
         print(f"Исполняемый пример {fid} · {status}", file=sys.stderr, flush=True)
         return result, events
 
@@ -246,8 +271,8 @@ def validate_saved(report, lines):
     for row in section["items"]:
         fid = row["finding_id"]
         guarded = section["version"] == VERSION and fid in material
+        assessment = row.get("scope_assessment")
         if "scope_assessment" in row:
-            assessment = row["scope_assessment"]
             if not guarded:
                 raise ValueError(f"{fid}: неожиданная проверка основания")
             validate_shape(assessment, SCOPE, fid)
@@ -259,10 +284,19 @@ def validate_saved(report, lines):
         elif guarded and row.get("status") == "executed":
             raise ValueError(f"{fid}: у результата отсутствует проверка основания")
         if row.get("status") == "unsupported":
+            if "acceptance_example" in row:
+                if section["version"] != VERSION or (guarded and (not assessment or assessment["relation"] != "same_operation")):
+                    raise ValueError(f"{fid}: недопустимое основание приёмочного примера")
+                acceptance_example.validate_saved(row["acceptance_example"], lines, expected[fid])
+                row = {k: v for k, v in row.items() if k != "acceptance_example"}
             validate_shape(row, record(finding_id=TEXT, status=choice("unsupported"), reason=TEXT), fid)
             continue
         if row.get("status") == "provider_unavailable" and section["version"] != LEGACY_VERSION:
-            stages = PROVIDER_FAILURES if guarded else ("proposal", "audit")
+            stages = ["proposal", "audit"]
+            if section["version"] == VERSION:
+                stages.extend(("acceptance_proposal", "acceptance_audit"))
+            if guarded:
+                stages.append("scope")
             validate_shape(row, record(finding_id=TEXT, status=choice("provider_unavailable"),
                                        stage=choice(*stages)), fid)
             continue
@@ -348,7 +382,7 @@ def main():
                 raise ValueError("Укажите отдельный выходной файл JSON")
             clock = time.monotonic()
             started = datetime.now(timezone.utc).isoformat()
-            digest = engine_digest("executable.py", "witness_vm.py", "full.py", "priority.py")
+            digest = engine_digest("executable.py", "acceptance_example.py", "witness_vm.py", "full.py", "priority.py")
             section, attempts = build(report, lines, args.model, args.checkpoint_dir, digest, args.workers)
             report["executables"] = section
             report["execution_run"] = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
@@ -362,6 +396,12 @@ def main():
         validate_saved(report, lines)
         for row in report["executables"]["items"]:
             if row["status"] != "executed":
+                if "acceptance_example" in row:
+                    result = row["acceptance_example"]["result"]
+                    print(f"{row['finding_id']} · На фиксированном входе · {result['metric']} · "
+                          f"вычислено {result['computed']} {result['unit']}, "
+                          f"в ТЗ ожидается {result['expected']} {result['unit']} (стр. {result['expected_source']['line']})")
+                    continue
                 title, reason = unexecuted_message(row)
                 print(f"{row['finding_id']} · {title} · {reason}")
                 continue
