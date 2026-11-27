@@ -120,7 +120,8 @@ class PublicHandler(WorkbenchHandler):
         except CookieError:
             jar = SimpleCookie()
         token = jar[COOKIE].value if COOKIE in jar else None
-        landing = path.path in ("/", "/reports/demo/review.html", "/reports/demo/review.pdf", "/reports/demo/review.json")
+        landing = path.path in ("/", "/reports/demo/review.html", "/reports/demo/review.pdf", "/reports/demo/review.json",
+                                "/reports/demo/gemini.html", "/reports/demo/gemini.json")
         key, self.entry = self.server.visit(token, landing=not write and landing)
         if key != token:
             self.new_cookie = key

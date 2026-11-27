@@ -56,6 +56,18 @@ class HostedWorkbenchTest(unittest.TestCase):
     def upload(self, cookie, origin="https://review.example"):
         return self.request("POST", "/api/runs?mode=full", cookie, origin, b"my requirements")
 
+    def test_public_gemini_example_is_the_recorded_run_and_consumes_no_model_quota(self):
+        code, html, headers = self.request("GET", "/reports/demo/gemini.html")
+        self.assertEqual(code, 200)
+        self.assertIn("максимум 1 или 2".encode(), html)
+        self.assertIn("Set-Cookie", headers)
+        code, raw, headers = self.request("GET", "/reports/demo/gemini.json?download=1")
+        self.assertEqual(code, 200)
+        self.assertIn("bcc-gemini.json", headers["Content-Disposition"])
+        report = json.loads(raw)
+        self.assertEqual(report["run"]["model"], "gemini-3.5-flash-lite")
+        self.assertFalse(self.server.model_requests)
+
     def test_health_and_visitor_isolation_including_completed_download(self):
         self.assertEqual(self.request("GET", "/healthz")[:2], (200, b"ok"))
         self.assertFalse(self.server.visits)

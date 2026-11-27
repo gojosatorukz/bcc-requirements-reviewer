@@ -24,6 +24,7 @@ COPY runs/bcc-final/review.json runs/bcc-final/review.html runs/bcc-final/
 COPY runs/bcc-release/review.json runs/bcc-release/review.html runs/bcc-release/review.pdf runs/bcc-release/
 COPY runs/bcc-release/owner/dialogue.json runs/bcc-release/owner/dialogue.html runs/bcc-release/owner/wrong-revision.html runs/bcc-release/owner/
 COPY cloud/runtime.py cloud/public.py cloud/
+COPY --chmod=444 eval/gemini/behavior/bcc-release.html eval/gemini/behavior/bcc-release.json eval/gemini/behavior/
 RUN chmod -R a+rX,go-w reviewer design runs cloud \
     && install -d -m 0700 -o reviewer -g reviewer /home/reviewer/.codex
 USER reviewer

@@ -748,6 +748,12 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
         try:
             route = self.route()
             app = self.app
+            if route.path in ("/reports/demo/gemini.html", "/reports/demo/gemini.json"):
+                ext = route.path.rsplit(".", 1)[1]
+                path = app.root / "eval" / "gemini" / "behavior" / ("bcc-release." + ext)
+                name = "bcc-gemini.json" if ext == "json" and route.query == "download=1" else None
+                self.reply(HTTPStatus.OK, path.read_bytes(), REPORT_FILES["review." + ext], name)
+                return
             if route.path == "/reports/demo/review.pdf":
                 self.reply(HTTPStatus.OK, (app.reports("demo") / "review.pdf").read_bytes(), "application/pdf", "review.pdf")
                 return

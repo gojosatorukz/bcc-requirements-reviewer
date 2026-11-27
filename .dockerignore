@@ -7,6 +7,8 @@
 !reviewer/*.js
 !cloud/runtime.py
 !cloud/public.py
+!eval/gemini/behavior/bcc-release.html
+!eval/gemini/behavior/bcc-release.json
 !design/concepts/index.html
 !design/concepts/gallery.css
 !design/concepts/case.js
