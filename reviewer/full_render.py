@@ -281,9 +281,9 @@ def response_field_comparison(lines, shapes, segments):
                             f'присутствовать в ответах {safe(codes)} для показанных случаев?</td></tr>')
         if rows:
             limit = '<p>Сопоставлены первые 32 имени поля.</p>' if len(keys) > 32 else ''
-            tables.append(f'<p>Раздел ответов · {line_link(parent)}</p><table><thead><tr><th>Поле</th>'
+            tables.append(f'<p>Раздел ответов · {line_link(parent)}</p><div class="scroll"><table><thead><tr><th>Поле</th>'
                           '<th>Есть в примере</th><th>Отсутствует в примере</th><th>Вопрос к контракту</th>'
-                          '</tr></thead><tbody>' + ''.join(rows) + '</tbody></table>' + limit)
+                          '</tr></thead><tbody>' + ''.join(rows) + '</tbody></table></div>' + limit)
     if not tables:
         return ''
     return ('<section id="response-fields"><h2>Состав ответов по примерам</h2>'
@@ -467,6 +467,8 @@ def render_full(report):
 .full table{width:100%;border-collapse:collapse}.full td,.full th{padding:.55rem;vertical-align:top;border-bottom:1px solid var(--line);text-align:left}
 .full th{background:var(--green)}.full summary{cursor:pointer}.full tr:target,.finding:target{background:var(--warm)}
 .full .scroll{overflow:auto}.full td:first-child{min-width:4.6em}.full section>h2{border-top:2px solid var(--deep);padding-top:1rem}
+#response-fields table{table-layout:fixed}#response-fields th:first-child{width:16%}
+@media screen and (max-width:680px){#response-fields table{min-width:38rem}}
 .decision-draft{margin-top:.75rem;padding:.65rem .85rem;border:1px solid var(--line);background:var(--green)}
 .decision-draft summary{font-weight:650;color:var(--deep)}
 .draft-scenario{min-inline-size:0;margin:.8rem 0 0;padding:.65rem;border:1px solid var(--line);background:var(--paper)}
