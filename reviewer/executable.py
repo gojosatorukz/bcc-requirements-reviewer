@@ -139,7 +139,8 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, finding, propo
     scope = {}
 
     def unavailable(stage, exc):
-        if isinstance(exc.__cause__, gemini_provider.QuotaExceeded) and codex_provider.fallback_model(model):
+        if (codex_provider.provider_name(model) == "openai-responses" or
+                isinstance(exc.__cause__, gemini_provider.QuotaExceeded) and codex_provider.fallback_model(model)):
             raise exc
         attempts.extend(exc.attempts)
         return {"finding_id": fid, "status": "provider_unavailable", "stage": stage, **scope}, attempts

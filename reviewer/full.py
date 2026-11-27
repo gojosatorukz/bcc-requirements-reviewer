@@ -388,7 +388,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                           {"source": source, "assigned": assigned}, QUALITY_BATCH,
                           lambda result: check_batch(result, batch, source))
 
-    api_profile = codex_provider.provider_name(model) in {"gemini-api", "cloudflare-workers-ai"}
+    api_profile = codex_provider.provider_name(model) in {"gemini-api", "cloudflare-workers-ai", "openai-responses"}
 
     def scenarios():
         try:

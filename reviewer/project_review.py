@@ -113,13 +113,21 @@ def project_worker(mode, document, baseline, json_report, html_report, model, pr
                   limit=IMPORT_LIMIT, mime="application/json")
     if state == "partial":
         from .input import load_document
-        from .partial import build_partial, render_partial
+        from .partial import build_partial, render_partial, RESERVE_REASONS
+        from .openai_provider import MODEL_ID
         report = json_object(raw)
         model = report.get("attempted_model")
-        if not isinstance(model, str) or not re.fullmatch(r"gemini-[a-z0-9.-]{1,100}", model):
+        direct = report.get("reason") == "openai_quota"
+        pattern = MODEL_ID if direct else re.compile(r"gemini-[a-z0-9.-]{1,100}")
+        if not isinstance(model, str) or not pattern.fullmatch(model):
             raise SafeWorkerError("Неизвестная модель в частичном отчёте сервера проекта.")
         lines, digest, metadata = load_document(document)
-        expected = build_partial(document.name, lines, digest, metadata, model)
+        reserve = report.get("attempted_openai_reserve")
+        if reserve is not None and (direct or not isinstance(reserve, dict) or set(reserve) != {"model", "reason"}
+                or not isinstance(reserve["model"], str) or not MODEL_ID.fullmatch(reserve["model"])
+                or not isinstance(reserve["reason"], str) or reserve["reason"] not in RESERVE_REASONS):
+            raise SafeWorkerError("Неизвестный резерв в частичном отчёте сервера проекта.")
+        expected = build_partial(document.name, lines, digest, metadata, model, reserve=reserve, openai_quota=direct)
         if report != expected:
             raise SafeWorkerError("Частичный отчёт сервера не совпадает с проверкой исходного документа.")
         json_report.write_bytes(raw)

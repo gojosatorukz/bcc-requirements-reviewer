@@ -99,6 +99,10 @@ def render_source(lines, backlinks, pages=(), locations=()):
 
 def render_passport(run, schema_version):
     fields = [(label, run[key]) for key, label in RUN_FIELDS.items()]
+    if isinstance(run.get("response_models"), list):
+        fields.append(("Модели в ответах API", ", ".join(m for m in run["response_models"] if isinstance(m, str))))
+    if isinstance(origin := run.get("fallback_from"), dict):
+        fields.append(("Переход на резерв", f"{origin.get('model', '')} · {origin.get('reason', '')}"))
     if "max_workers" in run:
         fields.append(("Лимит параллельных запросов", run["max_workers"]))
     if "engine_sha256" in run:

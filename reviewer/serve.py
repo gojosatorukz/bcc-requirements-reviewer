@@ -81,6 +81,10 @@ QUOTA_DETAIL = re.compile(
     r"\b(?:http(?:/\d(?:\.\d)?)?|status(?: code)?)\s*[:=]?\s*429\b", re.I)
 PROVIDER_FAILURE = re.compile(r"Codex CLI завершился с кодом -?\d+\.\s*(.*)$")
 SAFE_FAILURES = {
+    "OpenAI API: HTTP 429": "У OpenAI API исчерпана квота или достигнут лимит запросов. Готовые отчёты доступны.",
+    "OpenAI API: HTTP 401": "OpenAI отклонил ключ. Администратору нужно проверить доступ к API.",
+    "OpenAI API: HTTP 403": "У API-проекта нет доступа к модели OpenAI.",
+    "OpenAI API: HTTP 404": "OpenAI не нашёл выбранную модель. Проверьте имя и доступ API-проекта.",
     "Workers AI: HTTP 429": "Исчерпана квота резервной модели. Готовые отчёты доступны.",
     "Workers AI: HTTP 401": "Резервная модель отклонила ключ. Сообщите администратору сайта.",
     "Workers AI: HTTP 403": "Резервная модель недоступна этому аккаунту. Сообщите администратору сайта.",
@@ -204,7 +208,7 @@ class Run:
     remote_coverage: dict | None = None
 
     def record(self, line):
-        if line == codex_provider.FALLBACK_PROGRESS:
+        if line in codex_provider.FALLBACK_MESSAGES:
             self.group_total = self.proof_total = None
             self.checked_groups.clear()
             self.checked_proofs.clear()
@@ -276,7 +280,7 @@ def execute(command, progress, failure):
                 line = chunk.decode("utf-8", errors="replace").strip()
                 if (PROGRESS.fullmatch(line) or PLAN.fullmatch(line) or line == CROSS_CHECK
                         or PROOF_PLAN.fullmatch(line) or PROOF_DONE.fullmatch(line)
-                        or line == codex_provider.FALLBACK_PROGRESS):
+                        or line in codex_provider.FALLBACK_MESSAGES):
                     progress(line)
                 elif not known_failure:
                     if (line.startswith(("Прогон не завершён: ", "Повторная проверка не завершена: ", "Codex CLI завершился с кодом "))
@@ -311,7 +315,7 @@ def cli_worker(mode, document, baseline, json_report, html_report, model, progre
     python = [sys.executable, "-m"]
     if mode == "full":
         command = [*python, "reviewer", str(document), str(json_report)]
-        if codex_provider.provider_name() in {"gemini-api", "cloudflare-workers-ai"}:
+        if codex_provider.provider_name() in {"gemini-api", "cloudflare-workers-ai", "openai-responses"}:
             command.extend(["--workers", "1"])
         command.append("--partial-on-quota")
         if checkpoint_dir is not None:
@@ -870,7 +874,8 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 fallback = codex_provider.fallback_model(model)
                 disclosure = escape(model)
                 if fallback:
-                    disclosure += ". При лимите Gemini текст получит Cloudflare Workers AI (" + escape(fallback.name) + ")"
+                    provider = "OpenAI API" if fallback.provider == "openai-responses" else "Cloudflare Workers AI"
+                    disclosure += f". При лимите Gemini текст получит {provider} (" + escape(fallback.name) + ")"
                 self.reply(HTTPStatus.OK, page.replace("<!--review-model-->этого сервера", disclosure).encode(),
                            REPORT_FILES["review.html"])
                 return

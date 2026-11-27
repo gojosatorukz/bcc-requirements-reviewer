@@ -9,10 +9,19 @@ import tempfile
 from typing import NamedTuple
 
 from .contract import REVIEW
-from . import cloudflare_provider, gemini_provider
+from . import cloudflare_provider, gemini_provider, openai_provider
 
 
 FALLBACK_PROGRESS = "Gemini исчерпал квоту · начинаем проверку через Cloudflare Workers AI"
+OPENAI_FALLBACK_PROGRESS = "Gemini исчерпал квоту · начинаем проверку через OpenAI API"
+FALLBACK_MESSAGES = {FALLBACK_PROGRESS, OPENAI_FALLBACK_PROGRESS}
+
+
+class ReserveUnavailable(ValueError):
+    """Gemini exhausted its quota and the opt-in OpenAI restart also failed."""
+    def __init__(self, model, reason):
+        super().__init__(f"После лимита Gemini резерв OpenAI API не завершил ревью ({reason}).")
+        self.reserve = {"model": model, "reason": reason}
 
 
 class ModelOptions(NamedTuple):
@@ -31,7 +40,9 @@ def provider_name(model=None):
         return "gemini-api"
     if configured == "cloudflare":
         return "cloudflare-workers-ai"
-    raise ValueError("Неизвестный REVIEW_PROVIDER. Выберите codex, gemini или cloudflare.")
+    if configured == "openai":
+        return "openai-responses"
+    raise ValueError("Неизвестный REVIEW_PROVIDER. Выберите codex, gemini, cloudflare или openai.")
 
 
 def default_model():
@@ -42,6 +53,8 @@ def default_model():
         return "gemini-3.5-flash-lite"
     if provider_name() == "cloudflare-workers-ai":
         return cloudflare_provider.DEFAULT_MODEL
+    if provider_name() == "openai-responses":
+        return openai_provider.DEFAULT_MODEL
     return "gpt-6.2-astra"
 
 
@@ -53,9 +66,17 @@ def fallback_model(model):
     if provider_name(model) != "gemini-api":
         return None
     name = os.getenv("REVIEW_FALLBACK_MODEL", "").strip()
-    if not name or not all(os.getenv(k, "").strip() for k in ("CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN")):
+    if not name:
         return None
-    return ModelOptions(name, model.effort if isinstance(model, ModelOptions) else "medium", "cloudflare-workers-ai")
+    provider = os.getenv("REVIEW_FALLBACK_PROVIDER", "").strip().lower() or "cloudflare"
+    effort = model.effort if isinstance(model, ModelOptions) else "medium"
+    if provider == "openai":
+        if os.getenv("OPENAI_API_KEY", "").strip() and openai_provider.MODEL_ID.fullmatch(name):
+            return ModelOptions(name, effort, "openai-responses")
+    elif provider == "cloudflare":
+        if all(os.getenv(k, "").strip() for k in ("CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN")):
+            return ModelOptions(name, effort, "cloudflare-workers-ai")
+    return None
 
 
 def gemini_quota_error(exc):
@@ -72,9 +93,16 @@ def with_quota_fallback(operation, model):
         fallback = fallback_model(model)
         if fallback is None:
             raise
-    print(FALLBACK_PROGRESS, file=sys.stderr, flush=True)
+    print(OPENAI_FALLBACK_PROGRESS if fallback.provider == "openai-responses" else FALLBACK_PROGRESS,
+          file=sys.stderr, flush=True)
     origin = {"provider": provider_name(model), "model": model_name(model), "reason": "HTTP 429"}
-    return operation(fallback), fallback, origin
+    try:
+        return operation(fallback), fallback, origin
+    except ValueError as exc:
+        if fallback.provider == "openai-responses":
+            quota = openai_provider.quota_error(exc)
+            raise ReserveUnavailable(fallback.name, quota.reason if quota else "review_failed") from exc
+        raise
 
 
 def complete(prompt, model, output_schema=REVIEW):
@@ -85,6 +113,8 @@ def complete(prompt, model, output_schema=REVIEW):
         return gemini_provider.complete(prompt, name, effort, output_schema)
     if provider == "cloudflare-workers-ai":
         return cloudflare_provider.complete(prompt, name, effort, output_schema)
+    if provider == "openai-responses":
+        return openai_provider.complete(prompt, name, effort, output_schema)
     with tempfile.TemporaryDirectory(prefix="reqreview-") as work:
         directory = Path(work)
         schema = directory / "schema.json"
@@ -102,6 +132,8 @@ def complete(prompt, model, output_schema=REVIEW):
         env = {k: v for k, v in os.environ.items() if k not in {
             "CODEX_THREAD_ID", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "GEMINI_API_KEY", "GOOGLE_API_KEY",
             "CLOUDFLARE_API_TOKEN"}}
+        if os.getenv("REVIEW_FALLBACK_PROVIDER", "").strip().lower() == "openai":
+            env.pop("OPENAI_API_KEY", None)
         try:
             proc = subprocess.run(command, cwd=work, env=env, input=prompt, capture_output=True,
                                   text=True, encoding="utf-8", timeout=480)

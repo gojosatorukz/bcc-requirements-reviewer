@@ -131,6 +131,18 @@ def record(**fields):
     return {"type": "object", "properties": fields, "required": list(fields), "additionalProperties": False}
 
 
+def wire_schema(schema):
+    """Represent non-null primitive unions using the structured-output API subset."""
+    node = dict(schema)
+    if "properties" in node:
+        node["properties"] = {name: wire_schema(child) for name, child in node["properties"].items()}
+    if "items" in node:
+        node["items"] = wire_schema(node["items"])
+    if isinstance(node.get("type"), list) and "null" not in node["type"]:
+        node["anyOf"] = [{"type": kind} for kind in node.pop("type")]
+    return node
+
+
 SOURCE = record(line={"type": "integer"}, text=TEXT)
 EVIDENCE = record(line={"type": "integer"}, quote=TEXT)
 INTERPRETATION = record(source=EVIDENCE, outcome=TEXT)

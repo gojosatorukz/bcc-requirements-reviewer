@@ -17,6 +17,8 @@ VAGUE_TIME = re.compile(r"\b(?:быстро|оперативно|своевре�
 OBLIGATION = re.compile(r"\b(?:долж(?:ен|на|но|ны)|обязан[аы]?|shall|must)\b", re.I)
 TIME_BOUND = re.compile(r"\d\s*(?:мс|с\b|сек|мин|ч\b|час|ms\b|sec|min|hour)", re.I)
 MAX_FINDINGS = 60
+RESERVE_REASONS = {"insufficient_quota": "исчерпана квота", "credit_balance_exhausted": "закончились кредиты API",
+                   "rate_limit": "достигнут лимит запросов", "review_failed": "полный отчёт получить не удалось"}
 SCOPE = ("Проверены таблицы решений и явно заданные числовые границы с соседними примерами, "
          "незаполненные параметры, требования о скорости, синтаксис JSON и явное число обязательных полей в примерах успешного ответа. "
          "Полная оценка смысла требований требует запуска модели.")
@@ -33,7 +35,7 @@ def brief(text):
     return text if len(text) <= 160 else text[:157] + "…"
 
 
-def build_partial(name, lines, digest, metadata, model):
+def build_partial(name, lines, digest, metadata, model, *, reserve=None, openai_quota=False):
     blocks = segment(lines, metadata.get("pdf_json_blocks", ()))
     results = []
     total = 0
@@ -103,11 +105,19 @@ def build_partial(name, lines, digest, metadata, model):
                    f"Какой минимальный пример должен воспроизводить контракт из строки {n}?", [n])
 
     results.sort(key=lambda value: value["evidence"][0]["line"])
-    return {"report_type": "partial", "schema_version": 1, "reason": "gemini_quota", "attempted_model": model,
-            "input_name": name, "input_sha256": digest, "scope": SCOPE, "total_findings": total, "findings": results}
+    report = {"report_type": "partial", "schema_version": 1, "reason": "openai_quota" if openai_quota else "gemini_quota", "attempted_model": model,
+              "input_name": name, "input_sha256": digest, "scope": SCOPE, "total_findings": total, "findings": results}
+    if reserve:
+        report["attempted_openai_reserve"] = reserve
+    return report
 
 
 def render_partial(report):
+    reserve = report.get("attempted_openai_reserve")
+    reserve_note = ""
+    if reserve:
+        detail = RESERVE_REASONS[reserve["reason"]]
+        reserve_note = f' Резерв OpenAI API ({escape(reserve["model"])}) также был вызван, {detail}.'
     findings = []
     citations = {}
     for finding in report["findings"]:
@@ -127,7 +137,7 @@ def render_partial(report):
             'border:1px solid #c9c2b6;border-radius:12px;margin:1rem 0}h1,h2{line-height:1.17}h2{font-size:1.18rem}a{color:#773915}'
             'p,h1,h2,code{overflow-wrap:anywhere}:target{background:#ffe1a5}code{white-space:pre-wrap}</style><main><header>'
             f'<h1>Частичный отчёт</h1><p>{escape(report["input_name"])}</p></header><p>Модель {escape(report["attempted_model"])} '
-            'достигла лимита. Замечания ниже сформированы локальными правилами.</p>'
+            f'достигла лимита.{reserve_note} Замечания ниже сформированы локальными правилами.</p>'
             f'<p>{escape(report["scope"])}</p><p>Показано замечаний: {len(findings)} из {int(report["total_findings"])}.</p>'
             + ("".join(findings) or empty) + (f'<section><h2>Строки исходного ТЗ</h2>{excerpts}</section>' if excerpts else "")
             + '</main></html>')

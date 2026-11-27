@@ -9,6 +9,8 @@ from time import sleep
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from .contract import wire_schema
+
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/"
 RESPONSE_LIMIT = 4 * 1024 * 1024
@@ -34,18 +36,6 @@ class SchemaRejected(ValueError):
 
 class QuotaExceeded(ValueError):
     """The configured Gemini endpoint returned HTTP 429."""
-
-
-def wire_schema(schema):
-    node = dict(schema)
-    if "properties" in node:
-        node["properties"] = {name: wire_schema(child) for name, child in node["properties"].items()}
-    if "items" in node:
-        node["items"] = wire_schema(node["items"])
-    # Google's type arrays express nullability. Witness values also use integer|string.
-    if isinstance(node.get("type"), list) and "null" not in node["type"]:
-        node["anyOf"] = [{"type": kind} for kind in node.pop("type")]
-    return node
 
 
 def quota_wait(exc):

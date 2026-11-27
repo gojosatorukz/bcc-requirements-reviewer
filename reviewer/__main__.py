@@ -33,7 +33,7 @@ def engine_digest(*modules):
     directory = Path(__file__).resolve().parent
     digest = hashlib.sha256()
     for name in sorted({"__main__.py", "contract.py", "codex_provider.py", "gemini_provider.py",
-                        "cloudflare_provider.py", *modules}):
+                        "cloudflare_provider.py", "openai_provider.py", *modules}):
         content = (directory / name).read_bytes()
         digest.update(name.encode() + b"\0" + hashlib.sha256(content).digest())
     return digest.hexdigest()
@@ -92,8 +92,13 @@ def aggregate_usage(attempts):
 
 def run_usage(attempts):
     fresh = [attempt for attempt in attempts if not attempt.get("restored")]
-    return {"usage": aggregate_usage(attempts), "current_usage": aggregate_usage(fresh),
-            "fresh_calls": len(fresh), "restored_attempts": len(attempts) - len(fresh)}
+    summary = {"usage": aggregate_usage(attempts), "current_usage": aggregate_usage(fresh),
+               "fresh_calls": len(fresh), "restored_attempts": len(attempts) - len(fresh)}
+    response_models = sorted({u["response_model"] for attempt in attempts
+                              if isinstance(u := attempt.get("usage"), dict) and isinstance(u.get("response_model"), str)})
+    if response_models:
+        summary["response_models"] = response_models
+    return summary
 
 
 def main():
@@ -136,10 +141,15 @@ def main():
         try:
             (result, attempts), used, failover = codex_provider.with_quota_fallback(review, model)
         except ValueError as exc:
-            if not args.partial_on_quota or args.conflicts_only or not codex_provider.gemini_quota_error(exc):
+            from .openai_provider import quota_error
+            reserve = exc.reserve if isinstance(exc, codex_provider.ReserveUnavailable) else None
+            direct_quota = quota_error(exc) if codex_provider.provider_name(model) == "openai-responses" else None
+            if (not args.partial_on_quota or args.conflicts_only or
+                    not (reserve or direct_quota or codex_provider.gemini_quota_error(exc))):
                 raise
             from .partial import build_partial
-            write_report(args.report, build_partial(args.document.name, lines, input_hash, input_metadata, args.model))
+            write_report(args.report, build_partial(args.document.name, lines, input_hash, input_metadata,
+                                                    args.model, reserve=reserve, openai_quota=bool(direct_quota)))
             print(f"Частичный отчёт по локальным правилам сохранён: {args.report}")
             return
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
