@@ -83,7 +83,7 @@ def project_worker(mode, document, baseline, json_report, html_report, model, pr
         status = json_object(request(client, "/api/status/" + identifier, deadline=deadline,
                                      limit=64 * 1024, mime="application/json"))
         state = status.get("state")
-        if status.get("mode") != "full" or state not in ("queued", "running", "done", "failed"):
+        if status.get("mode") != "full" or state not in ("queued", "running", "done", "partial", "failed"):
             raise SafeWorkerError("Сервер проекта вернул неизвестный статус проверки.")
         if state == "failed":
             error = status.get("error")
@@ -104,13 +104,27 @@ def project_worker(mode, document, baseline, json_report, html_report, model, pr
             if isinstance(line, str) and 0 < len(line) <= 180 and line.isprintable() and line not in seen and len(seen) < 200:
                 progress(line)
                 seen.add(line)
-        if state == "done":
+        if state in ("done", "partial"):
             break
         sleep(min(3, max(0, deadline - monotonic())))
 
     progress("Сверяем полученный отчёт с исходным документом")
     raw = request(client, f"/reports/{identifier}/review.json", deadline=deadline,
                   limit=IMPORT_LIMIT, mime="application/json")
+    if state == "partial":
+        from .input import load_document
+        from .partial import build_partial, render_partial
+        report = json_object(raw)
+        model = report.get("attempted_model")
+        if not isinstance(model, str) or not re.fullmatch(r"gemini-[a-z0-9.-]{1,100}", model):
+            raise SafeWorkerError("Неизвестная модель в частичном отчёте сервера проекта.")
+        lines, digest, metadata = load_document(document)
+        expected = build_partial(document.name, lines, digest, metadata, model)
+        if report != expected:
+            raise SafeWorkerError("Частичный отчёт сервера не совпадает с проверкой исходного документа.")
+        json_report.write_bytes(raw)
+        html_report.write_text(render_partial(expected), encoding="utf-8")
+        return "partial"
     try:
         _, html = imported_full_report(raw, source=document)
     except WorkbenchError as exc:

@@ -69,6 +69,21 @@ class ProjectReviewTests(TestCase):
         project_worker("full", source or self.source, None, out / "review.json", out / "review.html", None, lambda m: None, **options)
         return out
 
+    def test_downloads_and_independently_checks_the_partial_report(self):
+        from reviewer.input import load_document
+        from reviewer.partial import build_partial
+        source = ROOT / "eval/quota-review/reservations.md"
+        report = build_partial(source.name, *load_document(source), "gemini-test")
+        self.service.job_state = "partial"
+        self.service.report = json.dumps(report).encode()
+        out = self.review("partial", source)
+        self.assertEqual(json.loads((out / "review.json").read_bytes()), report)
+        self.assertIn("Частичный отчёт", (out / "review.html").read_text())
+        report["findings"][0]["question"] = "Чужой вывод?"
+        self.service.report = json.dumps(report).encode()
+        with self.assertRaisesRegex(SafeWorkerError, "не совпадает"):
+            self.review("tampered", source)
+
     def test_posts_original_bytes_to_fixed_host_and_never_reuses_a_visit(self):
         name = "Энергия & приёмка.md"
         source = self.root / name

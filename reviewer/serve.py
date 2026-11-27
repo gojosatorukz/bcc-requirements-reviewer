@@ -311,6 +311,7 @@ def cli_worker(mode, document, baseline, json_report, html_report, model, progre
         command = [*python, "reviewer", str(document), str(json_report)]
         if codex_provider.provider_name() in {"gemini-api", "cloudflare-workers-ai"}:
             command.extend(["--workers", "1"])
+        command.append("--partial-on-quota")
         if checkpoint_dir is not None:
             command.extend(["--checkpoint-dir", str(checkpoint_dir)])
     else:
@@ -330,6 +331,8 @@ def cli_worker(mode, document, baseline, json_report, html_report, model, progre
     execute([*python, "reviewer.render", str(json_report), str(html_report)], progress,
             "Не удалось создать HTML-отчёт.")
     progress("Отчёт HTML сохранён")
+    if mode == "full" and json.loads(json_report.read_bytes()).get("report_type") == "partial":
+        return "partial"
 
 
 class Workbench:
@@ -572,7 +575,7 @@ class Workbench:
             run = self.runs.get(identifier)
             if run is None:
                 raise WorkbenchError(HTTPStatus.NOT_FOUND, "Прогон не найден.")
-            if run.state != "done" or (baseline and run.mode != "full"):
+            if run.state not in ("done", "partial") or (baseline and (run.mode != "full" or run.state != "done")):
                 raise WorkbenchError(HTTPStatus.CONFLICT, "Требуется завершённый полный отчёт." if baseline
                                      else "Отчёт ещё недоступен.")
             return run.directory
@@ -708,7 +711,9 @@ class Workbench:
                 options.update(decisions=decisions)
             if clarifications:
                 options.update(clarifications=clarifications)
-            worker(run.mode, document, baseline, json_report, html_report, self.model, on_progress, **options)
+            outcome = worker(run.mode, document, baseline, json_report, html_report, self.model, on_progress, **options)
+            if outcome == "partial":
+                state = "partial"
             if not all((run.directory / name).is_file() for name in REPORT_FILES):
                 raise SafeWorkerError("Проверка не сформировала оба отчёта.")
         except SafeWorkerError as exc:
@@ -718,7 +723,7 @@ class Workbench:
         finally:
             with self.lock:
                 if resume_key is not None:
-                    if state == "failed" and any(checkpoint.glob("*.json")):
+                    if state in ("failed", "partial") and any(checkpoint.glob("*.json")):
                         self.interrupted_reviews[resume_key] = checkpoint
                     else:
                         self.interrupted_reviews.pop(resume_key, None)

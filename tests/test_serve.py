@@ -77,11 +77,30 @@ class WorkbenchTest(unittest.TestCase):
         deadline = time.monotonic() + 3
         while True:
             result = self.status(identifier)
-            if result["state"] in {"done", "failed"}:
+            if result["state"] in {"done", "failed", "partial"}:
                 return result
             if time.monotonic() > deadline:
                 self.fail(f"Run did not finish: {result}")
             time.sleep(0.01)
+
+    def test_partial_result_can_be_downloaded_but_cannot_be_a_baseline(self):
+        def partial(mode, document, baseline, json_report, html_report, model, progress):
+            from reviewer.input import load_document
+            from reviewer.partial import build_partial, render_partial
+            report = build_partial(document.name, *load_document(document), "gemini-test")
+            json_report.write_text(json.dumps(report))
+            html_report.write_text(render_partial(report))
+            return "partial"
+        self.app.worker = partial
+        code, value, _ = self.upload("/api/runs?mode=full", body=b"Deposit: TBD.")
+        self.assertEqual(code, 202)
+        identifier = json.loads(value)["id"]
+        self.assertEqual(self.wait_until_done(identifier)["state"], "partial")
+        root = "/reports/" + identifier
+        self.assertIn("Частичный отчёт", self.request("GET", root + "/review.html")[1].decode())
+        self.assertEqual(json.loads(self.request("GET", root + "/review.json")[1])["total_findings"], 1)
+        self.assertEqual(self.request("GET", root + "/issues.csv")[0], 409)
+        self.assertEqual(self.upload("/api/runs?mode=recheck&baseline=" + identifier)[0], 409)
 
     def test_jira_download_uses_the_selected_full_report_and_rejects_a_stale_digest(self):
         from reviewer.jira_export import issues_csv

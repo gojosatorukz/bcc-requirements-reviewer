@@ -105,6 +105,7 @@ def main():
                         help="Глубина рассуждения модели. В паспорте сохраняется выбранный режим.")
     parser.add_argument("--workers", type=int, choices=range(1, 9), default=6, metavar="1..8",
                         help="Максимум параллельных запросов полного ревью (по умолчанию 6)")
+    parser.add_argument("--partial-on-quota", action="store_true", help="Сохранить частичное ревью по локальным правилам при квоте Gemini")
     parser.add_argument("--conflicts-only", action="store_true", help="Быстрый поиск поведенческих конфликтов (формат v1)")
     parser.add_argument("--checkpoint-dir", type=Path, help="Папка для возобновления проверенных стадий полного прогона")
     args = parser.parse_args()
@@ -132,7 +133,15 @@ def main():
             from .full import analyze
             return analyze(blocks, lines, selected, args.checkpoint_dir, digest, args.workers,
                            input_metadata.get("pdf_json_blocks", ()))
-        (result, attempts), used, failover = codex_provider.with_quota_fallback(review, model)
+        try:
+            (result, attempts), used, failover = codex_provider.with_quota_fallback(review, model)
+        except ValueError as exc:
+            if not args.partial_on_quota or args.conflicts_only or not codex_provider.gemini_quota_error(exc):
+                raise
+            from .partial import build_partial
+            write_report(args.report, build_partial(args.document.name, lines, input_hash, input_metadata, args.model))
+            print("Частичный отчёт по локальным правилам сохранён")
+            return
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
                "provider": codex_provider.provider_name(used), "model": codex_provider.model_name(used),
                "reasoning_effort": args.effort,

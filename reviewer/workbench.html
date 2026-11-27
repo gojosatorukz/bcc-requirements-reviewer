@@ -295,6 +295,15 @@ a{color:var(--accent);text-underline-offset:.18em}
           <div id="recheck-summary"></div>
           <button class="assistant-launch" id="assistant-recheck-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel" hidden>Спросить о перепроверке</button>
         </section>
+        <section class="recovery" id="partial-report" aria-labelledby="partial-title" hidden>
+          <h3 id="partial-title">Частичный отчёт</h3>
+          <p>Gemini достиг лимита. Замечания собраны по локальным правилам.</p>
+          <p id="partial-count" role="status"></p>
+          <ul id="partial-questions"></ul>
+          <div class="actions"><a class="action" id="partial-html" target="_blank" rel="noopener">Открыть отчёт с цитатами</a>
+            <a id="partial-json">Скачать JSON</a></div>
+          <p>Для полного смыслового ревью повторите запуск позже или <a href="#local-review" data-open-details="local-review">используйте свою модель</a>.</p>
+        </section>
         <div class="actions" id="run-links" hidden>
           <a class="difference-link" id="run-difference" target="_blank" rel="noopener" hidden>Посмотреть расхождение ↗</a>
           <a class="action" id="run-html" target="_blank" rel="noopener">Открыть HTML-отчёт</a>
@@ -488,7 +497,7 @@ const drop = get('drop');
 const pastedText = get('pasted-text');
 let uploadedFile = null;
 const idPattern = /^[0-9a-f]{32}$/;
-const stateLabels = {queued:'В очереди', running:'Проверка идёт', done:'Отчёт готов', failed:'Ошибка проверки'};
+const stateLabels = {queued:'В очереди', running:'Проверка идёт', done:'Отчёт готов', partial:'Готов частичный отчёт', failed:'Ошибка проверки'};
 const modeLabels = {full:'Полное ревью', recheck:'Проверка новой версии'};
 const storageKey = 'reviewer.workbench.v1';
 const decisionKey = 'reviewer.owner-decisions.v1';
@@ -812,6 +821,7 @@ get('reuse-report-link').addEventListener('click', async event => {
 function setStatus(message, error = false, running = false) {
   get('run-status').hidden = false;
   get('run-recovery').hidden = true;
+  get('partial-report').hidden = true;
   const target = get('status-message');
   if (target.textContent !== message) target.textContent = message;
   target.classList.toggle('error', error);
@@ -1223,9 +1233,27 @@ async function poll(run) {
     const facePhase = status.state === 'running' && phase ? status.coverage.phase : status.state;
     setBrandState(inProgress ? 'working' : status.state, facePhase);
     setCompanionRun(inProgress ? description : '', run.submittedAt, run.name);
-    setStatus(label + ' · ' + description, status.state === 'failed', inProgress);
+    setStatus((status.state === 'partial' ? run.name : label) + ' · ' + description, status.state === 'failed', inProgress);
     if (status.state === 'failed') {
       showRunFailure([label, run.name].filter(Boolean).join(' · ') + '. ' + (status.error || stateLabels.failed));
+    } else if (status.state === 'partial') {
+      const path = '/reports/' + run.id + '/review';
+      const report = await request(path + '.json');
+      if (session.last?.id !== run.id) return;
+      get('partial-html').href = path + '.html';
+      get('partial-json').href = path + '.json?download=1';
+      get('partial-count').textContent = report.total_findings ? 'Замечаний по правилам: ' + report.total_findings :
+        'В пределах этих проверок замечаний нет.';
+      get('partial-questions').replaceChildren(...report.findings.slice(0, 3).map(finding => {
+        const item = document.createElement('li');
+        const cited = resultText('a', 'Стр. ' + finding.evidence.map(ref => ref.line).join(', '));
+        cited.href = path + '.html#line-' + finding.evidence[0].line;
+        cited.target = '_blank';
+        cited.rel = 'noopener';
+        item.append(finding.question + ' ', cited);
+        return item;
+      }));
+      get('partial-report').hidden = false;
     } else if (status.state === 'done') {
       const reportUrl = '/reports/' + run.id + '/review.html';
       get('run-html').href = reportUrl;

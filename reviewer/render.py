@@ -157,6 +157,9 @@ def render_fields(fields):
 
 
 def render_report(report):
+    if isinstance(report, dict) and report.get("report_type") == "partial" and report.get("schema_version") == 1:
+        from .partial import render_partial
+        return render_partial(report)
     if isinstance(report, dict) and report.get("report_type") == "owner_dialogue":
         from .dialogue_view import render_dialogue
         return render_dialogue(report)

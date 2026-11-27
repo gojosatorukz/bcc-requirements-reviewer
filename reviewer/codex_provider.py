@@ -58,13 +58,16 @@ def fallback_model(model):
     return ModelOptions(name, model.effort if isinstance(model, ModelOptions) else "medium", "cloudflare-workers-ai")
 
 
+def gemini_quota_error(exc):
+    return isinstance(exc, gemini_provider.QuotaExceeded) or isinstance(exc.__cause__, gemini_provider.QuotaExceeded)
+
+
 def with_quota_fallback(operation, model):
     """Restart the entire operation with one provider and its own checkpoints."""
     try:
         return operation(model), model, None
     except ValueError as exc:
-        if not (isinstance(exc, gemini_provider.QuotaExceeded)
-                or isinstance(exc.__cause__, gemini_provider.QuotaExceeded)):
+        if not gemini_quota_error(exc):
             raise
         fallback = fallback_model(model)
         if fallback is None:
