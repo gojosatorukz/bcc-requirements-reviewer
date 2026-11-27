@@ -40,6 +40,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 .intro-copy h1,.workspace h2,.workspace h3,.workspace p{margin:0}
 .intro-copy h1{font-size:clamp(1.3rem,2.1vw,1.9rem);line-height:1.1;font-weight:830;letter-spacing:-.045em}
 .intro-copy p{max-width:61ch;margin:0;padding-inline-start:.85rem;border-left:1px solid var(--ink);font-weight:560;font-size:clamp(.85rem,1.2vw,1rem)}
+.intro-copy small{flex-basis:100%;font-size:.84rem;color:var(--ink);overflow-wrap:anywhere}
 .active-summary{width:fit-content;max-width:100%;padding:1rem 1.2rem;border:2px solid var(--ink);border-radius:.8rem;background:var(--panel);box-shadow:0 .25rem 0 var(--ink)}
 .active-summary dl{display:flex;flex-wrap:wrap;gap:.65rem 2rem;margin:0}
 .active-summary dt{font-size:.83rem;color:var(--muted);font-weight:650}
@@ -55,6 +56,12 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 .workspace .card h3{font-size:1.14rem;line-height:1.2}
 .workspace .card p{overflow-wrap:anywhere}
 #upload-form{display:grid;gap:1rem}
+.restore-review{margin-top:1.2rem;padding-top:.75rem;border-top:1px solid var(--line)}
+.restore-review summary{width:fit-content;font-weight:680;cursor:pointer}
+.restore-review label,.restore-review input{display:block;margin-top:.55rem;max-width:100%}
+.restore-review input{font:inherit}
+.restore-review small{color:var(--muted)}
+.restore-review #import-state:not(:empty){margin-top:.45rem}
 #upload-form fieldset{border:0;margin:0;padding:0;min-width:0}
 #upload-form legend,#upload-form label{font-weight:690}
 #upload-form legend{padding:0;margin-bottom:.45rem}
@@ -166,8 +173,9 @@ a{color:var(--accent);text-underline-offset:.18em}
   <div class="intro">
     <div class="inner">
       <div class="intro-copy">
-        <h1 id="review-title">Проверка требований</h1>
+        <h1 id="review-title" tabindex="-1">Проверка требований</h1>
         <p id="review-document">Загрузите документ или откройте демо-отчёт.</p>
+        <small id="review-origin" hidden></small>
       </div>
       <section id="guided-review" aria-label="Согласование" hidden></section>
       <div id="active-summary" class="active-summary" hidden>
@@ -217,6 +225,13 @@ a{color:var(--accent);text-underline-offset:.18em}
         <p id="upload-error" class="error" role="alert" hidden></p>
         <button id="submit" type="submit">Запустить проверку</button>
       </form>
+      <details class="restore-review" id="restore-review">
+        <summary>Открыть сохранённый отчёт (.json)</summary>
+        <label for="import-file">JSON полного ревью</label>
+        <input id="import-file" type="file" accept=".json,application/json" aria-describedby="import-hint import-state">
+        <small id="import-hint">До 8 МиБ. Файл проверяется локально.</small>
+        <p id="import-state" role="status" aria-live="polite"></p>
+      </details>
       <div id="run-status" class="status-box" hidden>
         <h3>Статус проверки</h3>
         <p id="status-message" role="status" aria-atomic="true"></p>
@@ -451,8 +466,7 @@ async function loadFindings(id) {
   }
 }
 
-function refreshBaselines() {
-  const selected = baseline.value;
+function refreshBaselines(selected = baseline.value) {
   const options = [
     ...(demoReady ? [new Option('Демо-отчёт', 'demo')] : []),
     ...session.full.map(item => new Option((item.name || 'Полный отчёт') + ' · ' + item.id.slice(0, 8), item.id)),
@@ -969,11 +983,13 @@ async function poll(run) {
       get('run-links').hidden = false;
       if (status.mode === 'full') {
         if (!session.full.some(item => item.id === run.id)) {
-          session.full.unshift({id:run.id, name:run.name});
+          const entry = {id:run.id, name:run.name};
+          if (run.stayWith && session.full.some(item => item.id === run.stayWith)) session.full.splice(1, 0, entry);
+          else session.full.unshift(entry);
           save();
           refreshBaselines();
         }
-        loadGuidedFull(run.id);
+        if (!run.stayWith || !session.full.some(item => item.id === run.stayWith)) loadGuidedFull(run.id);
       } else if (status.mode === 'recheck') {
         loadRecheck(run, reportUrl);
       }
@@ -1119,6 +1135,47 @@ function isFullReport(report) {
     Array.isArray(report.conflicts) && Array.isArray(report.registry) && Array.isArray(report.source);
 }
 
+let importing;
+get('import-file').addEventListener('change', async ({target}) => {
+  const selected = target.files[0];
+  if (!selected) return;
+  importing?.abort();
+  const operation = new AbortController();
+  importing = operation;
+  target.value = '';
+  const status = get('import-state');
+  status.classList.remove('error');
+  try {
+    if (!selected.size || selected.size > 8 * 1024 * 1024) throw new Error('Нужен непустой JSON размером до 8 МиБ.');
+    status.textContent = 'Проверяем сохранённый отчёт и повторяем его вычисления…';
+    const receipt = await request('/api/import-report', {method:'POST', signal:operation.signal,
+      headers:{'Content-Type':'application/json'}, body:selected});
+    if (!idPattern.test(receipt.id) || !reportHash.test(receipt.sha256)) throw new Error('Сервер не подтвердил версию отчёта.');
+    const saved = await request('/reports/' + receipt.id + '/review.json', {signal:operation.signal}, true);
+    if (!isFullReport(saved.value) || saved.sha !== receipt.sha256) throw new Error('Загруженная версия отчёта не совпадает с проверенной.');
+    await demoLoad;
+    if (importing !== operation) return;
+    const entry = {id:receipt.id, name:saved.value.run.input_name, imported:true};
+    session.full = [entry, ...session.full.filter(item => item.id !== entry.id)];
+    if (session.last) session.last.stayWith = entry.id;
+    save();
+    requestedGuidedId = entry.id;
+    refreshBaselines(entry.id);
+    publishReport(saved.value, entry.id, saved.sha);
+    checkReportReuse();
+    status.textContent = 'Открыт отчёт по документу «' + entry.name + '». Новых обращений к модели 0.';
+    const title = get('review-title');
+    title.focus({preventScroll:true});
+    title.scrollIntoView({block:'start'});
+  } catch (error) {
+    if (importing !== operation) return;
+    status.classList.add('error');
+    status.textContent = 'Отчёт не открыт. ' + (error.message || 'Проверьте файл и повторите попытку.');
+  } finally {
+    if (importing === operation) importing = null;
+  }
+});
+
 function rememberBaselineVersion(id, report, sha) {
   if (!reportHash.test(sha || '')) {
     baselineVersions.delete(id);
@@ -1141,6 +1198,13 @@ function publishReport(report, id, sha) {
   activeLink.setAttribute('aria-label', 'Открыть ' + (id === 'demo' ? 'демо-отчёт' : 'текущий отчёт') + ' в новой вкладке');
   const name = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
   get('review-document').textContent = [id === 'demo' ? 'Демо' : 'Полное ревью', name].filter(Boolean).join(' · ');
+  const origin = get('review-origin');
+  origin.hidden = !session.full.some(item => item.id === id && item.imported);
+  if (!origin.hidden) {
+    const started = report.run?.started_utc?.slice(0, 19).replace('T', ' ');
+    origin.textContent = ['Из JSON', started && 'исходный прогон ' + started + ' UTC', report.run?.model,
+      'новых обращений к модели 0'].filter(Boolean).join(' · ');
+  }
   window.dispatchEvent(new CustomEvent('review:loaded', {detail:{report, reportUrl, key, decisions:ownerDecisions[key] || {}}}));
   if (discussion?.key !== key || !key) {
     mountDiscussion(id, sha, key, report.whole.findings, get('review-document').textContent);
