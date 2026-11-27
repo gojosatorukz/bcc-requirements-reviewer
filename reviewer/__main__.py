@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import time
@@ -21,7 +22,11 @@ def version():
         dirty = subprocess.check_output(["git", "status", "--porcelain", "--", "reviewer"], cwd=root, text=True)
         return head + ("+modified" if dirty else "")
     except (OSError, subprocess.CalledProcessError):
-        return "unversioned"
+        try:
+            revision = (root / ".image-revision").read_text(encoding="ascii").strip()
+        except (OSError, UnicodeError):
+            return "unversioned"
+        return revision[:12] if re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", revision) else "unversioned"
 
 
 def engine_digest(*modules):

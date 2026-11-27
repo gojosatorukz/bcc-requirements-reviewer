@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from reviewer.__main__ import main
+from reviewer.__main__ import main, version
 
 
 def example():
@@ -21,6 +21,19 @@ def example():
 
 
 class ReviewTest(unittest.TestCase):
+    def test_release_image_reports_its_build_commit_without_git(self):
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch("reviewer.__main__.__file__", str(Path(root) / "reviewer" / "__main__.py")),
+            patch("reviewer.__main__.subprocess.check_output", side_effect=FileNotFoundError),
+        ):
+            stamp = Path(root) / ".image-revision"
+            self.assertEqual(version(), "unversioned")
+            stamp.write_text("a" * 40 + "\n", encoding="ascii")
+            self.assertEqual(version(), "a" * 12)
+            stamp.write_text("latest\n", encoding="ascii")
+            self.assertEqual(version(), "unversioned")
+
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
