@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from reviewer.render import render_report
+from reviewer.dialogue_view import render_with_followup
 from reviewer.recheck import render_html
 from reviewer.serve import ROOT, Workbench, demo_directory
 
@@ -48,3 +49,24 @@ class SavedOwnerExample(unittest.TestCase):
         self.assertEqual(checked["checks"][0]["clarification"]["transcript"], record)
         self.assertEqual(checked["checks"][0]["workflow_status"], "открыто")
         self.assertIn("противоречит решению", render_html(checked))
+
+    def test_embedded_followup_is_bound_to_the_baseline_conversation_and_revision(self):
+        release = ROOT / "runs/bcc-jury"
+        raw = (release / "review.json").read_bytes()
+        owner_path = release / "owner/dialogue.json"
+        revision_path = release / "owner/wrong-revision.json"
+        html = render_with_followup(raw, owner_path, revision_path)
+        self.assertEqual(html.encode(), (release / "review.html").read_bytes())
+        self.assertIn("замечание открыто", html)
+        for turn in json.loads(owner_path.read_bytes())["turns"]:
+            self.assertIn(turn["question"], html)
+            self.assertIn(turn["answer"], html)
+        with self.assertRaises(ValueError):
+            render_with_followup(raw + b"\n", owner_path, revision_path)
+        with TemporaryDirectory() as directory:
+            changed = Path(directory) / "revision.json"
+            revision = json.loads(revision_path.read_bytes())
+            revision["checks"][0]["clarification"]["transcript"]["rule"] = "Другое согласование"
+            changed.write_text(json.dumps(revision))
+            with self.assertRaises(ValueError):
+                render_with_followup(raw, owner_path, changed)

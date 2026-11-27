@@ -926,7 +926,14 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                             self.reply(HTTPStatus.OK, issues_csv(value), "text/csv; charset=utf-8", "review-issues.csv")
                             return
                         from .render import render_report
-                        body = render_report(json.loads(body)).encode("utf-8")
+                        owner = directory / "owner"
+                        revision = owner / "wrong-revision.json"
+                        if (report[1] == "demo" and revision.is_file()
+                                and self.app.saved_example("demo", expected[0])):
+                            from .dialogue_view import render_with_followup
+                            body = render_with_followup(body, owner / "dialogue.json", revision).encode("utf-8")
+                        else:
+                            body = render_report(json.loads(body)).encode("utf-8")
                     except (KeyError, TypeError, ValueError) as exc:
                         raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Не удалось открыть эту версию отчёта.") from exc
                 download = name if params.get("download") == ["1"] else None

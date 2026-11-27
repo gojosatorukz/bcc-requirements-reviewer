@@ -11,9 +11,8 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from reviewer.clarify import validate_transcript
+from reviewer.dialogue_view import render_with_followup
 from reviewer.executable import verify_source
-from reviewer.full_render import validate_report
 
 
 def package(source, output):
@@ -33,15 +32,11 @@ def package(source, output):
     if hashes != json.loads((release / "materials.json").read_bytes()):
         raise ValueError("Файлы расходятся с проверенным комплектом. Проверьте редакцию ТЗ и материалы подачи.")
     report = json.loads(material["review.json"])
-    lines = validate_report(report)
     verify_source(report, source)
-    owner = json.loads((release / "owner/dialogue.json").read_bytes())
-    finding = next(f for f in report["whole"]["findings"] if f["id"] == owner["finding_id"])
-    validate_transcript(owner, finding["id"], hashes["review.json"], initial_question=finding["question"], source=lines)
-    revision = json.loads((release / "owner/wrong-revision.json").read_bytes())
-    if (revision["run"]["previous_report_sha256"] != hashes["review.json"] or
-            not any(check.get("clarification", {}).get("transcript") == owner for check in revision["checks"])):
-        raise ValueError("Перепроверка решения владельца относится к другому отчёту или диалогу")
+    expected_html = render_with_followup(material["review.json"], release / "owner/dialogue.json",
+                                         release / "owner/wrong-revision.json")
+    if expected_html.encode("utf-8") != material["review.html"]:
+        raise ValueError("Пересоберите HTML из текущего отчёта, диалога и перепроверки перед упаковкой")
 
     timestamp = datetime.fromisoformat(report["run"]["started_utc"]).timetuple()[:6]
     output.parent.mkdir(parents=True, exist_ok=True)

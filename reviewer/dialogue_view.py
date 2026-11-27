@@ -1,9 +1,57 @@
 """Render the actual owner conversation as an offline handoff to an analyst or QA."""
 
+from hashlib import sha256
+import json
 import re
 
 from .clarify import validate_transcript
 from .render import safe
+
+
+def render_with_followup(baseline, dialogue_path, revision_path):
+    """Render a full report with a recorded owner conversation and its checked revision."""
+    from .clarification_check import validate_display
+    from .contract import source_lines
+    from .full_render import render_full
+    from .project_review import ORIGIN
+
+    report = json.loads(baseline)
+    owner = json.loads(dialogue_path.read_bytes())
+    revision = json.loads(revision_path.read_bytes())
+    digest = sha256(baseline).hexdigest()
+    fid = owner["finding_id"]
+    finding = next((row for row in report["whole"]["findings"] if row["id"] == fid), None)
+    if finding is None:
+        raise ValueError("Замечание из диалога отсутствует в исходном отчёте")
+    validate_transcript(owner, fid, digest, initial_question=finding["question"], source=source_lines(report))
+    run = revision["run"]
+    selected = [row for row in revision["checks"] if row["id"] == fid]
+    if (revision.get("report_type") != "recheck" or run["previous_report_sha256"] != digest
+            or run["previous_input_sha256"] != report["run"]["input_sha256"] or len(selected) != 1
+            or selected[0].get("clarification", {}).get("transcript") != owner):
+        raise ValueError("Перепроверка относится к другому отчёту или диалогу")
+    check = selected[0]
+    clarify = check["clarification"]
+    validate_display(clarify, check, run, revision["diff"], source_lines(revision))
+
+    turns = []
+    for turn in owner["turns"]:
+        turns.append(f'<li><p><b>Агент.</b> {safe(turn["question"])}</p>'
+                     f'<p><b>Владелец.</b> {safe(turn["answer"])}</p></li>')
+    conditions = []
+    for condition in clarify["conditions"]:
+        quotes = "".join(f'<blockquote>Строка {ref["line"]} новой редакции · '
+                         f'{safe(ref["quote"])}</blockquote>' for ref in condition["evidence"])
+        conditions.append(f'<li><b>{safe(condition["status"])}</b> · {safe(condition["reason"])}{quotes}</li>')
+    rule = f'<p><b>Согласованное правило.</b> {safe(owner["rule"])}</p>' if owner["rule"] else ""
+    result = f'<ul>{"".join(conditions)}</ul>' if conditions else ""
+    panel = (f'<details class="owner-followup"><summary>Ответ владельца и перепроверка · '
+             f'замечание {safe(check["workflow_status"])}</summary>'
+             f'<p id="owner-{safe(fid)}">Учебный диалог после исходного прогона. Ответы дал участник демонстрации.</p>'
+             f'<ol>{"".join(turns)}</ol>{rule}<h4>Новая редакция · {safe(run["input_name"])}</h4>'
+             f'<p><b>Замечание {safe(check["workflow_status"])}.</b> {safe(clarify["status"])}.</p>{result}'
+             f'<p><a href="{safe(ORIGIN)}/#upload-form">Открыть загрузку своего ТЗ на сайте</a></p></details>')
+    return render_full(report, owner_example=(fid, panel, ORIGIN + "/#upload-form"))
 
 
 def render_dialogue(record):

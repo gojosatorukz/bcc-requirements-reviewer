@@ -400,7 +400,7 @@ def render_decision_drafts(finding, candidates):
 {''.join(scenarios)}</details>'''
 
 
-def render_full(report):
+def render_full(report, *, owner_example=None):
     lines = validate_report(report)
     run, segments, registry, whole = (report[k] for k in ("run", "segments", "registry", "whole"))
     meta_model = safe(run['model'])
@@ -417,6 +417,11 @@ def render_full(report):
     lifecycle = report.get("lifecycle_checks", {})
     qa_checks = lifecycle.get("checks", [])
     qa_cases = render_lifecycle(qa_checks, backlinks, lifecycle.get("skipped", ()))
+    owner_tools = ""
+    if owner_example:
+        owner_fid, owner_panel, upload_url = owner_example
+        owner_tools = (f'<a href="#owner-{safe(owner_fid)}">Ответ владельца и перепроверка</a>'
+                       f'<a href="{safe(upload_url)}">Проверить своё ТЗ на сайте</a>')
     qa_shortcut = ""
     if qa_cases:
         first = next((i for i, check in enumerate(qa_checks, 1) if check["axis"] == "initial_action"), None)
@@ -460,7 +465,7 @@ def render_full(report):
                      f'<p>{safe(priority.RULES[triage["rule"]][1])}</p>{"".join(proof)}</details>')
         findings.append(f'''<article id="{fid}" class="finding"><small>{fid} · {safe(f['category'])} · {safe(f['priority'])}</small>
 <h3>{safe(f['title'])}</h3><p>{safe(f['criterion'])}. {safe(f['reason'])}</p><p><b>Последствие.</b> {safe(f['impact'])}</p>
-{executions.get(fid, '')}
+{executions.get(fid, '')}{owner_panel if owner_example and fid == owner_fid else ''}
 {evidence(f['evidence'])}<p><b>{safe(f['owner'])}.</b> {safe(f['question'])}</p>
 <p><b>Исправление.</b> {safe(f['action'])}</p><p>{refs}</p>
 {finding_download(f, run, page_by_line, execution_items.get(fid))}
@@ -592,7 +597,7 @@ def render_full(report):
 <main class="full" id="report"><small class="report-meta">{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {meta_model} · версия {safe(run['agent_version'])} · {link('passport', 'Паспорт прогона')}</small>
 <h1>{safe(title)}</h1>
 <div class="report-toolbar"><nav aria-label="Разделы отчёта"><details><summary>Разделы отчёта</summary>{nav}</details></nav>
-{jira_link}<button id="print-report" type="button" hidden>Печать / сохранить PDF</button></div>
+{owner_tools}{jira_link}<button id="print-report" type="button" hidden>Печать / сохранить PDF</button></div>
 <section aria-labelledby="readiness-title"><h2 id="readiness-title">Сводка · можно ли начинать работу</h2><div class="gates">{''.join(verdicts)}</div></section>
 <div class="metrics"><div><strong>{len(registry)}</strong>пунктов в реестре</div><div><strong>{len(defects)}</strong>нарушений, включая {len(critical)} критических</div><div><strong>{questions}</strong>открытых вопросов</div></div>
 <p>{summary}. Всего замечаний в этом прогоне — {len(whole["findings"])}.</p>{decision_brief(report)}{qa_shortcut}

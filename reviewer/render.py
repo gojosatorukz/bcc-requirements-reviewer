@@ -251,14 +251,20 @@ def main():
     parser = argparse.ArgumentParser(description="Построить автономный HTML-отчёт по результату проверки")
     parser.add_argument("input", type=Path, metavar="report.json")
     parser.add_argument("output", type=Path, metavar="report.html|report.pdf")
+    parser.add_argument("--with-owner", type=Path, nargs=2, metavar=("DIALOGUE.json", "RECHECK.json"),
+                        help="Приложить сохранённый диалог и перепроверку, относящиеся к этому отчёту")
     args = parser.parse_args()
     try:
         if args.input.resolve() == args.output.resolve() or (
             args.output.exists() and args.output.samefile(args.input)
         ):
             raise ValueError("Пути JSON и HTML должны различаться")
-        report = json.loads(args.input.read_text(encoding="utf-8-sig"))
-        html = render_report(report)
+        raw = args.input.read_bytes()
+        if args.with_owner:
+            from .dialogue_view import render_with_followup
+            html = render_with_followup(raw, *args.with_owner)
+        else:
+            html = render_report(json.loads(raw))
         if args.output.suffix.lower() == ".pdf":
             from .pdf_output import write_pdf
             write_pdf(args.output, html)
