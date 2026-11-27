@@ -164,7 +164,9 @@ def discover(segments, source, stage):
     reading_input, anchors = reading(segments, source)
     inputs, printed = table_cases(segments, source, reading_input, anchors)
     rule_ids = set(reading_input["rules"])
-    pairs = list(combinations(sorted(rule_ids), 2)) if 2 <= len(rule_ids) <= 6 else []
+    bound_cases = count_limits.experiments(inputs["rules"])
+    authored_rules = any(RULE_SECTION.search(b["section"].split(" / ")[-1]) for b in segments)
+    pairs = list(combinations(sorted(rule_ids), 2)) if authored_rules and 2 <= len(rule_ids) <= 6 else []
     checks = {i: set(pair) for i, pair in enumerate(pairs, 1)}
 
     def verify_rules(result):
@@ -198,12 +200,17 @@ def discover(segments, source, stage):
                          "для independent объясни, почему нормы не предписывают два значения общего показателя. "
                          "Для incompatible обязательно верни conflicts с адресами ровно этих двух строк.")
         rules_payload["pairs"] = [{"id": i, "first": a, "second": b} for i, (a, b) in enumerate(pairs, 1)]
-    rule_result, attempts = stage("Правила и примеры", instructions, rules_payload,
-                                  RULE_COMPARISON if pairs else SCHEMA, verify_rules)
+    # The full-document reader already covers unstructured prose. For a bare quantitative spec,
+    # challenge its arithmetic separately rather than asking a second reader to invent pairwise events.
+    if bound_cases and not authored_rules and not reading_input["examples"]:
+        rule_result, attempts = {"conflicts": []}, []
+    else:
+        rule_result, attempts = stage("Правила и примеры", instructions, rules_payload,
+                                      RULE_COMPARISON if pairs else SCHEMA, verify_rules)
     review = expand(rule_result, anchors, source)
     review["limit_candidates"] = []
     review["certified"] = []
-    bound_cases = count_limits.experiments(inputs["rules"])
+    review["count_checks"] = []
     # The transition reader sees the occupied state, but cannot copy the limiting clause.
     bound_anchors = {c["anchor"] for c in bound_cases}
     other_rules = {n: text for n, text in inputs["rules"].items() if n not in bound_anchors}
@@ -233,6 +240,13 @@ def discover(segments, source, stage):
             for proof in count_limits.certified(traces, pairs_to_check, source, anchors):
                 review["conflicts"].append(proof)
                 review["certified"].append(len(review["conflicts"]))
+            for t in traces["traces"]:
+                pair = pairs_to_check[t["pair"] - 1]
+                review["count_checks"].append({"limit_line": anchors[pair["count_rule"]]["line"],
+                    "action_line": anchors[pair["transition"]]["line"], "counted_object": pair["counted_phrase"],
+                    "initial_limit": pair["count"], "retained": t["retained"], "added": t["required_additions"],
+                    "applicability": t["applicability"], "addition_quote": t["addition_quote"],
+                    "exception": t["exception_quote"], "explanation": t["explanation"]})
         attempts.extend(events)
     if not inputs["cases"] or not inputs["rules"]:
         return review, attempts

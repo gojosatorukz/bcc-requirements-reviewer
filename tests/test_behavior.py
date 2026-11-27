@@ -111,13 +111,17 @@ class BehaviorTests(unittest.TestCase):
         anchors = {n: {"line": n, "quote": s} for n, s in source.items()}
         checked = count_limits.projected_pairs(source, count_limits.experiments(source), [], anchors)
         trace = dict(pair=1, applicability="same_scope", retained=2, required_additions=1, explanation="2 + 1",
-                     exception_kind="none", exception_quote="", addition_quote="Send an additional copy",
+                     exception_kind="none", exception_quote=None, addition_quote="Send an additional copy",
                      scenario="Two copies exist, a third is sent.", metric="copies in the box",
                      title="Copy limit", owner="Publisher", question="May the third copy be added?",
                      agreement_control="With one copy there is space.")
         def certify(**changes):
-            return count_limits.certified({"traces": [dict(trace, **changes)]}, checked, source, anchors)
+            from reviewer.contract import validate_shape
+            output = {"traces": [dict(trace, **changes)]}
+            validate_shape(output, count_limits.AUDIT, "count")
+            return count_limits.certified(output, checked, source, anchors)
         proof, = certify()
+        self.assertEqual(certify(required_additions=0, addition_quote=None), [])
         self.assertEqual(certify(retained=1), [])
         self.assertEqual(certify(applicability="other_scope"), [])
         self.assertEqual(certify(addition_quote="the same box"), [])
