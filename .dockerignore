@@ -35,9 +35,9 @@
 !design/concepts/gallery.js
 !runs/bcc-final/review.html
 !runs/bcc-final/review.json
-!runs/bcc-release/review.html
-!runs/bcc-release/review.pdf
-!runs/bcc-release/review.json
-!runs/bcc-release/owner/dialogue.html
-!runs/bcc-release/owner/dialogue.json
-!runs/bcc-release/owner/wrong-revision.html
+!runs/bcc-jury/review.html
+!runs/bcc-jury/review.pdf
+!runs/bcc-jury/review.json
+!runs/bcc-jury/owner/dialogue.html
+!runs/bcc-jury/owner/dialogue.json
+!runs/bcc-jury/owner/wrong-revision.html

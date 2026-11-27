@@ -7,7 +7,7 @@ import test from 'node:test';
 
 const base = process.env.REVIEWER_WORKBENCH_URL;
 const require = createRequire(import.meta.url);
-const release = fileURLToPath(new URL('../runs/bcc-release/review.json', import.meta.url));
+const release = fileURLToPath(new URL('../runs/bcc-jury/review.json', import.meta.url));
 const other = fileURLToPath(new URL('../eval/executable/runs/named-state.json', import.meta.url));
 
 // Integration test against a local workbench. Only the assistant reply is stubbed.
@@ -75,7 +75,7 @@ test('the recheck action discusses the revision while the header retains the ful
   try {
     const page = await browser.newPage();
     const id = 'c'.repeat(32);
-    const file = new URL('../runs/bcc-release/owner/wrong-revision.json', import.meta.url);
+    const file = new URL('../runs/bcc-jury/owner/wrong-revision.json', import.meta.url);
     const bytes = await readFile(file);
     const sha = createHash('sha256').update(bytes).digest('hex');
     const report = JSON.parse(bytes);

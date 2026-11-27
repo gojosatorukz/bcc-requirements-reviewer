@@ -10,6 +10,23 @@ from reviewer.serve import ROOT, Workbench, demo_directory
 
 
 class SavedOwnerExample(unittest.TestCase):
+    def test_jury_report_takes_precedence_when_its_json_and_html_are_ready(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = root / "runs" / "bcc-release"
+            archive.mkdir(parents=True)
+            (archive / "review.json").write_text("{}")
+            (archive / "review.html").write_text("<title>Прошлый прогон</title>")
+            self.assertEqual(demo_directory(root), archive)
+
+            jury = root / "runs" / "bcc-jury"
+            jury.mkdir()
+            (jury / "review.json").write_text("{}")
+            self.assertEqual(demo_directory(root), archive)
+
+            (jury / "review.html").write_text("<title>Прогон для жюри</title>")
+            self.assertEqual(demo_directory(root), jury)
+
     def test_example_matches_demo_and_renders_both_turns_without_changing_live_discussion(self):
         baseline = demo_directory(ROOT) / "review.json"
         sample = baseline.parent / "owner"

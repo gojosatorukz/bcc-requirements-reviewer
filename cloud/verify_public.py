@@ -43,7 +43,7 @@ def main():
         sleep(3)
 
     # Go directly to the report first, as a judge following a shared link would.
-    manifest = json.loads((ROOT / "runs/bcc-release/materials.json").read_bytes())
+    manifest = json.loads((ROOT / "runs/bcc-jury/materials.json").read_bytes())
     for filename in ("review.html", "review.pdf", "review.json"):
         assert sha256(read("/reports/demo/" + filename)).hexdigest() == manifest[filename], filename
     print("Ready HTML, PDF and JSON match the release.", flush=True)
@@ -53,7 +53,7 @@ def main():
     def tickets(report_id, digest):
         raw = read(f"/reports/{report_id}/issues.csv?sha256={digest}")
         return list(csv.DictReader(StringIO(raw.decode("utf-8-sig"))))
-    findings = json.loads((ROOT / "runs/bcc-release/review.json").read_bytes())["whole"]["findings"]
+    findings = json.loads((ROOT / "runs/bcc-jury/review.json").read_bytes())["whole"]["findings"]
     demo_tickets = tickets("demo", demo_hash)
     assert len(demo_tickets) == len(findings)
     assert all(f["question"] in task["Description"] for task, f in zip(demo_tickets, findings))

@@ -16,7 +16,7 @@ docker run --rm --init -p 127.0.0.1:8765:8765 razbor-tz:local python -m cloud.ru
 Перепроверить сохранённые расчёты можно без сети и учётной записи.
 
 ```sh
-docker run --rm --network none razbor-tz:local python -m reviewer.executable replay runs/bcc-release/review.json
+docker run --rm --network none razbor-tz:local python -m reviewer.executable replay runs/bcc-jury/review.json
 ```
 
 ## Проверить новый документ
