@@ -73,6 +73,14 @@ def main():
     print("Fresh specification: a JSON error at line 6 disappears after correction. No LLM request was made.")
 
     if options.with_holdout:
+        for case, stage, folder in (
+                ("bindery", "before", "eval/hosted-reserve/runs/site"),
+                ("bindery", "after", "eval/route-decisions/runs/workshop-after"),
+                ("reading-room", "before", "eval/route-decisions/runs/light-before"),
+                ("reading-room", "after", "eval/route-decisions/runs/light-after")):
+            for extension in ("json", "html"):
+                assert read(f"/reports/{case}/{stage}.{extension}") == (ROOT / folder / ("review." + extension)).read_bytes()
+            print(f"Public {case}/{stage}: original Cloudflare HTML and JSON.")
         samples = [(case, stage, ROOT / f"{folder}-{variant}")
                    for case, folder in (("packing", "eval/jury-fallback/runs/astra"),
                                         ("recorder", "eval/fixed-acceptance/results/recorder"))

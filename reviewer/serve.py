@@ -31,6 +31,10 @@ SAVED_EXAMPLES = {
     for route, source in (("demo/gemini", "eval/gemini/behavior/bcc-release"),
                           ("packing/before", "eval/jury-fallback/runs/astra-v1"),
                           ("packing/after", "eval/jury-fallback/runs/astra-v2"),
+                          ("bindery/before", "eval/hosted-reserve/runs/site/review"),
+                          ("bindery/after", "eval/route-decisions/runs/workshop-after/review"),
+                          ("reading-room/before", "eval/route-decisions/runs/light-before/review"),
+                          ("reading-room/after", "eval/route-decisions/runs/light-after/review"),
                           ("recorder/before", "eval/fixed-acceptance/results/recorder-v1"),
                           ("recorder/after", "eval/fixed-acceptance/results/recorder-v2"))
     for ext in ("html", "json")
