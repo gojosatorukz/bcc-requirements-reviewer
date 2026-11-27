@@ -95,6 +95,8 @@ def main():
     parser.add_argument("document", type=Path)
     parser.add_argument("report", type=Path, help="Выходной файл JSON, HTML или PDF")
     parser.add_argument("--model", default=os.environ.get("REVIEW_MODEL", "gpt-6.2-astra"))
+    parser.add_argument("--effort", choices=("medium", "low"), default="medium",
+                        help="Глубина рассуждения модели. В паспорте сохраняется выбранный режим.")
     parser.add_argument("--workers", type=int, choices=range(1, 9), default=6, metavar="1..8",
                         help="Максимум параллельных запросов полного ревью (по умолчанию 6)")
     parser.add_argument("--conflicts-only", action="store_true", help="Быстрый поиск поведенческих конфликтов (формат v1)")
@@ -115,15 +117,18 @@ def main():
             "full.py", "source_refs.py", "lifecycle.py", "priority.py", "response_fields.py", "executable.py", "witness_vm.py")
         started = datetime.now(timezone.utc).isoformat()
         clock = time.monotonic()
+        # Non-default options are part of each stage's content-addressed checkpoint key.
+        model = args.model if args.effort == "medium" else codex_provider.ModelOptions(args.model, args.effort)
         if args.conflicts_only:
             prompt = INSTRUCTIONS + "\n\nДокумент:\n" + json.dumps(blocks, ensure_ascii=False)
-            result, attempts = review_document(prompt, args.model, lines)
+            result, attempts = review_document(prompt, model, lines)
         else:
             from .full import analyze
-            result, attempts = analyze(blocks, lines, args.model, args.checkpoint_dir, digest, args.workers,
+            result, attempts = analyze(blocks, lines, model, args.checkpoint_dir, digest, args.workers,
                                        input_metadata.get("pdf_json_blocks", ()))
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
-               "provider": "codex-cli", "model": args.model, "agent_version": revision, "engine_sha256": digest,
+               "provider": "codex-cli", "model": args.model, "reasoning_effort": args.effort,
+               "agent_version": revision, "engine_sha256": digest,
                "input_name": args.document.name, "input_sha256": input_hash, **input_metadata,
                "input_lines": len(lines), **run_usage(attempts), "attempts": attempts}
         if not args.conflicts_only:

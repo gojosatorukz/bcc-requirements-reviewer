@@ -5,11 +5,18 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+from typing import NamedTuple
 
 from .contract import REVIEW
 
 
+class ModelOptions(NamedTuple):
+    name: str
+    effort: str
+
+
 def complete(prompt, model, output_schema=REVIEW):
+    name, effort = model if isinstance(model, ModelOptions) else (model, "medium")
     with tempfile.TemporaryDirectory(prefix="reqreview-") as work:
         directory = Path(work)
         schema = directory / "schema.json"
@@ -19,10 +26,10 @@ def complete(prompt, model, output_schema=REVIEW):
             "codex", "-a", "never", "exec", "--ephemeral", "--ignore-user-config",
             "--skip-git-repo-check", "--sandbox", "read-only", "--color", "never",
             "-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0",
-            "-c", 'model_reasoning_effort="medium"', "--disable", "memories",
+            "-c", f'model_reasoning_effort="{effort}"', "--disable", "memories",
             "--disable", "apps", "--disable", "plugins", "--disable", "shell_tool",
             "--disable", "unified_exec", "--disable", "multi_agent", "--disable", "multi_agent_v2",
-            "--model", model, "--json", "--output-schema", str(schema), "-o", str(result), "-",
+            "--model", name, "--json", "--output-schema", str(schema), "-o", str(result), "-",
         ]
         env = {k: v for k, v in os.environ.items() if k not in {"CODEX_THREAD_ID", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE"}}
         try:

@@ -5,11 +5,22 @@ import unittest
 from unittest.mock import patch
 
 from reviewer.__main__ import run_usage
+from reviewer.codex_provider import ModelOptions
 from reviewer.full import call_stage
 from reviewer.contract import REVIEW
 
 
 class CheckpointUsageTest(unittest.TestCase):
+    def test_different_reasoning_efforts_cannot_restore_each_others_output(self):
+        with TemporaryDirectory() as folder, patch("reviewer.codex_provider.complete",
+                return_value=({"conflicts": []}, {})) as provider:
+            for model, expected in (("astra", 1), (ModelOptions("astra", "low"), 1),
+                                    (ModelOptions("astra", "low"), 0), ("astra", 0)):
+                _, attempts = call_stage("Сценарии", "prompt", [], REVIEW, lambda data: None,
+                                         model, Path(folder), "same-engine")
+                self.assertEqual(run_usage(attempts)["fresh_calls"], expected)
+            self.assertEqual(provider.call_count, 2)
+
     def test_history_and_current_calls_are_reported_separately(self):
         attempts = [{"restored": True, "usage": {"input_tokens": 800}},
                     {"status": "rejected", "usage": {"input_tokens": 12}},
