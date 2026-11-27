@@ -1,0 +1,340 @@
+{
+  "input_sha256": "e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381",
+  "version": "20177ca",
+  "checkpoint_sha256": "b20249d555ad6975498f9cdd6165c9241c34a0b83c7af12a23f36b3d082401a4",
+  "stage_only": true,
+  "candidates": [
+    {
+      "id": 1,
+      "operation": 160,
+      "field": "result",
+      "present": [
+        166,
+        170
+      ],
+      "errors": [
+        {
+          "example": 179,
+          "http_status": 400,
+          "present": false
+        },
+        {
+          "example": 184,
+          "http_status": 401,
+          "present": false
+        },
+        {
+          "example": 191,
+          "http_status": 404,
+          "present": false
+        },
+        {
+          "example": 196,
+          "http_status": 500,
+          "present": false
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "operation": 160,
+      "field": "amount",
+      "present": [
+        166
+      ],
+      "errors": [
+        {
+          "example": 179,
+          "http_status": 400,
+          "present": false
+        },
+        {
+          "example": 184,
+          "http_status": 401,
+          "present": false
+        },
+        {
+          "example": 191,
+          "http_status": 404,
+          "present": false
+        },
+        {
+          "example": 196,
+          "http_status": 500,
+          "present": false
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "operation": 160,
+      "field": "enabled",
+      "present": [
+        166
+      ],
+      "errors": [
+        {
+          "example": 179,
+          "http_status": 400,
+          "present": false
+        },
+        {
+          "example": 184,
+          "http_status": 401,
+          "present": false
+        },
+        {
+          "example": 191,
+          "http_status": 404,
+          "present": false
+        },
+        {
+          "example": 196,
+          "http_status": 500,
+          "present": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "operation": 160,
+      "field": "message",
+      "present": [
+        170,
+        179,
+        184,
+        191,
+        196
+      ],
+      "errors": [
+        {
+          "example": 179,
+          "http_status": 400,
+          "present": true
+        },
+        {
+          "example": 184,
+          "http_status": 401,
+          "present": true
+        },
+        {
+          "example": 191,
+          "http_status": 404,
+          "present": true
+        },
+        {
+          "example": 196,
+          "http_status": 500,
+          "present": true
+        }
+      ]
+    }
+  ],
+  "result": {
+    "assessments": [
+      {
+        "candidate": 1,
+        "rulings": [
+          {
+            "examples": [
+              179,
+              184,
+              191,
+              196
+            ],
+            "policy": "unspecified",
+            "basis": "Поле result обозначает исход сохранения. При отклонении суммы метод должен вернуть ERROR, и пример с HTTP 200 показывает этот прикладной отказ. Для ошибок HTTP 400, 401, 404 и 500 спецификация не определяет обязательность result. Все четыре тела содержат только message, но их состав приведён как пример.",
+            "evidence": [
+              {
+                "line": 155,
+                "quote": "| `result` | string | OK / ERROR | Исход сохранения | — |"
+              },
+              {
+                "line": 121,
+                "quote": "5. При отклонении суммы вернуть прежнее состояние и результат ERROR."
+              },
+              {
+                "line": 165,
+                "quote": "#### 200. Successful — Created"
+              },
+              {
+                "line": 171,
+                "quote": "{\"result\":\"ERROR\",\"message\":\"Проверьте сумму\"}"
+              },
+              {
+                "line": 180,
+                "quote": "{\"message\":\"Некорректный запрос\"}"
+              },
+              {
+                "line": 185,
+                "quote": "{\"message\":\"Требуется вход\"}"
+              },
+              {
+                "line": 190,
+                "quote": "**404**"
+              },
+              {
+                "line": 192,
+                "quote": "{\"message\":\"Карта не найдена\"}"
+              },
+              {
+                "line": 197,
+                "quote": "{\"message\":\"Ошибка сервиса\"}"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          "Какое правило действует для поля result при каждом исходе — HTTP 400 (неверные параметры), 401 (нет авторизации), 404 (чужая или отсутствующая карта) и 500 (ошибка сервера): поле обязательно, необязательно или исключено?"
+        ]
+      },
+      {
+        "candidate": 2,
+        "rulings": [
+          {
+            "examples": [
+              179,
+              184,
+              191,
+              196
+            ],
+            "policy": "excluded",
+            "basis": "В таблице полей ответа для amount задано условие «При успехе». Спецификация относит HTTP 400, 401, 404 и 500 к неуспешным исходам, поэтому поле исключено во всех четырёх примерах. Для примера 191 действует HTTP 404, указанный непосредственно перед телом.",
+            "evidence": [
+              {
+                "line": 156,
+                "quote": "| `amount` | string | При успехе | Порог в тенге | `limit_kzt` |"
+              },
+              {
+                "line": 151,
+                "quote": "Если результат 200 или 201 — успешный. Если результат 400, 401 и далее — неуспешный."
+              },
+              {
+                "line": 189,
+                "quote": "Для чужой карты возвращается 404, как и для отсутствующей карты."
+              },
+              {
+                "line": 190,
+                "quote": "**404**"
+              }
+            ]
+          }
+        ],
+        "questions": []
+      },
+      {
+        "candidate": 3,
+        "rulings": [
+          {
+            "examples": [
+              179,
+              184,
+              191,
+              196
+            ],
+            "policy": "unspecified",
+            "basis": "Для enabled в ответе заданы назначение и допустимые значения. Условие присутствия поля при HTTP 400, 401, 404 и 500 не указано. Во всех четырёх примерах enabled отсутствует. Требование обязательности в таблице query-параметров относится к запросу.",
+            "evidence": [
+              {
+                "line": 157,
+                "quote": "| `enabled` | string | «0» или «1» | Признак включения | `enabled` |"
+              },
+              {
+                "line": 138,
+                "quote": "#### Query-параметры"
+              },
+              {
+                "line": 144,
+                "quote": "| `enabled` | integer | 1 знак | Да | 0 или 1 | Признак включения | `enabled` |"
+              },
+              {
+                "line": 180,
+                "quote": "{\"message\":\"Некорректный запрос\"}"
+              },
+              {
+                "line": 185,
+                "quote": "{\"message\":\"Требуется вход\"}"
+              },
+              {
+                "line": 190,
+                "quote": "**404**"
+              },
+              {
+                "line": 192,
+                "quote": "{\"message\":\"Карта не найдена\"}"
+              },
+              {
+                "line": 197,
+                "quote": "{\"message\":\"Ошибка сервиса\"}"
+              }
+            ]
+          }
+        ],
+        "questions": [
+          "Какое правило действует для поля enabled при каждом исходе — HTTP 400 (неверные параметры), 401 (нет авторизации), 404 (чужая или отсутствующая карта) и 500 (ошибка сервера): поле обязательно, необязательно или исключено?"
+        ]
+      },
+      {
+        "candidate": 4,
+        "rulings": [
+          {
+            "examples": [
+              179,
+              184,
+              191,
+              196
+            ],
+            "policy": "required",
+            "basis": "Таблица полей ответа прямо задаёт условие возврата message — «При ошибке». Оно выполняется при HTTP 400, 401, 404 и 500. Все четыре примера содержат message и согласуются с правилом.",
+            "evidence": [
+              {
+                "line": 158,
+                "quote": "| `message` | string | При ошибке | Описание ошибки | — |"
+              },
+              {
+                "line": 151,
+                "quote": "Если результат 200 или 201 — успешный. Если результат 400, 401 и далее — неуспешный."
+              },
+              {
+                "line": 180,
+                "quote": "{\"message\":\"Некорректный запрос\"}"
+              },
+              {
+                "line": 185,
+                "quote": "{\"message\":\"Требуется вход\"}"
+              },
+              {
+                "line": 190,
+                "quote": "**404**"
+              },
+              {
+                "line": 192,
+                "quote": "{\"message\":\"Карта не найдена\"}"
+              },
+              {
+                "line": 197,
+                "quote": "{\"message\":\"Ошибка сервиса\"}"
+              }
+            ]
+          }
+        ],
+        "questions": []
+      }
+    ]
+  },
+  "attempts": [
+    {
+      "stage": "Поля ответов 1–4",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 16133,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1329,
+        "reasoning_output_tokens": 0
+      },
+      "started_utc": "2026-11-27T08:34:54.035431+00:00",
+      "seconds": 36.16
+    }
+  ]
+}
