@@ -1,0 +1,39 @@
+{
+  "agent_version": "20177ca",
+  "model": "gpt-6.2-astra",
+  "provider": "codex-cli",
+  "workers_per_review": 4,
+  "mode": "two independent concurrent cold reviews, no saved stages at start",
+  "attempts": [
+    {
+      "name": "planetarium",
+      "input_sha256": "44e6c8a3b50c68361093d6595670b306930254ea297897cdaca9695e63bd821f",
+      "started_utc": "2026-11-27T08:34:59.510059+00:00",
+      "ended_utc": "2026-11-27T08:43:10.829410+00:00",
+      "observed_elapsed_seconds": 491.319,
+      "exit_code": 1,
+      "report_written": false,
+      "cli_output": [
+        "План проверки · групп строк: 2",
+        "Поля ответов 7–7 · проверено",
+        "Сценарии · проверено",
+        "Блоки 1–17 · проверено",
+        "Прогон не завершён: Блоки 19–59: Codex CLI не завершил запрос за 480 секунд"
+      ]
+    },
+    {
+      "name": "planetarium-aligned",
+      "input_sha256": "dd7c19cbfd5746fe5591d27406887bfeb5f04807c429337ba2a9a3b36002ff2a",
+      "started_utc": "2026-11-27T08:34:59.511309+00:00",
+      "ended_utc": "2026-11-27T08:44:00.776395+00:00",
+      "observed_elapsed_seconds": 541.265,
+      "exit_code": 1,
+      "report_written": false,
+      "cli_output": [
+        "План проверки · групп строк: 2",
+        "Блоки 1–17 · проверено",
+        "Прогон не завершён: Блоки 19–59: Codex CLI не завершил запрос за 480 секунд"
+      ]
+    }
+  ]
+}
