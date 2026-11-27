@@ -79,7 +79,13 @@ def main():
     assert gemini["run"]["model"].startswith("gemini-")
     assert sha256(read("/reports/demo/gemini.html")).digest() == sha256(
         (ROOT / "eval/gemini/behavior/bcc-release.html").read_bytes()).digest()
-    assert "Проверить структуру без ИИ" in read("/").decode()
+    homepage = read("/").decode()
+    assert "Проверить структуру без ИИ" in homepage
+    assert "/reports/rehearsal/openai.html#execution-D-01" in homepage
+    for extension in ("html", "json"):
+        assert read(f"/reports/rehearsal/openai.{extension}") == (
+            ROOT / "eval/jury-walkthrough" / f"openai.{extension}").read_bytes()
+    print("The full hosted Sol report on the music school opens in HTML and JSON.", flush=True)
     print("Gemini examples and the upload form open.", flush=True)
 
     sample = b'# Export\n| Key | Unit |\n| --- | --- |\n| rate | ms |\n~~~json\n{"delay":3,}\n~~~'
