@@ -9,7 +9,7 @@ import sys
 from tempfile import NamedTemporaryFile
 from time import monotonic
 
-from . import codex_provider, lifecycle, priority
+from . import codex_provider, lifecycle, priority, response_fields
 from .contract import (
     EVIDENCE, HTTP_STATUS_INSTRUCTIONS, HTTP_STATUS_POLICY, INSTRUCTIONS, REVIEW, TEXT,
     record, source_http_statuses, validate_review, validate_shape, validate_witness_http,
@@ -286,6 +286,8 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     segments = segment(lines, pdf_json_blocks)
     json_checks = inspect_examples(lines, segments)
     shapes = object_shapes(lines, segments, json_checks)
+    groups = response_fields.response_groups(source, shapes, segments)
+    choices = response_fields.candidates(groups)
     semantic = [b for b in segments if b["kind"] not in {"разметка", "шапка таблицы"}]
     chunks = list(local_batches(semantic, source))
     print(f"План проверки · групп строк: {len(chunks)}", file=sys.stderr, flush=True)
@@ -300,8 +302,23 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         behavioral = pool.submit(call_stage, "Сценарии", INSTRUCTIONS, blocks, REVIEW,
                                  lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
                                  model, checkpoint, digest)
+        field_futures = []
+        for offset in range(0, len(choices), 6):
+            batch = choices[offset:offset + 6]
+            operations = {c["operation"]: groups[c["operation"]] for c in batch}
+            field_futures.append(pool.submit(
+                call_stage, f"Поля ответов {batch[0]['id']}–{batch[-1]['id']}", response_fields.INSTRUCTIONS,
+                {"source": source, "examples": operations, "candidates": batch}, response_fields.SCHEMA,
+                lambda r, batch=batch: response_fields.verify(r, batch, source), model, checkpoint, digest))
         local_results = list(pool.map(local, chunks))
         candidates, attempts = behavioral.result()
+        assessments = []
+        for future in field_futures:
+            resolved, field_attempts = future.result()
+            assessments.extend(resolved["assessments"])
+            attempts.extend(field_attempts)
+    fields = {"version": 1, "candidates": response_fields.describe(choices),
+              "assessments": sorted(assessments, key=lambda a: a["candidate"])}
     marks = {}
     for result, events in local_results:
         marks.update({r["start"]: r for r in result["rows"]})
@@ -342,12 +359,22 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         instruction += ("\nПарсер отклонил перечисленные JSON-примеры. Для каждого отрази нарушение "
                         "синтаксиса JSON в findings с цитатой из самого блока. Отдели синтаксис примера "
                         "от бизнес-поведения. Объясни инженеру, как проверить исправление.")
+    if choices:
+        payload["response_field_review"] = fields
+        instruction += ("\nВ response_field_review сверена область обязательности полей по операциям и "
+                        "отдельным ошибочным ответам. Для каждого непустого questions перенеси конкретный "
+                        "вопрос в findings[].question. Назови поле и каждый нерешённый числовой HTTP-статус "
+                        "в самом вопросе и процитируй тело из этой операции в evidence. Можно объединить "
+                        "родственные вопросы, сохранив привязку каждого поля к его исходам. Для остальных "
+                        "следуй явной политике: обязательное поле пропущено в примере — назови нарушение "
+                        "примера; явно исключённое или необязательное поле не требует уточнения владельца.")
 
     def verify_whole(result):
         ranked = materialize(result)
         check_whole(ranked, registry, candidates["conflicts"], source, http_status_policy=HTTP_STATUS_POLICY)
         check_critical_sources(ranked, candidates["conflicts"])
         check_findings(json_checks, ranked["findings"])
+        response_fields.check_questions(fields, choices, ranked["findings"], groups)
 
     def materialize(result):
         findings = [dict(f, priority=priority.derive_priority(f, source)) for f in result["findings"]]
@@ -371,6 +398,8 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
               **candidates}
     if shapes:
         result["example_shapes"] = shapes
+    if choices:
+        result["response_field_review"] = fields
     result["executables"], execution_attempts = build(result, source, model, checkpoint, digest, workers)
     return result, attempts + events + qa_events + execution_attempts
 

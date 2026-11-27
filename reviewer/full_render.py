@@ -14,7 +14,8 @@ from .json_examples import check_findings, verify_saved_checks
 from .example_shapes import object_shapes
 from . import priority
 from .render import render_conflict, render_passport, render_source, safe
-from .segments import HEADING, segment
+from .segments import segment
+from . import response_fields
 
 
 def validate_report(report):
@@ -33,6 +34,9 @@ def validate_report(report):
                 json.dumps(report["example_shapes"], sort_keys=True) !=
                 json.dumps(object_shapes(raw_lines, expected, checks), sort_keys=True)):
             raise ValueError("Поля JSON-примеров расходятся с исходным документом")
+    if "response_field_review" in report:
+        groups = response_fields.response_groups(lines, report.get("example_shapes", ()), expected)
+        response_fields.validate_saved(report["response_field_review"], groups, whole["findings"], lines)
     if len(segments) != len(expected):
         raise ValueError("Число исходных блоков изменилось")
     records = {r["id"]: r for r in registry}
@@ -239,28 +243,12 @@ def decision_brief(report):
 
 def response_field_comparison(lines, shapes, segments):
     """Compare complete, observed key sets only within sibling HTTP response sections."""
-    by_start = {shape["start"]: shape for shape in shapes}
-    headings, groups = [], defaultdict(list)
-    for block in segments:
-        n = block["start"]
-        if block["kind"] == "заголовок":
-            match = HEADING.match(lines[n].strip())
-            if match:
-                level = len(match[1])
-                headings = [h for h in headings if h[0] < level]
-                headings.append((level, n, match[2].strip()))
-        if n not in by_start or len(headings) < 2:
-            continue
-        status = re.match(r"^(?:HTTP\s+([1-5]\d\d)\b|([1-5]\d\d)\.\s*\S)", headings[-1][2], re.I)
-        if not status:
-            continue
-        code = status[1] or status[2]
-        caption = lines.get(n - 1, "").strip(" \t*`")
-        # Some documents label the example differently from its enclosing status heading.
-        label = f"{caption} (раздел {code})" if re.fullmatch(r"[1-5]\d\d", caption) and caption != code else code
-        groups[headings[-2][1]].append((by_start[n], label))
+    indexed = response_fields.response_groups(lines, shapes, segments)
     tables = []
-    for parent, group in groups.items():
+    for parent, examples in indexed.items():
+        group = [(ex, (f"{ex['status']} (раздел {ex['heading_status']})"
+                       if ex["heading_status"] and ex["heading_status"] != ex["status"] else str(ex["status"])))
+                 for ex in examples]
         if len(group) < 2:
             continue
         keys = list(dict.fromkeys(k for shape, _ in group for k in shape["keys"]))
