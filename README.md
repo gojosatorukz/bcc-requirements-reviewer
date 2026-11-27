@@ -66,4 +66,4 @@ python3 -m reviewer requirements.md output/official.json --workers 4
 - [Диалог с владельцем, проверка новой версии, параметры CLI и кэш](docs/analyst-guide.md)
 - [Проверка частичных ответов и третьего варианта на двух сериях прогонов](eval/freeform-owner/README.md)
 - [Сравнение с одним запросом](eval/blind-clearing/README.md) · [Сравнение Astra и Sol](eval/model-choice/README.md)
-- [Разметка официального кейса](docs/case-matrix.md) · [Сопоставление с конкурентами](research/market/top-three.md) · [Условия задания](https://github.com/BCC-HUB/ai-requirements-validator-task/tree/928c1aa364265426105b69ba7a3444eac11b22db)
+- [Самопроверка по четырём критериям](research/market/jury-review.md) · [Сверка 26 контрольных тем с отчётом](eval/official-coverage/README.md) · [Сопоставление с конкурентами](research/market/top-three.md) · [Условия задания](https://github.com/BCC-HUB/ai-requirements-validator-task/tree/928c1aa364265426105b69ba7a3444eac11b22db)
