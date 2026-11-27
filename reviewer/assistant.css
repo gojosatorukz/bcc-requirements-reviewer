@@ -89,3 +89,15 @@ html {scroll-padding-top:4rem}
   @keyframes assistant-enter{from{opacity:.45;transform:translateX(1.5rem)}to{opacity:1;transform:none}}
   @keyframes assistant-looking{from{transform:translateX(-1px)}to{transform:translateX(2px)}}
 }
+
+#assistant-open{padding:.24rem .8rem .24rem .38rem;gap:.5rem;max-width:100%;text-align:left}
+.companion-copy,.companion-copy strong,.companion-copy small{display:block}
+.companion-copy{min-width:0}.companion-copy strong{font-weight:730;line-height:1.2}
+.companion-copy small{color:#665264;font-size:.69rem;line-height:1.25;font-weight:610;white-space:normal}
+#companion-time,#run-clock{font-variant-numeric:tabular-nums}
+.workspace #run-clock{margin-top:.3rem;font-size:.86rem;color:var(--muted)}
+.assistant-run-note{margin:0;padding:.45rem 1.2rem;border-bottom:1px solid #d7c8bb;background:#ffecbc;font-size:.82rem;line-height:1.4;overflow-wrap:anywhere}
+@media(prefers-reduced-motion:no-preference){#assistant-open:hover .brand-mark,#assistant-open:focus-visible .brand-mark{transform:rotate(4deg)}}
+@media(max-width:32rem){#assistant-open{padding:.16rem .5rem .16rem .26rem;justify-content:start;white-space:normal}
+  #assistant-open .brand-mark{transform:scale(.9) rotate(-7deg);margin-right:-.12rem}
+  #companion-stage,#companion-time{display:inline}.companion-copy strong{white-space:nowrap}.assistant-run-note{padding-inline:.85rem}}

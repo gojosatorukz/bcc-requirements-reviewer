@@ -187,8 +187,8 @@ a{color:var(--accent);text-underline-offset:.18em}
 <header class="masthead">
   <a class="skip-work" href="#workspace">Перейти к работе с документом</a>
   <div class="inner">
-    <a class="brand" href="/"><span class="brand-mark" id="brand-face" data-state="idle" aria-hidden="true"><span class="brand-eyes"></span><span class="brand-mouth"></span></span>Разбор ТЗ</a>
-    <nav aria-label="Разделы"><button class="assistant-launch" id="assistant-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel"><span class="chat-glyph" aria-hidden="true"></span>Спросить по ТЗ</button><a id="active-report-link" href="#demo-heading">Отчёт</a><a id="active-json-link" href="/reports/demo/review.json?download=1" download="review.json" aria-label="Скачать JSON текущего отчёта" hidden>JSON ↓</a><a class="nav-start" href="#upload-heading">Проверить ТЗ</a></nav>
+    <a class="brand" href="/">Разбор ТЗ</a>
+    <nav aria-label="Разделы"><button class="assistant-launch" id="assistant-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel"><span class="brand-mark" id="brand-face" data-state="idle" aria-hidden="true"><span class="brand-eyes"></span><span class="brand-mouth"></span></span><span class="companion-copy"><strong>Спросить по ТЗ</strong><small id="companion-context">Помощница</small><small id="companion-run" hidden><span id="companion-stage"></span><span id="companion-time" aria-hidden="true"></span></small></span></button><a id="active-report-link" href="#demo-heading">Отчёт</a><a id="active-json-link" href="/reports/demo/review.json?download=1" download="review.json" aria-label="Скачать JSON текущего отчёта" hidden>JSON ↓</a><a class="nav-start" href="#upload-heading">Проверить ТЗ</a></nav>
   </div>
 </header>
 <main>
@@ -247,7 +247,7 @@ a{color:var(--accent);text-underline-offset:.18em}
           <a id="reuse-report-link">Открыть сохранённый отчёт</a>
           <p id="reuse-report-meta"></p>
         </div>
-        <p class="notice">При запуске текст документа отправляется модели, настроенной в локальном приложении.</p>
+        <p class="notice">При запуске текст документа отправляется модели, выбранной для этого запуска.</p>
         <p id="upload-error" class="error" role="alert" hidden></p>
         <button id="submit" type="submit">Запустить проверку</button>
       </form>
@@ -255,12 +255,13 @@ a{color:var(--accent);text-underline-offset:.18em}
         <summary>Открыть сохранённый отчёт (.json)</summary>
         <label for="import-file">JSON полного ревью</label>
         <input id="import-file" type="file" accept=".json,application/json" aria-describedby="import-hint import-state">
-        <small id="import-hint">До 8 МиБ. Файл проверяется локально.</small>
+        <small id="import-hint">До 8 МиБ. При открытии модель не вызывается.</small>
         <p id="import-state" role="status" aria-live="polite"></p>
       </details>
       <div id="run-status" class="status-box" hidden>
         <h3>Статус проверки</h3>
         <p id="status-message" role="status" aria-atomic="true"></p>
+        <p id="run-clock" role="timer" aria-live="off" hidden></p>
         <div id="coverage" hidden>
           <label id="coverage-label" for="coverage-meter" aria-live="polite" aria-atomic="true"></label>
           <progress id="coverage-meter"></progress>
@@ -354,6 +355,7 @@ a{color:var(--accent);text-underline-offset:.18em}
       <div><h2 id="assistant-title">Помощница по ТЗ</h2><p id="assistant-document">Документ ещё не открыт</p></div>
       <button id="assistant-close" class="assistant-close" type="button" aria-label="Закрыть помощницу">×</button>
     </header>
+    <p class="assistant-run-note" id="assistant-run-note" hidden></p>
     <div class="assistant-scope" id="assistant-scope" hidden>
       <label for="assistant-focus">Обсуждаем</label><select id="assistant-focus"></select>
     </div>
@@ -379,6 +381,37 @@ function setBrandState(state) {
   const face = get('brand-face');
   if (face.dataset.state !== state) face.dataset.state = state;
 }
+// The clock measures time since this browser sent the document, including the queue.
+let companionSince = null;
+let companionTimer = null;
+
+function drawRunClock() {
+  const elapsed = Math.floor((Date.now() - companionSince) / 1000);
+  const valid = companionSince > 0 && elapsed >= 0;
+  const formatted = valid ? Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0') : '';
+  get('companion-time').textContent = valid ? ' · ' + formatted : '';
+  const clock = get('run-clock');
+  clock.hidden = !valid;
+  clock.textContent = valid ? 'С отправки документа · ' + formatted : '';
+}
+
+function setCompanionRun(stage, since, name) {
+  const active = Boolean(stage);
+  get('companion-context').hidden = active;
+  get('companion-run').hidden = !active;
+  get('companion-stage').textContent = stage;
+  const note = get('assistant-run-note');
+  note.hidden = !active;
+  note.textContent = active ? [name, stage].filter(Boolean).join(' · ') + '. Вопросы можно задавать по готовому отчёту.' : '';
+  const nextSince = active && Number.isSafeInteger(since) && since > 0 && since <= Date.now() ? since : null;
+  if (nextSince !== companionSince) {
+    clearInterval(companionTimer);
+    companionSince = nextSince;
+    companionTimer = nextSince ? setInterval(drawRunClock, 1000) : null;
+    drawRunClock();
+  }
+}
+
 const form = get('upload-form');
 const baseline = get('baseline');
 const fileInput = get('file');
@@ -1073,11 +1106,12 @@ async function poll(run) {
     const label = modeLabels[status.mode] || modeLabels[run.mode];
     showProgress(Array.isArray(status.progress) ? status.progress : []);
     showCoverage(status.coverage);
-    const phase = {groups:'Проверяем группы строк и сценарии', whole:'Сопоставляем требования по всему ТЗ',
-      executables:'Проверяем исполняемые примеры', render:'Собираем отчёт'}[status.coverage?.phase];
-    const description = status.state === 'running' && phase ? phase : stateLabels[status.state];
-    setStatus(label + ' · ' + (description || 'Ожидаем статус'), status.state === 'failed',
-      status.state === 'queued' || status.state === 'running');
+    const phase = {groups:'Проверка строк и сценариев', whole:'Сверка требований', executables:'Расчёт примеров',
+      render:'Сборка отчёта'}[status.coverage?.phase];
+    const description = status.state === 'running' && phase ? phase : stateLabels[status.state] || 'Ожидаем статус';
+    const inProgress = status.state === 'queued' || status.state === 'running';
+    setCompanionRun(inProgress ? description : '', run.submittedAt, run.name);
+    setStatus(label + ' · ' + description, status.state === 'failed', inProgress);
     if (status.state === 'failed') {
       setStatus(label + ' · ' + (status.error || stateLabels.failed), true);
     } else if (status.state === 'done') {
@@ -1106,10 +1140,12 @@ async function poll(run) {
     if (session.last?.id !== run.id) return;
     setBrandState('failed');
     if (error.status === 404) {
+      setCompanionRun('');
       forget(run.id);
       setStatus('Прогон недоступен. Запустите проверку снова.', true);
     } else {
-      setStatus('Связь с локальным сервером прервалась. Проверяем статус повторно…', true);
+      setCompanionRun('Проверяем связь', run.submittedAt, run.name);
+      setStatus('Связь с сервером прервалась. Проверяем статус повторно…', true);
       setTimeout(() => poll(run), 3000);
       return;
     }
@@ -1204,22 +1240,26 @@ form.addEventListener('submit', async event => {
   get('run-links').hidden = true;
   showProgress([]);
   showCoverage(null);
+  const submittedAt = Date.now();
+  setCompanionRun('Отправка ТЗ', submittedAt, selectedFile.name);
   setStatus('Загружаем документ…', false, true);
   try {
     const response = await request('/api/runs?' + params, {
       method:'POST', headers:{'X-File-Name':encodeURIComponent(selectedFile.name)}, body:selectedFile,
     });
     if (!idPattern.test(response.id)) throw new Error('Сервер не вернул номер прогона.');
-    session.last = {id:response.id, name:selectedFile.name, mode:selectedMode, findings};
+    session.last = {id:response.id, name:selectedFile.name, mode:selectedMode, findings, submittedAt};
     if (params.has('dialogue_snapshot')) {
       Object.assign(session.last, {baseline:selectedBaseline, sha:params.get('baseline_sha256'),
         dialogueTokens:params.getAll('clarification').sort()});
     }
     save();
+    setCompanionRun('В очереди', submittedAt, selectedFile.name);
     setStatus(modeLabels[selectedMode] + ' · В очереди', false, true);
     poll(session.last);
   } catch (error) {
     setBrandState('failed');
+    setCompanionRun('');
     if (error.status === 404 && selectedBaseline && selectedBaseline !== 'demo') forget(selectedBaseline);
     setStatus(error.message || 'Не удалось отправить документ.', true);
     busy = false;
@@ -1445,6 +1485,7 @@ if (session.full.length) loadGuidedFull(session.full[0].id);
 if (session.last) {
   busy = true;
   setBrandState('working');
+  setCompanionRun('Запрос статуса', null, session.last.name);
   setStatus('Восстанавливаем состояние прогона…');
   poll(session.last);
 }

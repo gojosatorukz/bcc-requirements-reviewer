@@ -239,7 +239,7 @@
       view.history.draft = '';
       view.announcement = 'Ответ получен.';
     } catch (error) {
-      view.error = error instanceof TypeError ? 'Нет связи с локальным приложением. Вопрос сохранён.' : error.message;
+      view.error = error instanceof TypeError ? 'Нет связи с сервером. Вопрос сохранён.' : error.message;
     } finally {
       clearTimeout(slow);
       view.pending = '';
@@ -284,6 +284,9 @@
   window.addEventListener('review:loaded', ({detail}) => {
     const sameFull = currentFull?.key === detail.key;
     currentFull = detail;
+    const context = element('companion-context');
+    context.textContent = detail.key?.startsWith('demo:') ? 'Демо-отчёт' : detail.key ? 'Ваш отчёт' : 'Помощница';
+    context.title = detail.report?.run?.input_name || '';
     element('assistant-qa-open').hidden = !detail.report?.lifecycle_checks?.checks?.length;
     if (!active?.isRecheck || !sameFull) bind(detail);
   });

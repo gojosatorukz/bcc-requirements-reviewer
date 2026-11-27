@@ -113,3 +113,39 @@ test('the recheck action discusses the revision while the header retains the ful
     assert.equal(await page.locator('#assistant-log .assistant-answer-text').innerText(),'Цитата из новой редакции.');
   } finally { await browser.close(); }
 });
+
+test('the companion restores the actual elapsed clock and keeps questions on the open report', {skip:!base}, async () => {
+  const {chromium} = require(process.env.PLAYWRIGHT_PACKAGE || 'playwright');
+  const browser = await chromium.launch({headless:true, executablePath:process.env.CHROME_BINARY});
+  try {
+    const page = await browser.newPage({viewport:{width:320,height:740}, reducedMotion:'reduce'});
+    const id = 'f'.repeat(32);
+    await page.addInitScript(id => {
+      sessionStorage.setItem('reviewer.workbench.v1', JSON.stringify({
+        last:{id,mode:'full',name:'Свой документ.md',submittedAt:Date.now()-125000},full:[]
+      }));
+    }, id);
+    let state = 'running';
+    await page.route('**/api/status/'+id, route => route.fulfill({json:{
+      state,mode:'full',progress:[],coverage:{phase:'whole',checked:1,total:1}
+    }}));
+    await page.goto(base);
+    await page.waitForFunction(() => document.querySelector('#companion-stage').textContent === 'Сверка требований'
+      && document.querySelector('#companion-context').textContent === 'Демо-отчёт');
+    assert.match(await page.locator('#run-clock').innerText(), /С отправки документа · 2:\d{2}/);
+    assert.equal(await page.locator('#brand-face').getAttribute('data-state'), 'working');
+    assert.equal(await page.locator('#assistant-open .brand-eyes').evaluate(el=>getComputedStyle(el).animationName),'none');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
+    await page.locator('#assistant-open').focus();
+    await page.keyboard.press('Enter');
+    assert.match(await page.locator('#assistant-document').innerText(), /Полное ревью/);
+    assert.match(await page.locator('#assistant-run-note').innerText(), /Свой документ\.md · Сверка требований/);
+    state = 'failed';
+    await page.waitForFunction(()=>document.querySelector('#brand-face').dataset.state === 'failed');
+    assert.equal(await page.locator('#assistant-run-note').isVisible(), false);
+    assert.equal(await page.locator('#run-clock').isVisible(), false);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#assistant-open').evaluate(el=>document.activeElement===el),true);
+    assert.equal(await page.locator('#companion-context').innerText(), 'Демо-отчёт');
+  } finally { await browser.close(); }
+});
