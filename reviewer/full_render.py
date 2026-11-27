@@ -10,7 +10,7 @@ from pathlib import Path
 from .contract import source_lines, validate_review, validate_shape
 from .executable import unexecuted_message
 from .execution_view import acceptance_lines, first_step_comparisons, quantity, render_executions
-from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
+from .full import BATCH, QUALITY_BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
 from .json_examples import check_findings, verify_saved_checks
 from .jira_export import issues_csv
 from .example_shapes import object_shapes
@@ -67,6 +67,11 @@ def validate_report(report):
     records = {r["id"]: r for r in registry}
     if list(records) != [f"R-{i+1:03d}" for i in range(len(registry))]:
         raise ValueError("Неверная нумерация реестра")
+    item_schema = BATCH
+    if "item_quality_version" in report:
+        if type(report["item_quality_version"]) is not int or report["item_quality_version"] != 1:
+            raise ValueError("Неизвестная версия оценки отдельных требований")
+        item_schema = QUALITY_BATCH
     seen = []
     for item, base in zip(segments, expected):
         if any(item.get(k) != v for k, v in base.items()):
@@ -78,7 +83,7 @@ def validate_report(report):
             entries.append({k:v for k, v in records[rid].items() if k not in {"id","original_id","start"}})
         seen.extend(item["requirements"])
         batch = {"rows": [{"start": item["start"], "items": entries, "note": item["note"]}]}
-        validate_shape(batch, BATCH, "registry")
+        validate_shape(batch, item_schema, "registry")
         check_batch(batch, [base], lines)
     if seen != list(records):
         raise ValueError("Реестр пропускает или дублирует пункты")
@@ -421,6 +426,7 @@ def render_full(report):
             qa_shortcut += " · " + link(f"qa-scenario-{first}", "Первое действие")
         qa_shortcut = f"<p>{qa_shortcut}</p>"
     related = defaultdict(list)
+    finding_criteria = defaultdict(list)
     decisions = {}
     findings = []
     executions = render_executions(report, lines)
@@ -436,6 +442,7 @@ def render_full(report):
         fid = f["id"]
         for rid in f["requirements"]:
             related[rid].append(link(fid, fid))
+            finding_criteria[rid].append(str(f["criterion"]))
         for cid in f["candidates"]:
             decisions[cid] = link(fid, fid + " · " + f["category"])
         refs = " · ".join(link(rid, rid) for rid in f["requirements"])
@@ -472,15 +479,23 @@ def render_full(report):
                               + render_conflict(i, candidate, lines, backlinks))
     blocks_by_start = {s["start"]: s for s in segments}
     rows = []
+    registry_sections = defaultdict(list)
     for item in registry:
         rid = item["id"]
         cite = item["evidence"]
         backlinks[cite["line"]].append((rid, rid))
-        section = safe(blocks_by_start[item["start"]]["section"].removeprefix(title + " / "))
+        section_name = blocks_by_start[item["start"]]["section"].removeprefix(title + " / ") or "Без заголовка"
+        registry_sections[section_name].append(rid)
+        section = safe(section_name)
+        quality = "".join(f'<p><b>{safe(check["criterion"].capitalize())}.</b> {safe(check["conclusion"])} '
+                          f'{line_link(check["evidence"]["line"])}</p>' for check in item.get("quality_checks", []))
+        if not quality and finding_criteria[rid]:
+            quality = '<p>Критерии связанных замечаний · ' + safe(", ".join(dict.fromkeys(finding_criteria[rid]))) + '</p>'
         rows.append(f'''<tr id="{rid}"><td><b>{rid}</b><br>{safe(item['original_id'])}</td>
 <td><small>{safe(item['role'])} · {section}</small><br><b>{safe(item['statement'])}</b>
 <blockquote>{safe(cite['quote'])} {line_link(cite['line'])}</blockquote></td>
-<td><small>{safe(item['status'])}</small><br>{safe(item['assessment'])}<p>{' · '.join(related[rid])}</p></td></tr>''')
+<td><small>{safe(item['status'])}</small><br>{safe(item['assessment'])}{quality}<p>{' · '.join(related[rid])}</p></td></tr>''')
+    registry_index = "".join(f'<li>{link(ids[0], section)} · {len(ids)}</li>' for section, ids in registry_sections.items())
     routing = []
     for b in segments:
         address = line_link(b["start"])
@@ -546,7 +561,7 @@ def render_full(report):
 @page{size:A4;margin:15mm 15mm 18mm;@bottom-right{content:counter(page) " / " counter(pages);font:9pt sans-serif;color:#52625b}}
 @media print{
  html{font-size:12px}body,main,.full{font-family:Arial,sans-serif;background:white}
- header,nav,.skip-link,.backlinks,.decision-draft,.finding-export,.full .report-toolbar{display:none}
+ header,nav,.skip-link,.backlinks,.decision-draft,.finding-export,.full .report-toolbar,.registry-nav{display:none}
  .full #actions.after-brief{break-before:page}
  main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
  .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
@@ -570,19 +585,20 @@ def render_full(report):
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-{PRINT_HASH}'; base-uri 'none'; form-action 'none'">
 <title>{safe(title)} · Ревью требований</title><style>{styles}</style></head>
 <body><a class="skip-link" href="#report">К результатам</a><header class="masthead"><div class="masthead-inner"><strong>Разбор ТЗ</strong><span>Отчёт полного прогона</span></div></header>
-<main class="full" id="report"><small class="report-meta">{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {meta_model}</small>
+<main class="full" id="report"><small class="report-meta">{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {meta_model} · версия {safe(run['agent_version'])} · {link('passport', 'Паспорт прогона')}</small>
 <h1>{safe(title)}</h1>
 <div class="report-toolbar"><nav aria-label="Разделы отчёта"><details><summary>Разделы отчёта</summary>{nav}</details></nav>
 {jira_link}<button id="print-report" type="button" hidden>Печать / сохранить PDF</button></div>
-<section aria-labelledby="readiness-title"><h2 id="readiness-title">Можно ли начинать работу</h2><div class="gates">{''.join(verdicts)}</div></section>
+<section aria-labelledby="readiness-title"><h2 id="readiness-title">Сводка · можно ли начинать работу</h2><div class="gates">{''.join(verdicts)}</div></section>
 <div class="metrics"><div><strong>{len(registry)}</strong>пунктов в реестре</div><div><strong>{len(defects)}</strong>нарушений, включая {len(critical)} критических</div><div><strong>{questions}</strong>открытых вопросов</div></div>
-<p>{summary}.</p>{decision_brief(report)}{qa_shortcut}
+<p>{summary}. Всего замечаний в этом прогоне — {len(whole["findings"])}.</p>{decision_brief(report)}{qa_shortcut}
 <section id="actions" class="{'after-brief' if len(findings) >= 2 else ''}"><h2>Все замечания · {len(whole["findings"])}</h2>
 {''.join(findings) or '<p>Замечаний не выявлено.</p>'}</section>
 <section id="quality"><h2>Качество набора требований</h2>{axes}</section>
 {render_json_checks(report.get("json_checks", {}), lines, report.get("example_shapes", ()), report["segments"], report.get("response_field_review"))}
 {qa_cases}
 <section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
+<details class="registry-nav"><summary>К пунктам по разделам документа · {len(registry_sections)}</summary><ul>{registry_index}</ul></details>
 <table class="registry"><thead><tr><th scope="col">ID отчёта<br>ID в ТЗ</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
 <section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: {len(scenario_parts)}. У каждого указано решение итогового ревью.</p>
 {''.join(scenario_parts)}{('<h3>Согласованные прочтения</h3><ol>'+''.join(closed)+'</ol>') if closed else ''}</section>

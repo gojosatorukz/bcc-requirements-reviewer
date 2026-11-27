@@ -33,7 +33,8 @@ class CloudflareProviderTest(unittest.TestCase):
     def test_unknown_document_is_validated_by_the_full_pipeline_after_real_http_429(self):
         rule = "Кабина возвращается на базу после выгрузки."
         observation = {"role": "требование", "statement": rule, "evidence": 1,
-                       "status": "проверяемо", "assessment": "Действие определено."}
+                       "status": "проверяемо", "assessment": "Действие определено.", "quality_checks": [
+                           {"criterion": "проверяемость", "conclusion":"Дождаться возвращения кабины.", "evidence":1}]}
         gate = {"status": "можно начинать", "rationale": "Действие описано.", "evidence": [1]}
         outputs = {"rows": {"rows": [{"start": 1, "note": "Возврат.", "items": [observation]}]},
                    "checks": {"checks": [], "skipped": [{"axis": axis, "reason": "Один шаг."}

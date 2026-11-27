@@ -79,7 +79,8 @@ class FullReviewTest(unittest.TestCase):
         source = [{"line": i, "text": t} for i, t in enumerate(lines, 1)]
         ref = {"line": 2, "quote": lines[1]}
         unit = {"role": "требование", "statement": "Вернуть OK", "evidence": 2,
-                "status": "нужно уточнение", "assessment": "Какое условие запускает ответ?"}
+                "status": "нужно уточнение", "assessment": "Какое условие запускает ответ?",
+                "quality_checks": [{"criterion": "полнота", "conclusion": "Нет условия запуска.", "evidence": 2}]}
         local = {"rows": [{"start": 1, "note": "Название", "items": []},
                           {"start": 2, "note": "Ответ", "items": [unit]}]}
         gate = {"status": "можно частично", "rationale": "Требуется условие ответа.", "evidence": [2]}
@@ -121,6 +122,20 @@ class FullReviewTest(unittest.TestCase):
         report = dict(schema_version=2, scope="Проверка", run=run, source=source, **result)
         html = render_report(report)
         self.assertIn("Основание приоритета", html)
+        self.assertIn("Нет условия запуска.", html)
+        for count in (0, 2):
+            changed = deepcopy(report)
+            changed["registry"][0]["quality_checks"] *= count
+            with self.assertRaisesRegex(ValueError, "одна или две разные"):
+                render_report(changed)
+        changed = deepcopy(report)
+        del changed["registry"][0]["quality_checks"]
+        with self.assertRaises(ValueError):
+            render_report(changed)
+        changed = deepcopy(report)
+        changed["registry"][0]["quality_checks"][0]["evidence"] = {"line": 1, "quote": lines[0]}
+        with self.assertRaisesRegex(ValueError, "исходный блок"):
+            render_report(changed)
         self.assertEqual(report["whole"]["findings"][0]["priority"], "существенный")
         changed = deepcopy(report)
         changed["whole"]["findings"][0]["priority"] = "редакционный"

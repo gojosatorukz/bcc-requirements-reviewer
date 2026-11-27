@@ -35,6 +35,11 @@ STATUS = choice("проверяемо", "нужно уточнение")
 ITEM = record(role=ROLE, statement=TEXT, evidence=EVIDENCE, status=STATUS, assessment=TEXT)
 ROW = record(start=INTEGER, note=TEXT, items=array(ITEM))
 BATCH = record(rows=array(ROW))
+ITEM_CRITERIA = ("однозначность", "полнота", "атомарность", "проверяемость", "необходимость",
+                 "осуществимость", "обоснованность проектного ограничения")
+QUALITY_CHECK = record(criterion=choice(*ITEM_CRITERIA), conclusion=TEXT, evidence=EVIDENCE)
+ASSESSABLE_ITEM = record(**ITEM["properties"], quality_checks=array(QUALITY_CHECK))
+QUALITY_BATCH = record(rows=array(record(start=INTEGER, note=TEXT, items=array(ASSESSABLE_ITEM))))
 AXES = ["полнота", "согласованность", "проверяемость", "прослеживаемость", "границы решения"]
 DIMENSION = record(criterion=choice(*AXES), assessment=TEXT, evidence=array(EVIDENCE))
 FINDING_FIELDS = dict(title=TEXT, category=choice("нарушение", "открытый вопрос"), criterion=TEXT,
@@ -78,6 +83,13 @@ evidence каждого элемента должна находиться ВН�
 Сохрани область действия исходной цитаты: при кратком пересказе не добавляй частоту,
 обязательность, исключения или обещания за пределами этой поставки. Для короткого
 достаточного правила можно взять его формулировку дословно.
+Для каждого элемента в quality_checks приведи одну или две наиболее существенные проверки
+с разными criterion. В conclusion коротко назови наблюдение или нужные владельцу данные,
+в evidence дай конкретное основание. Проверяй однозначность исхода, атомарность обязательства,
+полноту условий и проверяемость. Если решение диктует технологию, проверь её обоснование.
+Для необходимости и осуществимости укажи, какие сведения должен подтвердить владелец,
+когда из текста этого установить нельзя. Само отсутствие такой информации не доказывает дефект.
+Одна проверка должна опираться на сам блок. Межстрочные связи могут ссылаться на другие строки.
 Для каждого элемента
 оцени однозначность, измеримость, полноту и проверяемость. В assessment кратко
 напиши конкретную проверку или причину неопределённости, учитывая остальной текст.
@@ -158,6 +170,13 @@ def check_batch(response, blocks, lines):
             if not block["start"] <= cite["line"] <= block["end"]:
                 raise ValueError(f"Цитата вне блока {row['start']}")
             citations([cite], lines)
+            if "quality_checks" in item:
+                checks = item["quality_checks"]
+                if not 1 <= len(checks) <= 2 or len({q["criterion"] for q in checks}) != len(checks):
+                    raise ValueError("Для пункта нужны одна или две разные проверки качества")
+                if not any(block["start"] <= q["evidence"]["line"] <= block["end"] for q in checks):
+                    raise ValueError("Одна проверка качества должна опираться на исходный блок")
+                citations([q["evidence"] for q in checks], lines)
 
 
 def check_whole(result, registry, candidates, lines, *, http_status_policy=None):
@@ -366,7 +385,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     def local(batch):
         assigned = [{k: v for k, v in b.items() if k != "section"} for b in batch]
         return anchored(f"Блоки {batch[0]['start']}–{batch[-1]['end']}", LOCAL,
-                          {"source": source, "assigned": assigned}, BATCH,
+                          {"source": source, "assigned": assigned}, QUALITY_BATCH,
                           lambda result: check_batch(result, batch, source))
 
     api_profile = codex_provider.provider_name(model) in {"gemini-api", "cloudflare-workers-ai"}
@@ -571,7 +590,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         return lifecycle.materialize(checks), qa_events
 
     from .executable import build
-    result = {"segments": segments, "registry": registry, "whole": whole, "json_checks": json_checks,
+    result = {"item_quality_version": 1, "segments": segments, "registry": registry, "whole": whole, "json_checks": json_checks,
               "priority_policy": priority.POLICY, **candidates}
     if shapes:
         result["example_shapes"] = shapes
