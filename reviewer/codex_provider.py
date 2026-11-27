@@ -29,7 +29,7 @@ def default_model():
     if configured:
         return configured
     if os.environ.get("REVIEW_PROVIDER", "").strip().lower() == "gemini":
-        return "gemini-3.6-flash"
+        return "gemini-3.5-flash-lite"
     return "gpt-6.2-astra"
 
 

@@ -89,7 +89,7 @@ class WorkbenchTest(unittest.TestCase):
         self.assertIn("Model A &amp; B", self.request("GET", "/")[1].decode())
         self.app.model = None
         with patch.dict("os.environ", {"REVIEW_PROVIDER": "gemini", "REVIEW_MODEL": ""}):
-            self.assertIn("gemini-3.6-flash", self.request("GET", "/")[1].decode())
+            self.assertIn("gemini-3.5-flash-lite", self.request("GET", "/")[1].decode())
 
     def test_demo_fallback_and_immutable_modes(self):
         benchmark = self.demo.with_name("bcc-benchmark")

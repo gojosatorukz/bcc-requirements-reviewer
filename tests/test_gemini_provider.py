@@ -13,7 +13,7 @@ from reviewer.contract import REVIEW, validate_shape
 from reviewer.full import call_stage
 
 
-MODEL = "gemini-3.6-flash"
+MODEL = "gemini-3.5-flash-lite"
 FAKE_KEY = "local-fake-unit-test-key"
 
 
