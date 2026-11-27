@@ -64,7 +64,7 @@ class ExecutionBoundaryTests(TestCase):
         item = report["executables"]["items"][0]
         self.assertEqual(scan_boundary(item, source_lines(report)), (None, 0))
         numeric = instrument("dial >= 5")
-        for change in ("initial", "events", "label"):
+        for change in ("initial", "events", "keys"):
             item = deepcopy(numeric)
             scenario = item["program"]["scenario"]
             if change == "initial":
@@ -72,8 +72,38 @@ class ExecutionBoundaryTests(TestCase):
             elif change == "events":
                 scenario["events"].reverse()
             else:
-                scenario["events"][0]["label"] = "Другое событие"
+                scenario["events"][0]["values"][0]["key"] = "different_input"
             self.assertEqual(scan_boundary(item, LINES), (None, 0))
+
+    def test_instrument_uses_named_values_even_when_the_label_and_field_order_change(self):
+        item = instrument("dial >= 5")
+        program = item["program"]
+        program["states"].append({"key": "serial", "label": "Номер прибора", "unit": "1"})
+        program["inputs"].append({"key": "battery", "label": "Заряд", "unit": "%"})
+        for name in ("scenario", "control"):
+            case = program[name]
+            case["initial"].append({"key": "serial", "value": 71})
+            reading = case["events"][0]
+            reading["values"].append({"key": "battery", "value": 87})
+            reading["label"] = f'Снять показание {reading["values"][0]["value"]}'
+        program["scenario"]["initial"].reverse()
+        program["scenario"]["events"][0]["values"].reverse()
+        item["result"] = execute(program, LINES)
+        saved = deepcopy(item)
+        boundary, used = scan_boundary(item, LINES)
+        self.assertEqual((boundary["key"], boundary["equal_input"], boundary["different_input"], used),
+                         ("dial", 4, 5, 5))
+        self.assertEqual(item, saved)
+
+    def test_jury_purchase_replays_the_minute_before_midnight(self):
+        report = json.loads((ROOT / "runs/bcc-jury/review.json").read_bytes())
+        lines = validate_report(report)
+        purchase = next(item for item in report["executables"]["items"] if item["finding_id"] == "D-01")
+        boundary, used = scan_boundary(purchase, lines)
+        self.assertEqual((boundary["key"], boundary["equal_input"], boundary["different_input"], used),
+                         ("bought_at", 0, -1, 1))
+        self.assertEqual((boundary["output"], boundary["equal_values"], boundary["different_values"]),
+                         ("jan_total", [0, 0], [400000, 0]))
 
     def test_archived_official_report_shows_adjacent_inputs_in_descending_order(self):
         report = json.loads((ROOT / "runs/bcc-release/review.json").read_bytes())

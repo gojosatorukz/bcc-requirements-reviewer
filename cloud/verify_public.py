@@ -54,10 +54,23 @@ def main():
     demo_hash = manifest["review.json"]
     current = read("/reports/demo/review.html?sha256=" + demo_hash).decode()
     assert current.count('class="execution-trace execution-boundary"') == 2
+    report = json.loads((ROOT / "runs/bcc-jury/review.json").read_bytes())
+    for item in report["executables"]["items"]:
+        if item["status"] == "executed":
+            fid = item["finding_id"]
+            for case_name in ("control", "scenario"):
+                case = item["program"][case_name]
+                reply = json.loads(read(f"/api/simulate/demo/{demo_hash}/{fid}",
+                    data=json.dumps({"case": case}).encode(),
+                    headers={"Origin": ORIGIN, "Content-Type": "application/json"}))
+                assert reply["trace"] == item["result"][case_name], (fid, case_name)
+                assert reply["explanation_html"], (fid, case_name)
+    print("The browser's simulation endpoint reproduced the saved scenarios and controls.", flush=True)
+
     def tickets(report_id, digest):
         raw = read(f"/reports/{report_id}/issues.csv?sha256={digest}")
         return list(csv.DictReader(StringIO(raw.decode("utf-8-sig"))))
-    findings = json.loads((ROOT / "runs/bcc-jury/review.json").read_bytes())["whole"]["findings"]
+    findings = report["whole"]["findings"]
     demo_tickets = tickets("demo", demo_hash)
     assert len(demo_tickets) == len(findings)
     assert all(f["question"] in task["Description"] for task, f in zip(demo_tickets, findings))

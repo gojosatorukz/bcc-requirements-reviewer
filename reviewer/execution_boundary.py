@@ -18,13 +18,14 @@ def _single_axis(program):
     control, scenario = program["control"], program["scenario"]
 
     def event_series(case):
-        return [(e["kind"], e["label"]) for e in case["events"]]
+        # VM rules dispatch by event kind. Labels describe the recorded step to the reader.
+        return [event["kind"] for event in case["events"]]
 
     if event_series(control) != event_series(scenario):
         return None
     axis = None
     for step, (left, right) in enumerate(zip(_coordinates(control), _coordinates(scenario))):
-        if list(left) != list(right):
+        if left.keys() != right.keys():
             return None
         for key, start in left.items():
             end = right[key]
