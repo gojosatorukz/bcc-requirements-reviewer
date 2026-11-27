@@ -14,7 +14,12 @@ def render_executions(report, lines):
         why = explain_step(item["program"], lines) if item["status"] == "executed" else None
         boundary, used = scan_boundary(item, lines, remaining)
         remaining -= used
-        panels[item["finding_id"]] = render_execution(item, why, boundary)
+        separate = report.get("execution_run")
+        label = ""
+        if isinstance(separate, dict) and separate.get("model"):
+            label = (f'<p class="execution-caption">Исходное ревью: {safe(report["run"]["model"])}. '
+                     f'Отдельный расчёт: {safe(separate["model"])}.</p>')
+        panels[item["finding_id"]] = render_execution(item, why, boundary, label)
     return panels
 
 
@@ -215,7 +220,7 @@ def render_boundary(boundary, states, inputs):
     return '<details class="execution-trace execution-boundary"><summary>Граница расхождения двух программ</summary>' + intro + result + '</details>'
 
 
-def render_execution(item, explanation=None, boundary=None):
+def render_execution(item, explanation=None, boundary=None, model_note=""):
     fid = safe(item["finding_id"])
     if item["status"] != "executed":
         if item.get("acceptance_example"):
@@ -269,7 +274,7 @@ def render_execution(item, explanation=None, boundary=None):
                    f'<a href="#source-line-{line}">Условия в строке {line}</a>. '
                    'Проверены два сценария из ТЗ.</p>')
     return (f'<div class="execution" id="execution-{fid}">'
-            '<p class="execution-caption">Исполняемый пример</p>'
+            '<p class="execution-caption">Исполняемый пример</p>' + model_note
             + "".join(comparisons) + history
             + ('<p>Для обеих трактовок проверены два измерения из приёмки. '
                'Для других входов потребуется уточнить ожидаемый результат.</p>' if "route_proof" in item else "")

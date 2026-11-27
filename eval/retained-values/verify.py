@@ -1,4 +1,4 @@
-"""Replay the site downloads against the pre-registered ground truth with no model calls."""
+"""Replay the published calculations and compare them with the pre-registered cases."""
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -7,53 +7,69 @@ from reviewer.executable import simulate, verify_source
 from reviewer.full_render import validate_report
 
 HERE = Path(__file__).resolve().parent
-# Expected labels follow the original lines, independent of the order of the two sides.
 CASES = {"studio-pickup": ({3: "северное", 6: "южное"}, "северное"),
          "caption-export": ({5: "Deutsch", 6: "Español"}, "English")}
 
 
-def verify():
-    for name, (rules, control) in CASES.items():
-        versions = []
-        for stage in ("before", "after"):
-            folder = HERE / "runs" / (name + "-" + stage)
-            receipt = json.loads((folder / "browser.json").read_bytes())
-            raw = (folder / "review.json").read_bytes()
-            html = (folder / "review.html").read_bytes()
-            report = json.loads(raw)
-            run = report["run"]
-            validate_report(report)
-            assert verify_source(report, HERE / (name + ".md")) == receipt["upload_sha256"]
-            assert receipt["job_state"] == "done" and receipt["submit_status"] == 202
-            assert receipt["html_sha256"] == sha256(html).hexdigest()
-            assert receipt["json_sha256"] == sha256(raw).hexdigest()
-            assert run["provider"] == "cloudflare-workers-ai" and run["fresh_calls"] > 0
-            versions.append(run["agent_version"])
-            items = report["executables"]["items"]
-            print(name, stage, versions[-1], run["elapsed_seconds"], [(i["finding_id"], i["status"]) for i in items])
-            if stage == "before":
-                continue
-            matched = [i for i in items if i["status"] == "executed" and
-                       {i["program"][s]["source"]["line"] for s in ("first", "second")} == rules.keys()]
-            item, = matched
-            program = item["program"]
-            field, = program["observe"]
-            observed = []
-            for case in ("scenario", "control"):
-                trace = simulate(report, item["finding_id"], program[case])
-                assert trace == item["result"][case]
-                for side in ("first", "second"):
-                    line = program[side]["source"]["line"]
-                    value = trace["final"][side][field]
-                    assert value == (rules[line] if case == "scenario" else control), (name, case, side, value)
-                    if case == "scenario":
-                        observed.append(value)
-                assert bool(trace["first_difference"]) == (case == "scenario")
-            assert receipt["displayed"] == observed
-            assert receipt["anchor"] == "execution-" + item["finding_id"]
-            assert control in receipt["control"]
-        assert versions[0] != versions[1]
+def load(path):
+    return json.loads(path.read_bytes())
+
+
+def verify_case(name, rules, control):
+    source = HERE / (name + ".md")
+    runs = HERE / "runs"
+    before = runs / (name + "-before")
+    baseline = load(before / "review.json")
+    receipt = load(before / "browser.json")
+    digest = verify_source(baseline, source)
+    validate_report(baseline)
+    assert receipt["job_state"] == "done" and receipt["submit_status"] == 202
+    assert receipt["upload_sha256"] == digest
+    for extension in ("html", "json"):
+        assert receipt[extension + "_sha256"] == sha256((before / ("review." + extension)).read_bytes()).hexdigest()
+    assert baseline["run"]["provider"] == "cloudflare-workers-ai" and baseline["run"]["fresh_calls"] > 0
+    assert baseline["run"]["fallback_from"]["reason"] == "HTTP 429"
+    assert baseline["executables"]["items"][0]["status"] == "unsupported"
+    conflict, = baseline["conflicts"]
+    assert {conflict[s]["source"]["line"]: conflict[s]["outcome"] for s in ("first", "second")} == rules
+
+    quota = load(runs / (name + "-after-quota") / "browser.json")
+    assert quota["upload_sha256"] == digest and quota["submit_status"] == 202
+    assert quota["job_state"] == "failed" and "квота резервной модели" in quota["status_text"]
+
+    assisted = runs / (name + "-assisted")
+    new = load(assisted / "review.json")
+    validate_report(new)
+    assert verify_source(new, source) == digest
+    assert {k: v for k, v in new.items() if k not in ("execution_run", "executables")} == {
+        k: v for k, v in baseline.items() if k != "executables"}
+    build = new["execution_run"]
+    assert build["base_report_sha256"] == receipt["json_sha256"]
+    assert build["provider"] == "codex-cli" and build["model"] == "gpt-6.2-astra" and build["fresh_calls"] > 0
+    item, = new["executables"]["items"]
+    assert item["status"] == "executed" and item["history_proof"]["readings"]
+    program = item["program"]
+    field, = program["observe"]
+    shown = []
+    for case in ("scenario", "control"):
+        trace = simulate(new, item["finding_id"], program[case])
+        assert trace == item["result"][case]
+        assert bool(trace["first_difference"]) == (case == "scenario")
+        for side in ("first", "second"):
+            value = trace["final"][side][field]
+            assert value == (rules[program[side]["source"]["line"]] if case == "scenario" else control)
+            if case == "scenario":
+                shown.append(value)
+
+    view = load(assisted / "browser.json")
+    assert view["route"] == "import" and 200 <= view["status"] < 300
+    assert view["import_sha256"] == sha256((assisted / "review.json").read_bytes()).hexdigest()
+    assert view["anchor"] == "execution-" + item["finding_id"] and view["displayed"] == shown
+    assert view["control"].count(control) >= 2
+    assert any(build["model"] in note and baseline["run"]["model"] in note for note in view["modelNote"])
+    print(name, "unsupported →", shown, "control:", control, "·", build["elapsed_seconds"], "s")
 
 
 if __name__ == "__main__":
-    verify()
+    for name, (rules, control) in CASES.items():
+        verify_case(name, rules, control)

@@ -39,6 +39,12 @@ SAVED_EXAMPLES = {
                           ("recorder/after", "eval/fixed-acceptance/results/recorder-v2"))
     for ext in ("html", "json")
 }
+SAVED_EXAMPLES.update({
+    f"/reports/{case}/{stage}.{ext}": f"eval/retained-values/runs/{case}-{stage}/review.{ext}"
+    for case in ("studio-pickup", "caption-export")
+    for stage in ("before", "assisted")
+    for ext in ("html", "json")
+})
 STATIC_FILES = {
     "/reviewer/entry.css": "text/css; charset=utf-8",
     "/reviewer/fonts/Rubik.ttf": "font/ttf",

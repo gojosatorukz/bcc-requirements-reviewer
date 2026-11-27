@@ -1,0 +1,13 @@
+{
+  "route": "site",
+  "started_utc": "2026-11-27T16:45:27.348Z",
+  "origin": "https://razbor-tz.onrender.com",
+  "endpoint": "/api/runs",
+  "upload_sha256": "fed10d5f646ea6c3cffe7cd83955791f2d3d62b2a0e33682d714601f32dcc435",
+  "submit_status": 202,
+  "status_text": "Полное ревью · caption-export.md. Исчерпана квота резервной модели. Готовые отчёты доступны.",
+  "job_state": "failed",
+  "execution": null,
+  "error": "Полное ревью · caption-export.md. Исчерпана квота резервной модели. Готовые отчёты доступны.\n\n'failed' !== 'done'\n",
+  "finished_utc": "2026-11-27T16:46:01.817Z"
+}

@@ -398,6 +398,10 @@ def render_decision_drafts(finding, candidates):
 def render_full(report):
     lines = validate_report(report)
     run, segments, registry, whole = (report[k] for k in ("run", "segments", "registry", "whole"))
+    meta_model = safe(run['model'])
+    separate = report.get("execution_run")
+    if isinstance(separate, dict) and separate.get("model"):
+        meta_model += ' · отдельный расчёт: ' + safe(separate['model'])
     title = next((s["section"] for s in segments if s["kind"] == "заголовок"), run["input_name"])
     defects = [f for f in whole["findings"] if f["category"] == "нарушение"]
     critical = [f for f in defects if f["priority"] == "критический"]
@@ -566,7 +570,7 @@ def render_full(report):
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-{PRINT_HASH}'; base-uri 'none'; form-action 'none'">
 <title>{safe(title)} · Ревью требований</title><style>{styles}</style></head>
 <body><a class="skip-link" href="#report">К результатам</a><header class="masthead"><div class="masthead-inner"><strong>Разбор ТЗ</strong><span>Отчёт полного прогона</span></div></header>
-<main class="full" id="report"><small class="report-meta">{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {safe(run['model'])}</small>
+<main class="full" id="report"><small class="report-meta">{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {meta_model}</small>
 <h1>{safe(title)}</h1>
 <div class="report-toolbar"><nav aria-label="Разделы отчёта"><details><summary>Разделы отчёта</summary>{nav}</details></nav>
 {jira_link}<button id="print-report" type="button" hidden>Печать / сохранить PDF</button></div>

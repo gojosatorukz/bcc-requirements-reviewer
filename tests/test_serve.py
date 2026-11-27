@@ -126,7 +126,7 @@ class WorkbenchTest(unittest.TestCase):
             home = self.request("GET", "/")[1].decode()
             self.assertIn('id="project-submit"', home)
             self.assertIn("razbor-tz.onrender.com", home)
-            self.assertIn("Cloudflare Workers AI", home)
+            self.assertIn("Его получит Gemini Flash-Lite.", home)
             self.assertEqual(self.upload("/api/project-runs?target=another-site")[0], 400)
             self.assertEqual(self.upload("/api/project-runs", Origin="https://other.example")[0], 403)
             self.assertEqual(self.upload("/api/structure")[0], 200)

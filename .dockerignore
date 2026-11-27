@@ -19,6 +19,8 @@
 !eval/hosted-reserve/runs/site/review.html
 !eval/route-decisions/runs/*/review.json
 !eval/route-decisions/runs/*/review.html
+!eval/retained-values/runs/*/review.json
+!eval/retained-values/runs/*/review.html
 !eval/fixed-acceptance/results/recorder-v1.html
 !eval/fixed-acceptance/results/recorder-v1.json
 !eval/fixed-acceptance/results/recorder-v2.html
