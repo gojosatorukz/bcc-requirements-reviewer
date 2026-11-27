@@ -1,0 +1,15 @@
+{
+  "route": "site",
+  "started_utc": "2026-11-27T16:40:14.671Z",
+  "origin": "https://razbor-tz.onrender.com",
+  "endpoint": "/api/runs",
+  "upload_sha256": "d6cb10866f846a81246e3bb391359c588cacfc6e2656b657cc533df9abe4b678",
+  "submit_status": 202,
+  "status_text": "Полное ревью · Отчёт готов",
+  "job_state": "done",
+  "execution": null,
+  "html_sha256": "d4d5667bd4611f5c20c998e2c3a83ecff223878ebcab4c6dfb44e6ae76dbd4ed",
+  "json_sha256": "f8c1a65eda502cc44b8efbb8f8c893e17259a814e433089e40d124633b0ba4b3",
+  "downloaded_utc": "2026-11-27T16:43:34.930Z",
+  "finished_utc": "2026-11-27T16:43:34.930Z"
+}

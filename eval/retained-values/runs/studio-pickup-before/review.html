@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-3x5wzRi6wmPKTOsZIDPW9oN6VqRevLPUlVpa0ocCD3Y='; base-uri 'none'; form-action 'none'">
+<title>Выдача тубуса в студии печати · Ревью требований</title><style>:root {
+  color-scheme: light;
+  --canvas: #e7ece6;
+  --paper: #f7f7f3;
+  --ink: #202e2b;
+  --muted: #52625b;
+  --line: #c9d2ca;
+  --deep: #123e34;
+  --green: #e5ece5;
+  --warm: #fbe9d7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font: 1rem/1.55 system-ui, sans-serif;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: #205a48;
+  text-underline-offset: .2em;
+}
+
+:focus-visible {
+  outline: 3px solid #8c5020;
+  outline-offset: 3px;
+}
+
+[id] { scroll-margin-block: 1.25rem; }
+
+p { margin: 0; }
+
+.sr-only,
+.skip-link:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link:focus {
+  position: absolute;
+  z-index: 1;
+  top: .75rem;
+  left: .75rem;
+  padding: .5rem .75rem;
+  background: white;
+}
+
+.masthead {
+  background: var(--deep);
+  color: white;
+}
+
+.masthead-inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+  padding-block: .8rem;
+}
+
+.masthead strong {
+  font-size: 1.3rem;
+  letter-spacing: -.035em;
+}
+
+.masthead span {
+  color: #d0dfd3;
+  font-size: .875rem;
+}
+
+main {
+  width: min(100% - 2rem, 72rem);
+  margin: 1.75rem auto 3rem;
+  padding: clamp(1rem, 3.75vw, 2.75rem);
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.scope,
+.section-note,
+.owner,
+.facts dt { color: var(--muted); }
+
+.scope {
+  font-size: .875rem;
+  font-weight: 650;
+}
+
+h1 {
+  margin: .45rem 0 1rem;
+  font: 500 clamp(2rem, 5vw, 3.5rem)/1.06 Georgia, serif;
+  letter-spacing: -.035em;
+}
+
+h2 {
+  margin: 0 0 .875rem;
+  font-size: clamp(1.3rem, 3vw, 1.85rem);
+  line-height: 1.25;
+  letter-spacing: -.025em;
+}
+
+h3 {
+  margin: 0 0 .45rem;
+  font-size: .875rem;
+  line-height: 1.35;
+}
+
+.overview {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.overview nav,
+.backlinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1rem;
+}
+
+.overview a,
+.citation,
+.backlinks a {
+  display: inline-block;
+  padding-block: .25rem;
+  font-size: .875rem;
+}
+
+.count {
+  padding: .3rem .65rem;
+  border-radius: 3px;
+  background: var(--green);
+  color: var(--deep);
+}
+
+.count strong {
+  margin-inline-start: .35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.conflict,
+.empty,
+.report-section { margin-top: 2rem; }
+
+.conflict + .conflict,
+.report-section {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.scenario,
+.empty {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: var(--green);
+}
+
+.scenario p { max-width: 80ch; }
+
+.outcomes,
+.follow-up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.outcome,
+.question,
+.control {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border-top: 3px solid var(--deep);
+}
+
+.outcome h3 { color: var(--deep); }
+.outcome-text,
+.question-text { font-weight: 600; }
+
+blockquote {
+  margin: .9rem 0 .5rem;
+  padding-left: .75rem;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.citation { margin-top: auto; }
+
+.question {
+  border-color: #e4cdb8;
+  background: var(--warm);
+}
+
+.owner {
+  margin-top: .75rem;
+  font-size: .875rem;
+}
+
+.owner span {
+  display: block;
+  font-weight: 650;
+}
+
+.source-list {
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  list-style: none;
+  background: white;
+}
+
+.source-row {
+  display: grid;
+  grid-template-columns: minmax(3.6rem, max-content) minmax(0, 1fr);
+  column-gap: .75rem;
+  padding: .5rem .75rem .5rem 0;
+}
+
+.source-row + .source-row { border-top: 1px solid var(--line); }
+
+.source-row:target,
+.outcome:target {
+  outline: 2px solid #8c5020;
+  outline-offset: 2px;
+  background: var(--warm);
+}
+
+.line-number {
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.source-text {
+  font: .875rem/1.55 ui-monospace, "Cascadia Code", Menlo, monospace;
+  white-space: pre-wrap;
+  tab-size: 4;
+}
+
+.backlinks { grid-column: 2; }
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: .75rem 1rem;
+  margin: 0;
+}
+
+.facts div {
+  min-width: 0;
+  padding: .65rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.facts dt { font-size: .875rem; }
+.facts dd { margin: .15rem 0 0; }
+.tokens-heading { margin-top: 1.25rem; }
+
+.attempts { margin-top: 1rem; }
+.attempts summary { cursor: pointer; }
+.attempts ol { padding-inline-start: 1.5rem; }
+.attempts li + li { margin-top: .75rem; }
+.attempts .facts { margin-top: .5rem; }
+
+@media (max-width: 45rem) {
+  main {
+    width: calc(100% - 1rem);
+    margin-top: .75rem;
+  }
+
+  .outcomes,
+  .follow-up { grid-template-columns: minmax(0, 1fr); }
+
+  .scenario,
+  .outcome,
+  .question,
+  .control,
+  .empty { padding-inline: .875rem; }
+
+  .source-row {
+    grid-template-columns: minmax(2rem, max-content) minmax(0, 1fr);
+    column-gap: .5rem;
+  }
+}
+
+.source-origin{display:block;font:600 .78em/1.45 system-ui,sans-serif;color:#52625b}
+.execution {
+  --proof-ink: #251d26;
+  --proof-muted: #665859;
+  --proof-line: #c4b8b3;
+  --proof-paper: #fffaf0;
+  min-width: 0;
+  padding: clamp(1rem, 2.1vw, 1.65rem);
+  background: var(--proof-paper);
+  color: var(--proof-ink);
+  border: 2px solid var(--proof-ink);
+  border-radius: .95rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  container-type: inline-size;
+}
+.execution p, .execution dl, .execution dd, .execution h4 {margin: 0}
+.execution p.execution-caption {
+  margin: 0 0 .32rem;
+  font-size: .76rem;
+  font-weight: 760;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.execution h4 {font-size: clamp(1.22rem, 2.5vw, 1.85rem); letter-spacing: -.035em; line-height: 1.12}
+.execution dl.execution-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: .85rem 0;
+  border: 1.5px solid var(--proof-ink);
+  border-radius: .65rem;
+  overflow: hidden;
+}
+.execution-side {min-width: 0; padding: .7rem .85rem; background: #ffdbba}
+.execution-side + .execution-side {border-left: 1.5px solid var(--proof-ink); background: #e4dafa}
+.execution-side dt {font-size: .78rem; font-weight: 650}
+.execution a {color: inherit; text-decoration: underline; text-underline-offset: .18em}
+.execution .execution-side dd {
+  margin: .35rem 0 0;
+  font-size: clamp(1.15rem, 2.6vw, 2.3rem);
+  font-weight: 790;
+  letter-spacing: -.045em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.07;
+}
+.execution .execution-comparison[data-values="enum"] dd {
+  font: 700 clamp(1rem, 1.9vw, 1.52rem)/1.2 ui-monospace, monospace;
+  letter-spacing: -.035em;
+}
+.execution-break {display: grid; gap: .12rem}
+.execution-break b {font-size: .8rem; color: var(--proof-muted)}
+.execution-break span {font-size: 1rem; font-weight: 670}
+.execution dl.execution-values {display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin: .35rem 0 .6rem}
+.execution-values div {display: inline; min-width: 0}
+.execution-values dt, .execution-values dd {display: inline; font-size: .85rem}
+.execution-values dt {color: var(--proof-muted)}
+.execution-values dt::after {content: " · "}
+.execution-values dd {font-weight: 660; font-variant-numeric: tabular-nums}
+.execution details {border-top: 1px solid var(--proof-line)}
+.execution details:first-of-type {margin-top: .9rem}
+.execution details > summary {
+  padding: .56rem .15rem;
+  font-size: .9rem;
+  font-weight: 690;
+  cursor: pointer;
+}
+.execution details[open] > summary {margin-bottom: .2rem}
+.execution .execution-subtitle {margin: .28rem 0; font-size: .8rem; font-weight: 720}
+.execution-step {margin: .65rem 0; padding: .15rem .65rem .4rem; border-left: 3px solid var(--proof-line)}
+.execution-step.differs {border-color: #bf4c24}
+.execution .execution-step-title {margin: .15rem 0; font-size: .91rem; font-weight: 720}
+.execution-step-title span {display: block; margin-bottom: .12rem; font-size: .75rem; color: var(--proof-muted)}
+.execution .execution-difference-note {margin: .22rem 0; color: #853818; font-size: .77rem; font-weight: 650}
+.execution table.execution-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: .4rem 0 .2rem;
+  font-size: .81rem;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.execution .execution-table caption {text-align: left; margin-bottom: .25rem; color: var(--proof-muted)}
+.execution .execution-table th, .execution .execution-table td {
+  padding: .3rem;
+  border-bottom: 1px solid var(--proof-line);
+  background: transparent;
+  text-align: left;
+  vertical-align: baseline;
+}
+.execution .execution-table th:first-child {width: 45%}
+.execution .execution-table tbody th {font-weight: 540}
+.execution .execution-sources blockquote {
+  margin: .25rem 0 .7rem;
+  padding: .15rem 0 .15rem .65rem;
+  border-left: 3px solid var(--proof-line);
+  color: var(--proof-ink);
+  font-size: .9rem;
+  white-space: pre-wrap;
+}
+.execution .execution-sources blockquote span {display: block; font-size: .76rem; font-weight: 720}
+.execution .execution-reading {margin: .2rem 0 .75rem; font-size: .84rem; color: var(--proof-muted)}
+.execution-logic > div {padding: .3rem .55rem .55rem; border-left: 3px solid #f2aa76; margin: 0 0 .65rem}
+.execution-logic > div + div {border-color: #b29bcf}
+.execution-logic h5 {font-size: .86rem; margin: 0 0 .28rem}
+.execution-logic p {font-size: .84rem}
+.execution code {font-size: .92em; overflow-wrap: anywhere}
+.execution-unavailable {border-color: var(--proof-line); box-shadow: none}
+.execution-unavailable h4 {margin-bottom: .35rem; font-size: 1.08rem}
+.full .finding > .execution {margin: .85rem 0; max-width: 58rem}
+.execution-edit, .lab-dialog button {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  border: 1.5px solid var(--proof-ink);
+  border-radius: .5rem;
+  padding: .46rem .72rem;
+  color: var(--proof-ink);
+  background: var(--proof-paper);
+  font: 675 .9rem/1.35 system-ui, sans-serif;
+  cursor: pointer;
+}
+.execution-edit {margin: .5rem 0 .1rem; background: #ffe092}
+.execution-edit:enabled:hover, .lab-dialog button:enabled:hover {box-shadow: 0 2px 0 currentColor}
+.execution.lab-dialog {
+  width: min(41rem, calc(100% - 1rem));
+  max-width: calc(100vw - 1rem);
+  max-height: min(90dvh, 57rem);
+  margin: auto;
+  padding: clamp(1rem, 3vw, 1.75rem);
+  box-shadow: .3rem .45rem 0 #251d26;
+  overscroll-behavior: contain;
+}
+.lab-dialog::backdrop {background: #251d269e}
+.lab-head {position: sticky; top: 0; z-index: 1; display: flex; align-items: start; justify-content: space-between; gap: .4rem; padding: .35rem 0; background: var(--proof-paper)}
+.lab-dialog h2 {margin: 0; font-size: clamp(1.3rem, 3vw, 1.82rem); line-height: 1.1}
+.lab-dialog .lab-head + p {margin: .65rem 0; font-size: .92rem; color: var(--proof-muted)}
+.lab-dialog .lab-close {flex: none; white-space: nowrap; border-color: transparent; text-decoration: underline}
+.lab-presets {display: flex; flex-wrap: wrap; gap: .4rem}
+.lab-presets [aria-pressed="true"] {background: #251d26; color: #fffaf0}
+.lab-output {margin: .9rem 0; color: var(--proof-ink); scroll-margin-top: 4rem}
+.lab-result {
+  padding: .65rem .8rem;
+  background: #f6ead4;
+  border-radius: .5rem;
+  border-left: 3px solid #a43b1a;
+}
+.lab-result .lab-origin {font-size: .75rem; color: var(--proof-muted); font-weight: 680}
+.lab-result h3 {margin: .25rem 0; font-size: 1.08rem}
+.lab-result p {font-size: .88rem}
+.lab-result p.lab-scope {margin: .65rem 0 .45rem; font-size: .84rem; line-height: 1.4}
+.lab-dialog .execution-table caption {font-size: .78rem}
+.lab-fields {display: grid; gap: .75rem}
+.lab-fields fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: .4rem 0 .75rem;
+  border: 0;
+  border-bottom: 1px solid var(--proof-line);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+  align-items: end;
+  gap: .55rem .95rem;
+}
+.lab-fields legend {padding: 0; font-weight: 720; font-size: .88rem}
+.lab-fields details.lab-event {grid-column: 1 / -1; margin: 0; border: 0}
+.lab-fields .lab-event summary {padding: .12rem 0; color: var(--proof-muted); font-size: .8rem}
+.lab-fields .lab-event p {font-size: .84rem}
+.lab-fields label {display: grid; gap: .2rem; font-size: .84rem; color: var(--proof-muted)}
+.lab-fields input, .lab-fields select {
+  width: 100%;
+  min-width: 0;
+  padding: .42rem .56rem;
+  border: 1px solid #8e7885;
+  border-radius: .43rem;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--proof-ink);
+  background: #fffdfa;
+}
+.lab-enum-field {min-width: 0}
+.lab-value-source {display: inline-block; margin-top: .18rem; font-size: .76rem}
+.lab-dialog .lab-submit {margin-top: .9rem; background: var(--proof-ink); color: #fffaf0}
+.lab-dialog .lab-submit:disabled {opacity: .65; cursor: wait}
+@container (max-width: 27rem) {
+  .execution-table[data-values="enum"], .execution-table[data-values="enum"] caption,
+  .execution-table[data-values="enum"] tbody {display: block}
+  .execution-table[data-values="enum"] thead {position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap}
+  .execution-table[data-values="enum"] tbody tr {display: grid; gap: .13rem; padding: .35rem 0; border-top: 1px solid var(--proof-line)}
+  .execution .execution-table[data-values="enum"] tbody th {width: auto; border: 0; font-weight: 690}
+  .execution .execution-table[data-values="enum"] td {display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); gap: .35rem; border: 0}
+  .execution-table[data-values="enum"] td::before {content: attr(data-rule); content: attr(data-rule) / ""; color: var(--proof-muted); font: 560 .76rem/1.35 system-ui, sans-serif}
+}
+@container (max-width: 20rem) {
+  .execution .execution-table[data-values="enum"] td {display: block; padding-bottom: .4rem}
+  .execution-table[data-values="enum"] td::before {display: block; margin-bottom: .1rem}
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lab-dialog[open] {animation: lab-enter .18s ease-out both}
+  @keyframes lab-enter {from {opacity: .3; transform: translateY(.45rem)} to {opacity: 1; transform: none}}
+}
+@media print {
+  .execution {padding: .55rem; break-inside: auto; border: 1px solid #888}
+  .execution .execution-comparison {break-inside: avoid}
+  .execution details:not([open]) {display: none}
+  .execution .execution-side dd {font-size: 14pt}
+}
+
+.full nav{margin:1rem 0}.metrics,.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13em),1fr));gap:.8rem;margin:1rem 0}
+.metrics>div{padding:.55rem .85rem;border-left:2px solid var(--line)}
+.metrics strong{font-size:1.45rem;display:block}.full h3{font-size:1.05rem;margin:.35rem 0}
+.gates>article{padding:1rem;background:var(--green);border-top:3px solid var(--deep)}
+.gates strong{font-size:1.3rem;color:var(--deep)}.gates p{margin:.4rem 0}
+.full .brief-refs{font-size:.86em;color:var(--muted)}
+.full section{margin:1.6rem 0}.finding{border-top:1px solid var(--line);padding:1rem 0}
+.decision-brief{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:.8rem}
+.decision-brief>h2{grid-column:1/-1;margin:0}.decision-brief article{min-width:0;border-left:3px solid #bd582d;background:#fff5e8;padding:.8rem 1rem}
+.decision-brief article>strong{font-size:1.4rem;color:#48271e}.decision-brief article p{margin:.45rem 0}
+.full .report-meta{color:var(--muted)}.full .report-toolbar{display:flex;flex-wrap:wrap;align-items:start;justify-content:space-between;gap:.5rem 1rem}
+.full .report-toolbar nav{margin:0}.full .report-toolbar summary{font-weight:600;color:var(--deep);padding:.4rem 0}
+.full .report-toolbar button{font:inherit;font-weight:600;color:var(--deep);background:white;border:1px solid var(--deep);border-radius:.4rem;cursor:pointer;padding:.4rem .8rem}
+.finding p+p{margin-top:.45rem}.full small{color:var(--muted)}.full blockquote{margin:.45rem 0}
+.finding-export{display:inline-block;margin:.45rem 0;padding:.25rem .5rem;border:1px solid var(--line);border-radius:3px;font-size:.9rem}
+.finding-export:hover{background:var(--green)}
+.full table{width:100%;border-collapse:collapse}.full td,.full th{padding:.55rem;vertical-align:top;border-bottom:1px solid var(--line);text-align:left}
+.full th{background:var(--green)}.full summary{cursor:pointer}.full tr:target,.finding:target{background:var(--warm)}
+.full .scroll{overflow:auto}.full td:first-child{min-width:4.6em}.full section>h2{border-top:2px solid var(--deep);padding-top:1rem}
+#response-fields table{table-layout:fixed}#response-fields th:first-child{width:16%}
+@media screen and (max-width:680px){#response-fields table{min-width:38rem}}
+.decision-draft{margin-top:.75rem;padding:.65rem .85rem;border:1px solid var(--line);background:var(--green)}
+.decision-draft summary{font-weight:650;color:var(--deep)}
+.draft-scenario{min-inline-size:0;margin:.8rem 0 0;padding:.65rem;border:1px solid var(--line);background:var(--paper)}
+.draft-scenario legend{padding:0 .3rem;font-weight:650}
+.draft-options{display:grid;grid-template-columns:auto minmax(0,1fr) max-content;gap:.35rem .6rem;margin-top:.45rem;align-items:start}
+.draft-options input{margin:.65rem 0 0;accent-color:var(--deep);cursor:pointer}
+.draft-options label{display:block;padding:.25rem .4rem;border-radius:3px;cursor:pointer}
+.draft-options label span{display:block}
+.draft-options input:checked + label{background:var(--green)}
+.draft-source a{display:inline-block;padding:.4rem 0;font-size:.875rem}
+.draft-result{display:none;grid-column:1/-1;padding:.75rem;border-left:3px solid var(--deep);background:white}
+.draft-result h4{margin:0 0 .35rem}
+.draft-options input[value="1"]:checked ~ .draft-result-1,.draft-options input[value="2"]:checked ~ .draft-result-2{display:block}
+@media(max-width:650px){.full .registry td{display:block;border:0}.full .registry tr{display:block;border-bottom:1px solid var(--line)}.registry thead{display:none}}
+@page{size:A4;margin:15mm 15mm 18mm;@bottom-right{content:counter(page) " / " counter(pages);font:9pt sans-serif;color:#52625b}}
+@media print{
+ html{font-size:12px}body,main,.full{font-family:Arial,sans-serif;background:white}
+ header,nav,.skip-link,.backlinks,.decision-draft,.finding-export,.full .report-toolbar{display:none}
+ .full #actions.after-brief{break-before:page}
+ main.full{width:auto;margin:0;padding:0;border:0;font-size:10pt;line-height:1.35}
+ .full h1{font:600 23pt Arial,sans-serif}.full h2{font-size:15pt}.full h3{font-size:11pt}
+ .full h2,.full h3{break-after:avoid}.full section{margin:9pt 0}.full section>h2{padding-top:7pt}
+ .qa-scenario{break-inside:avoid}
+ .decision-brief{grid-template-columns:repeat(2,minmax(0,1fr));gap:6pt}.decision-brief article{padding:5pt 7pt}
+ .gates>article{padding:5pt 7pt}.metrics>div{padding:2pt 6pt}.gates p,.decision-brief article p{margin:3pt 0}
+ .full .brief-refs{font-size:8pt}
+ .metrics{grid-template-columns:repeat(3,1fr)}.gates{grid-template-columns:repeat(2,1fr)}
+ .full .registry{table-layout:fixed}.full .registry th:first-child{width:10%}.full .registry th:nth-child(2){width:49%}
+ .full .registry thead{display:table-header-group}.full .registry tr{display:table-row}.full .registry td{display:table-cell}
+ .full td,.full th{padding:4pt}.full .registry td:first-child{white-space:nowrap}
+ .full .source-row,.full tr,.full blockquote{break-inside:avoid}.full .source-text{font:8.5pt/1.3 Arial,sans-serif}
+ .full .finding{padding:6pt 0}.full small{font-size:8pt}.full blockquote{margin:2pt 0}
+ .full .facts{display:flex;flex-wrap:wrap;gap:3pt 9pt}.full .facts div{padding:2pt 0}.full .facts dd{margin:1pt 0}
+ .full .attempts li{break-inside:avoid}.full .attempts .facts div{border:0}
+}
+</style></head>
+<body><a class="skip-link" href="#report">К результатам</a><header class="masthead"><div class="masthead-inner"><strong>Разбор ТЗ</strong><span>Отчёт полного прогона</span></div></header>
+<main class="full" id="report"><small class="report-meta">studio-pickup.md · 2026-11-27 UTC · @cf/openai/gpt-oss-120b</small>
+<h1>Выдача тубуса в студии печати</h1>
+<div class="report-toolbar"><nav aria-label="Разделы отчёта"><details><summary>Разделы отчёта</summary><a href="#actions">Замечания</a> · <a href="#qa-scenarios">Сценарии для QA</a> · <a href="#register">Реестр</a> · <a href="#quality">Оценка набора</a> · <a href="#coverage">Покрытие</a> · <a href="#source">Исходник</a> · <a href="#passport">Паспорт</a></details></nav>
+<a class="jira-export" download="review-issues.csv" href="data:text/csv;charset=utf-8;base64,77u/U3VtbWFyeSxJc3N1ZSBUeXBlLFByaW9yaXR5LERlc2NyaXB0aW9uDQrQn9GA0L7RgtC40LLQvtGA0LXRh9C40LUg0L/RgNCw0LLQuNC7INC+0YLQvtCx0YDQsNC20LXQvdC40Y8g0L7QutC90LAg0YPQutCw0LfQsNGC0LXQu9GPINC/0YDQuCDQv9C10YDQtdC90L7RgdC1INGC0YPQsdGD0YHQsCBbRC0wMV0sVGFzayxIaWdoZXN0LCJELTAxIMK3INC90LDRgNGD0YjQtdC90LjQtSDCtyDQutGA0LjRgtC40YfQtdGB0LrQuNC5CtCS0L7Qv9GA0L7RgSDQstC70LDQtNC10LvRjNGG0YMuINCa0LDQutC+0LUg0L/QvtCy0LXQtNC10L3QuNC1INGD0LrQsNC30LDRgtC10LvRjyDQtNC+0LvQttC90L4g0LHRi9GC0Ywg0YDQtdCw0LvQuNC30L7QstCw0L3QviDQv9GA0Lgg0L/QtdGA0LXQvdC+0YHQtSDRgtGD0LHRg9GB0LA/CtCQ0LTRgNC10YHQsNGCLiDQktC70LDQtNC10LvQtdGGINC/0YDQvtC00YPQutGC0LAK0J7RgdC90L7QstCw0L3QuNC1LiDQkiDRgdC/0LXRhtC40YTQuNC60LDRhtC40Lgg0LTQstCwINCy0LfQsNC40LzQvdC+INC40YHQutC70Y7Rh9Cw0Y7RidC40YUg0L/RgNCw0LLQuNC70LA6INGB0L7RhdGA0LDQvdGP0YLRjCDQuNGB0YXQvtC00L3QvtC1INC+0LrQvdC+ICjRgdGC0YDQvtC60LAgMykg0Lgg0LfQsNC80LXQvdGP0YLRjCDQvdCwINC90L7QstC+0LUgKNGB0YLRgNC+0LrQsCA2KS4K0KHQu9C10LTRg9GO0YnQtdC1INC00LXQudGB0YLQstC40LUuINCj0YLQvtGH0L3QuNGC0Ywg0Lgg0LfQsNGE0LjQutGB0LjRgNC+0LLQsNGC0Ywg0LXQtNC40L3RgdGC0LLQtdC90L3QvtC1INC/0YDQsNCy0LjQu9C+INC+0YLQvtCx0YDQsNC20LXQvdC40Y8g0L7QutC90LAg0LIg0YPQutCw0LfQsNGC0LXQu9C1OyDQvtCx0L3QvtCy0LjRgtGMINCi0JcuCgrQodGG0LXQvdCw0YDQuNC5INC00LvRjyBRQS4g0JrQvtC0INCy0L/QtdGA0LLRi9C1INGH0LjRgtCw0LXRgtGB0Y8g0YMg0YHQtdCy0LXRgNC90L7Qs9C+INC+0LrQvdCwLCDQt9Cw0YLQtdC8INGC0YPQsdGD0YEg0L/QtdGA0LXQvdC+0YHQuNGC0YHRjyDQuiDRjtC20L3QvtC80YMg0L7QutC90YMg0LTQviDQstGL0LTQsNGH0LgsINC60LvQuNC10L3RgiDQvtGC0LrRgNGL0LLQsNC10YIg0YPQutCw0LfQsNGC0LXQu9GMLgrQn9GA0LDQstC40LvQviDQkCwg0YHRgtGA0L7QutCwIDMuINGB0LXQstC10YDQvdC+0LUK0J/RgNCw0LLQuNC70L4g0JEsINGB0YLRgNC+0LrQsCA2LiDRjtC20L3QvtC1CtCg0LDRgdGH0ZHRgiDQvdC1INC/0L7QtNGC0LLQtdGA0LbQtNGR0L0uINCd0LXQstC+0LfQvNC+0LbQvdC+INC/0L7RgdGC0YDQvtC40YLRjCDQutC+0YDRgNC10LrRgtC90YPRjiDQvNC+0LTQtdC70YwsINC/0L7RgtC+0LzRgyDRh9GC0L4g0LIg0LjRgdGF0L7QtNC90YvRhSDRgdGC0YDQvtC60LDRhSAo0YHRgtGA0L7QutCwIDMpINC90LUg0YPQutCw0LfQsNC90L4g0LrQvtC90LrRgNC10YLQvdC+0LUg0LfQvdCw0YfQtdC90LjQtSDQvtC60L3QsCAo0L3QsNC/0YDQuNC80LXRgCwgIiJub3J0aCIiKSwg0LAg0YLQvtC70YzQutC+INCz0L7QstC+0YDQuNGC0YHRjyDQviDCq9C40YHRhdC+0LTQvdC+0Lwg0L7QutC90LXCuy4g0JTQu9GPINC00L7QvNC10L3QsCBlbnVtINGC0YDQtdCx0YPRjtGC0YHRjyDRgtC+0YfQvdGL0LUg0YHRgtGA0L7QutC4LCDQv9C+0LTRgtCy0LXRgNC20LTRkdC90L3Ri9C1INGG0LjRgtCw0YLQvtC5LCDQvdC+INGC0LDQutC40LUg0YHRgtGA0L7QutC4INCyINC00L7QutGD0LzQtdC90YLQtSDQvtGC0YHRg9GC0YHRgtCy0YPRjtGCLCDQv9C+0Y3RgtC+0LzRgyDRhNC+0YDQvNCw0LvQuNC30L7QstCw0YLRjCDQv9GA0LDQstC40LvQsCBmaXJzdC9zZWNvbmQg0LIg0LfQsNC00LDQvdC90L7QvCDRj9C30YvQutC1INC90LXQstC+0LfQvNC+0LbQvdC+LgoK0JjRgdGC0L7Rh9C90LjQui4gc3R1ZGlvLXBpY2t1cC5tZApTSEEtMjU2INC00L7QutGD0LzQtdC90YLQsC4gZDZjYjEwODY2Zjg0NmE4MTI0NmUzYmIzOTEzNTljNTg4Y2FjZmM2ZTI2NTZiNjU3Y2M1MzNkZjlhYmU0YjY3OArQodGC0YDQvtC60LAgMyDCtyDQn9GA0Lgg0L/QtdGA0LLQvtC8INGH0YLQtdC90LjQuCDQutC+0LTQsCDRgtCw0LvQvtC9INC90LDQstGB0LXQs9C00LAg0L/QvtC70YPRh9Cw0LXRgiDQuNGB0YXQvtC00L3QvtC1INC+0LrQvdC+LiDQn9C+0YHQu9C1INC/0LXRgNC10L3QvtGB0LAg0YLRg9Cx0YPRgdCwINGD0LrQsNC30LDRgtC10LvRjCDQutC70LjQtdC90YLQsCDRgdC+0YXRgNCw0L3Rj9C10YIg0L7QutC90L4g0L/QtdGA0LLQvtCz0L4g0YfRgtC10L3QuNGPLgrQodGC0YDQvtC60LAgNiDCtyB8INCh0L7RgtGA0YPQtNC90LjQuiDQv9C10YDQtdC90L7RgdC40YIg0YLRg9Cx0YPRgSDQsiDQtNGA0YPQs9C+0LUg0L7QutC90L4g0LTQviDQstGL0LTQsNGH0LggfCDQndC10LzQtdC00LvQtdC90L3QviDQt9Cw0LzQtdC90LjRgtGMINGD0LrQsNC30LDQvdC90L7QtSDQvtC60L3QviDQvdC+0LLRi9C8INC80LXRgdGC0L7QvCDRgtGD0LHRg9GB0LAgfCINCg==">Скачать задачи для Jira (CSV)</a><button id="print-report" type="button" hidden>Печать / сохранить PDF</button></div>
+<section aria-labelledby="readiness-title"><h2 id="readiness-title">Можно ли начинать работу</h2><div class="gates"><article><h3>Разработка</h3><strong>Можно частично</strong><p>Требуется уточнение поведения указателя при переносе тубуса, иначе разработка невозможна полностью.</p><p class="brief-refs"><a href="#source-line-3">строка 3</a> · <a href="#source-line-6">строка 6</a></p></article><article><h3>Тестирование</h3><strong>Можно частично</strong><p>Тесты невозможно определить без единого правила отображения окна указателя.</p><p class="brief-refs"><a href="#source-line-3">строка 3</a> · <a href="#source-line-6">строка 6</a></p></article></div></section>
+<div class="metrics"><div><strong>5</strong>пунктов в реестре</div><div><strong>1</strong>нарушений, включая 1 критических</div><div><strong>0</strong>открытых вопросов</div></div>
+<p>3 требований · 1 приёмочных примеров · 1 примеров контракта.</p><section class="decision-brief" aria-labelledby="brief-title"><h2 id="brief-title">Что согласовать в первую очередь</h2><article><small><a href="#D-01">D-01</a> · критический · Владелец продукта</small><h3>Противоречие правил отображения окна указателя при переносе тубуса</h3><p>Какое поведение указателя должно быть реализовано при переносе тубуса?</p><p><b>Следующий шаг.</b> Уточнить и зафиксировать единственное правило отображения окна в указателе; обновить ТЗ.</p><p class="brief-refs">Основания · <a href="#source-line-3">строка 3</a> · <a href="#source-line-6">строка 6</a></p></article></section><p><a href="#qa-scenarios">Сценарии для QA · 1</a> · <a href="#qa-scenario-1">Первое действие</a></p>
+<section id="actions" class=""><h2>Все замечания · 1</h2>
+<article id="D-01" class="finding"><small>D-01 · нарушение · критический</small>
+<h3>Противоречие правил отображения окна указателя при переносе тубуса</h3><p>согласованность. В спецификации два взаимно исключающих правила: сохранять исходное окно (строка 3) и заменять на новое (строка 6).</p><p><b>Последствие.</b> Непредсказуемое поведение системы, возможные ошибки в обслуживании и недовольство клиентов.</p>
+<div id="execution-D-01" class="execution execution-unavailable"><h4>Расчёт не подтверждён</h4><p>Невозможно построить корректную модель, потому что в исходных строках (строка 3) не указано конкретное значение окна (например, &quot;north&quot;), а только говорится о «исходном окне». Для домена enum требуются точные строки, подтверждённые цитатой, но такие строки в документе отсутствуют, поэтому формализовать правила first/second в заданном языке невозможно.</p></div>
+<blockquote>При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения. <a href="#source-line-3">строка 3</a></blockquote><blockquote>| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса | <a href="#source-line-6">строка 6</a></blockquote><p><b>Владелец продукта.</b> Какое поведение указателя должно быть реализовано при переносе тубуса?</p>
+<p><b>Исправление.</b> Уточнить и зафиксировать единственное правило отображения окна в указателе; обновить ТЗ.</p><p><a href="#R-002">R-002</a> · <a href="#R-003">R-003</a></p>
+<a class="finding-export" download="D-01.md" aria-label="Скачать карточку D-01 в Markdown" href="data:text/markdown;charset=utf-8;base64,IyBELTAxIMK3INCf0YDQvtGC0LjQstC+0YDQtdGH0LjQtSDQv9GA0LDQstC40Lsg0L7RgtC+0LHRgNCw0LbQtdC90LjRjyDQvtC60L3QsCDRg9C60LDQt9Cw0YLQtdC70Y8g0L/RgNC4INC/0LXRgNC10L3QvtGB0LUg0YLRg9Cx0YPRgdCwCgoqKtCi0LjQvzoqKiDQvdCw0YDRg9GI0LXQvdC40LUgIAoqKtCf0YDQuNC+0YDQuNGC0LXRgjoqKiDQutGA0LjRgtC40YfQtdGB0LrQuNC5ICAKKirQkNC00YDQtdGB0LDRgjoqKiDQktC70LDQtNC10LvQtdGGINC/0YDQvtC00YPQutGC0LAgIAoqKtCh0YLQsNGC0YPRgSDQutCw0YDRgtC+0YfQutC4OioqINGH0LXRgNC90L7QstC40Log0LTQu9GPINGB0L7Qs9C70LDRgdC+0LLQsNC90LjRjwoKKirQlNC+0LrRg9C80LXQvdGCOioqIHN0dWRpby1waWNrdXAubWQgIAoqKlNIQS0yNTYg0LjRgdGF0L7QtNC90LjQutCwOioqIGQ2Y2IxMDg2NmY4NDZhODEyNDZlM2JiMzkxMzU5YzU4OGNhY2ZjNmUyNjU2YjY1N2NjNTMzZGY5YWJlNGI2NzgKCiMjINCe0YHQvdC+0LLQsNC90LjQtQoK0JIg0YHQv9C10YbQuNGE0LjQutCw0YbQuNC4INC00LLQsCDQstC30LDQuNC80L3QviDQuNGB0LrQu9GO0YfQsNGO0YnQuNGFINC/0YDQsNCy0LjQu9CwXDog0YHQvtGF0YDQsNC90Y/RgtGMINC40YHRhdC+0LTQvdC+0LUg0L7QutC90L4gKNGB0YLRgNC+0LrQsCAzKSDQuCDQt9Cw0LzQtdC90Y/RgtGMINC90LAg0L3QvtCy0L7QtSAo0YHRgtGA0L7QutCwIDYpLgoKIyMg0JLQvtC/0YDQvtGBINCy0LvQsNC00LXQu9GM0YbRgwoK0JrQsNC60L7QtSDQv9C+0LLQtdC00LXQvdC40LUg0YPQutCw0LfQsNGC0LXQu9GPINC00L7Qu9C20L3QviDQsdGL0YLRjCDRgNC10LDQu9C40LfQvtCy0LDQvdC+INC/0YDQuCDQv9C10YDQtdC90L7RgdC1INGC0YPQsdGD0YHQsD8KCiMjINCf0YDQtdC00LvQsNCz0LDQtdC80L7QtSDQtNC10LnRgdGC0LLQuNC1CgrQo9GC0L7Rh9C90LjRgtGMINC4INC30LDRhNC40LrRgdC40YDQvtCy0LDRgtGMINC10LTQuNC90YHRgtCy0LXQvdC90L7QtSDQv9GA0LDQstC40LvQviDQvtGC0L7QsdGA0LDQttC10L3QuNGPINC+0LrQvdCwINCyINGD0LrQsNC30LDRgtC10LvQtTsg0L7QsdC90L7QstC40YLRjCDQotCXLgoKIyMg0KDQsNGB0YfRkdGCINC90LUg0L/QvtC00YLQstC10YDQttC00ZHQvQoK0J3QtdCy0L7Qt9C80L7QttC90L4g0L/QvtGB0YLRgNC+0LjRgtGMINC60L7RgNGA0LXQutGC0L3Rg9GOINC80L7QtNC10LvRjCwg0L/QvtGC0L7QvNGDINGH0YLQviDQsiDQuNGB0YXQvtC00L3Ri9GFINGB0YLRgNC+0LrQsNGFICjRgdGC0YDQvtC60LAgMykg0L3QtSDRg9C60LDQt9Cw0L3QviDQutC+0L3QutGA0LXRgtC90L7QtSDQt9C90LDRh9C10L3QuNC1INC+0LrQvdCwICjQvdCw0L/RgNC40LzQtdGALCAibm9ydGgiKSwg0LAg0YLQvtC70YzQutC+INCz0L7QstC+0YDQuNGC0YHRjyDQviDCq9C40YHRhdC+0LTQvdC+0Lwg0L7QutC90LXCuy4g0JTQu9GPINC00L7QvNC10L3QsCBlbnVtINGC0YDQtdCx0YPRjtGC0YHRjyDRgtC+0YfQvdGL0LUg0YHRgtGA0L7QutC4LCDQv9C+0LTRgtCy0LXRgNC20LTRkdC90L3Ri9C1INGG0LjRgtCw0YLQvtC5LCDQvdC+INGC0LDQutC40LUg0YHRgtGA0L7QutC4INCyINC00L7QutGD0LzQtdC90YLQtSDQvtGC0YHRg9GC0YHRgtCy0YPRjtGCLCDQv9C+0Y3RgtC+0LzRgyDRhNC+0YDQvNCw0LvQuNC30L7QstCw0YLRjCDQv9GA0LDQstC40LvQsCBmaXJzdC9zZWNvbmQg0LIg0LfQsNC00LDQvdC90L7QvCDRj9C30YvQutC1INC90LXQstC+0LfQvNC+0LbQvdC+LgoKIyMg0KbQuNGC0LDRgtGLINC40Lcg0LjRgdGF0L7QtNC90LjQutCwCgrQodGC0YDQvtC60LAgMwoKYGBgdGV4dArQn9GA0Lgg0L/QtdGA0LLQvtC8INGH0YLQtdC90LjQuCDQutC+0LTQsCDRgtCw0LvQvtC9INC90LDQstGB0LXQs9C00LAg0L/QvtC70YPRh9Cw0LXRgiDQuNGB0YXQvtC00L3QvtC1INC+0LrQvdC+LiDQn9C+0YHQu9C1INC/0LXRgNC10L3QvtGB0LAg0YLRg9Cx0YPRgdCwINGD0LrQsNC30LDRgtC10LvRjCDQutC70LjQtdC90YLQsCDRgdC+0YXRgNCw0L3Rj9C10YIg0L7QutC90L4g0L/QtdGA0LLQvtCz0L4g0YfRgtC10L3QuNGPLgpgYGAKCtCh0YLRgNC+0LrQsCA2CgpgYGB0ZXh0Cnwg0KHQvtGC0YDRg9C00L3QuNC6INC/0LXRgNC10L3QvtGB0LjRgiDRgtGD0LHRg9GBINCyINC00YDRg9Cz0L7QtSDQvtC60L3QviDQtNC+INCy0YvQtNCw0YfQuCB8INCd0LXQvNC10LTQu9C10L3QvdC+INC30LDQvNC10L3QuNGC0Ywg0YPQutCw0LfQsNC90L3QvtC1INC+0LrQvdC+INC90L7QstGL0Lwg0LzQtdGB0YLQvtC8INGC0YPQsdGD0YHQsCB8CmBgYAo=">Скачать карточку (.md)</a>
+<details><summary>Основание приоритета · impact-v1</summary><p>Для одного допустимого сценария заданы два несовместимых результата продукта.</p><p>Код впервые читается у северного окна, затем тубус переносится к южному окну до выдачи, клиент открывает указатель.</p><p>северное · <a href="#source-line-3">строка 3</a></p><p>южное · <a href="#source-line-6">строка 6</a></p></details><details class="decision-draft"><summary>Подготовить критерий приёмки для QA</summary>
+<fieldset class="draft-scenario"><legend>Конфликт правил 3 и 6</legend>
+<p><b>Сценарий.</b> Код впервые читается у северного окна, затем тубус переносится к южному окну до выдачи, клиент открывает указатель.</p>
+<p>Выберите ожидаемый результат для черновика.</p>
+<div class="draft-options"><input type="radio" id="draft-D-01-1-1" name="draft-D-01-1" value="1" autocomplete="off">
+<label for="draft-D-01-1-1"><b>Исход 1</b><span>северное</span></label>
+<span class="draft-source"><a href="#source-line-3">строка 3</a></span><input type="radio" id="draft-D-01-1-2" name="draft-D-01-1" value="2" autocomplete="off">
+<label for="draft-D-01-1-2"><b>Исход 2</b><span>южное</span></label>
+<span class="draft-source"><a href="#source-line-6">строка 6</a></span><div class="draft-result draft-result-1">
+<h4>Черновик критерия приёмки для QA</h4>
+<p><b>Сценарий.</b> Код впервые читается у северного окна, затем тубус переносится к южному окну до выдачи, клиент открывает указатель.</p>
+<p><b>Ожидаемый результат.</b> северное</p>
+<p><b>Контрольный пример.</b> 8</p>
+<p><b>Основание.</b> <a href="#source-line-3">строка 3</a></p></div><div class="draft-result draft-result-2">
+<h4>Черновик критерия приёмки для QA</h4>
+<p><b>Сценарий.</b> Код впервые читается у северного окна, затем тубус переносится к южному окну до выдачи, клиент открывает указатель.</p>
+<p><b>Ожидаемый результат.</b> южное</p>
+<p><b>Контрольный пример.</b> 8</p>
+<p><b>Основание.</b> <a href="#source-line-6">строка 6</a></p></div></div></fieldset><fieldset class="draft-scenario"><legend>Несогласованность поведения указателя при переносе тубуса</legend>
+<p><b>Сценарий.</b> Сценарий: клиент получает талон у северного окна, тубус переносится к южному до выдачи. По правилу из строки 3 указатель должен сохранять исходное (северное) окно, а по правилу из строки 6 указатель должен немедленно показывать новое (южное) окно. При отсутствии переноса (тубус остаётся в исходном окне) оба правила дают одинаковый результат – указатель показывает северное окно.</p>
+<p>Выберите ожидаемый результат для черновика.</p>
+<div class="draft-options"><input type="radio" id="draft-D-01-2-1" name="draft-D-01-2" value="1" autocomplete="off">
+<label for="draft-D-01-2-1"><b>Исход 1</b><span>Указатель показывает исходное (северное) окно, даже если тубус был перенесён.</span></label>
+<span class="draft-source"><a href="#source-line-3">строка 3</a></span><input type="radio" id="draft-D-01-2-2" name="draft-D-01-2" value="2" autocomplete="off">
+<label for="draft-D-01-2-2"><b>Исход 2</b><span>Указатель немедленно меняет отображаемое окно на новое (южное) после переноса.</span></label>
+<span class="draft-source"><a href="#source-line-6">строка 6</a></span><div class="draft-result draft-result-1">
+<h4>Черновик критерия приёмки для QA</h4>
+<p><b>Сценарий.</b> Сценарий: клиент получает талон у северного окна, тубус переносится к южному до выдачи. По правилу из строки 3 указатель должен сохранять исходное (северное) окно, а по правилу из строки 6 указатель должен немедленно показывать новое (южное) окно. При отсутствии переноса (тубус остаётся в исходном окне) оба правила дают одинаковый результат – указатель показывает северное окно.</p>
+<p><b>Ожидаемый результат.</b> Указатель показывает исходное (северное) окно, даже если тубус был перенесён.</p>
+<p><b>Контрольный пример.</b> Требуется согласовать окончательное правило отображения окна в указателе.</p>
+<p><b>Основание.</b> <a href="#source-line-3">строка 3</a></p></div><div class="draft-result draft-result-2">
+<h4>Черновик критерия приёмки для QA</h4>
+<p><b>Сценарий.</b> Сценарий: клиент получает талон у северного окна, тубус переносится к южному до выдачи. По правилу из строки 3 указатель должен сохранять исходное (северное) окно, а по правилу из строки 6 указатель должен немедленно показывать новое (южное) окно. При отсутствии переноса (тубус остаётся в исходном окне) оба правила дают одинаковый результат – указатель показывает северное окно.</p>
+<p><b>Ожидаемый результат.</b> Указатель немедленно меняет отображаемое окно на новое (южное) после переноса.</p>
+<p><b>Контрольный пример.</b> Требуется согласовать окончательное правило отображения окна в указателе.</p>
+<p><b>Основание.</b> <a href="#source-line-6">строка 6</a></p></div></div></fieldset></details></article></section>
+<section id="quality"><h2>Качество набора требований</h2><article class="finding"><h3>Полнота</h3><p>Спецификация не определяет однозначно поведение указателя после переноса тубуса, что делает её неполной.</p><blockquote>При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения. <a href="#source-line-3">строка 3</a></blockquote><blockquote>| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса | <a href="#source-line-6">строка 6</a></blockquote></article><article class="finding"><h3>Согласованность</h3><p>Противоречие между правилами в строках 3 и 6 делает спецификацию несогласованной.</p><blockquote>При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения. <a href="#source-line-3">строка 3</a></blockquote><blockquote>| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса | <a href="#source-line-6">строка 6</a></blockquote></article><article class="finding"><h3>Проверяемость</h3><p>Тестировать указатель невозможно без уточнения ожидаемого результата, т.к. правила конфликтуют.</p><blockquote>При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения. <a href="#source-line-3">строка 3</a></blockquote><blockquote>| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса | <a href="#source-line-6">строка 6</a></blockquote><blockquote>Приёмка: код впервые прочитан у северного окна, затем до выдачи тубус перенесли к южному. Клиент открывает указатель. <a href="#source-line-7">строка 7</a></blockquote></article><article class="finding"><h3>Прослеживаемость</h3><p>Требования указаны и привязаны к конкретным строкам, обеспечивая прослеживаемость.</p><blockquote>Студия выдаёт готовый тубус у одного из двух окон. Варианты окна — северное и южное. <a href="#source-line-2">строка 2</a></blockquote><blockquote>При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения. <a href="#source-line-3">строка 3</a></blockquote><blockquote>| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса | <a href="#source-line-6">строка 6</a></blockquote><blockquote>Приёмка: код впервые прочитан у северного окна, затем до выдачи тубус перенесли к южному. Клиент открывает указатель. <a href="#source-line-7">строка 7</a></blockquote><blockquote>Контроль: если тубус остался у северного окна, указатель показывает северное. <a href="#source-line-8">строка 8</a></blockquote></article><article class="finding"><h3>Границы решения</h3><p>Границы поведения системы при переносе тубуса не описаны полностью, отсутствует правило при конфликте.</p><blockquote>При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения. <a href="#source-line-3">строка 3</a></blockquote><blockquote>| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса | <a href="#source-line-6">строка 6</a></blockquote></article></section>
+
+<section id="qa-scenarios"><h2>Сценарии для QA</h2><article class="finding qa-scenario" id="qa-scenario-1" tabindex="-1">
+<h3>Первое действие</h3><small>Нужно решение владельца</small>
+<p><b>Условия.</b> Перенос тубуса до выдачи</p><p><b>Действие.</b> Открытие указателя клиентом после переноса</p>
+<p><b>Что следует из ТЗ.</b> В одном правиле указатель сохраняет окно первого чтения, в другом — заменяется новым местом</p><p><b>Вопрос владельцу.</b> Какое поведение указателя должно реализоваться при переносе тубуса до выдачи: сохранять исходное окно или показывать новое место?</p><blockquote>При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения. <a href="#source-line-3">строка 3</a></blockquote><blockquote>| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса | <a href="#source-line-6">строка 6</a></blockquote></article><details id="qa-skipped"><summary>Почему пропущены ситуации · 4</summary><ul><li><b>Повтор действия.</b> Нет правила, относящегося к повторной обработке идентификатора</li><li><b>Повторное наступление условия.</b> Нет правила, относящегося к повторному срабатыванию при переходе</li><li><b>Граница значения.</b> Нет правила, относящегося к измеримой границе</li><li><b>Независимость объектов.</b> Нет правила, относящегося к независимости объектов</li></ul></details></section>
+<section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
+<table class="registry"><thead><tr><th scope="col">ID отчёта<br>ID в ТЗ</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody><tr id="R-001"><td><b>R-001</b><br>—</td>
+<td><small>требование · Выдача тубуса в студии печати</small><br><b>Студия должна выдавать готовый тубус у одного из двух окон (северного или южного).</b>
+<blockquote>Студия выдаёт готовый тубус у одного из двух окон. Варианты окна — северное и южное. <a href="#source-line-2">строка 2</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить, что процесс выдачи ограничен только двумя окнами.<p></p></td></tr><tr id="R-002"><td><b>R-002</b><br>—</td>
+<td><small>требование · Выдача тубуса в студии печати</small><br><b>Талон при первом чтении кода фиксирует исходное окно, и указатель клиента сохраняет это окно независимо от последующего переноса тубуса.</b>
+<blockquote>При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения. <a href="#source-line-3">строка 3</a></blockquote></td>
+<td><small>проверяемо</small><br>Убедиться, что после первого чтения окно сохраняется в системе.<p><a href="#D-01">D-01</a></p></td></tr><tr id="R-003"><td><b>R-003</b><br>—</td>
+<td><small>требование · Выдача тубуса в студии печати</small><br><b>Если сотрудник переносит тубус в другое окно до выдачи, указатель клиента должен немедленно заменить указанное окно новым местом тубуса.</b>
+<blockquote>| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса | <a href="#source-line-6">строка 6</a></blockquote></td>
+<td><small>проверяемо</small><br>Тестировать мгновенное обновление указателя при переносе.<p><a href="#D-01">D-01</a></p></td></tr><tr id="R-004"><td><b>R-004</b><br>—</td>
+<td><small>приёмочный пример · Выдача тубуса в студии печати</small><br><b>Код впервые прочитан у северного окна, затем до выдачи тубус перенесли к южному; клиент открывает указатель.</b>
+<blockquote>Приёмка: код впервые прочитан у северного окна, затем до выдачи тубус перенесли к южному. Клиент открывает указатель. <a href="#source-line-7">строка 7</a></blockquote></td>
+<td><small>проверяемо</small><br>Проверить, что после переноса указатель показывает южное окно.<p></p></td></tr><tr id="R-005"><td><b>R-005</b><br>—</td>
+<td><small>пример контракта · Выдача тубуса в студии печати</small><br><b>Если тубус остался у северного окна, указатель должен показывать северное.</b>
+<blockquote>Контроль: если тубус остался у северного окна, указатель показывает северное. <a href="#source-line-8">строка 8</a></blockquote></td>
+<td><small>проверяемо</small><br>Сравнить отображаемое окно с фактическим расположением тубуса.<p></p></td></tr></tbody></table></section>
+<section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: 2. У каждого указано решение итогового ревью.</p>
+<p>Результат итоговой проверки · <a href="#D-01">D-01 · нарушение</a></p>
+    <article class="conflict" aria-labelledby="conflict-1">
+      <h2 id="conflict-1">Конфликт правил 3 и 6</h2>
+      <section class="scenario">
+        <h3>Сценарий</h3>
+        <p>Код впервые читается у северного окна, затем тубус переносится к южному окну до выдачи, клиент открывает указатель.</p>
+      </section>
+      <div class="outcomes">
+      <div class="outcome" id="conflict-1-outcome-1" tabindex="-1">
+        <h3>Исход 1</h3>
+        <p class="outcome-text">северное</p>
+        <blockquote>При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения.</blockquote>
+        <a class="citation" href="#source-line-3">К строке 3 в ТЗ ↓</a>
+      </div>
+      <div class="outcome" id="conflict-1-outcome-2" tabindex="-1">
+        <h3>Исход 2</h3>
+        <p class="outcome-text">южное</p>
+        <blockquote>| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса |</blockquote>
+        <a class="citation" href="#source-line-6">К строке 6 в ТЗ ↓</a>
+      </div>
+      </div>
+      <div class="follow-up">
+        <section class="question">
+          <h3>Вопрос для решения</h3>
+          <p class="question-text">Какой окно должен отображать указатель после переноса тубуса?</p>
+          <p class="owner"><span>Владелец решения</span> Владелец продукта</p>
+        </section>
+        <section class="control">
+          <h3>Где правила совпадают</h3>
+          <p>8</p>
+        </section>
+      </div>
+    </article><p>Результат итоговой проверки · <a href="#D-01">D-01 · нарушение</a></p>
+    <article class="conflict" aria-labelledby="conflict-2">
+      <h2 id="conflict-2">Несогласованность поведения указателя при переносе тубуса</h2>
+      <section class="scenario">
+        <h3>Сценарий</h3>
+        <p>Сценарий: клиент получает талон у северного окна, тубус переносится к южному до выдачи. По правилу из строки 3 указатель должен сохранять исходное (северное) окно, а по правилу из строки 6 указатель должен немедленно показывать новое (южное) окно. При отсутствии переноса (тубус остаётся в исходном окне) оба правила дают одинаковый результат – указатель показывает северное окно.</p>
+      </section>
+      <div class="outcomes">
+      <div class="outcome" id="conflict-2-outcome-1" tabindex="-1">
+        <h3>Исход 1</h3>
+        <p class="outcome-text">Указатель показывает исходное (северное) окно, даже если тубус был перенесён.</p>
+        <blockquote>При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения.</blockquote>
+        <a class="citation" href="#source-line-3">К строке 3 в ТЗ ↓</a>
+      </div>
+      <div class="outcome" id="conflict-2-outcome-2" tabindex="-1">
+        <h3>Исход 2</h3>
+        <p class="outcome-text">Указатель немедленно меняет отображаемое окно на новое (южное) после переноса.</p>
+        <blockquote>| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса |</blockquote>
+        <a class="citation" href="#source-line-6">К строке 6 в ТЗ ↓</a>
+      </div>
+      </div>
+      <div class="follow-up">
+        <section class="question">
+          <h3>Вопрос для решения</h3>
+          <p class="question-text">Какое поведение указателя следует выбрать: A) сохранять исходное окно при любом переносе, или B) обновлять указатель на новое местоположение тубуса?</p>
+          <p class="owner"><span>Владелец решения</span> Product Owner</p>
+        </section>
+        <section class="control">
+          <h3>Где правила совпадают</h3>
+          <p>Требуется согласовать окончательное правило отображения окна в указателе.</p>
+        </section>
+      </div>
+    </article></section>
+<section id="coverage"><h2>Карта покрытия исходника</h2><p>Учтено 8 непустых строк, 8 блоков, 1 таблиц, 1 строк данных таблиц и 0 блоков JSON. Структура, шаблоны и контекст имеют отдельные записи.</p>
+<details><summary>Открыть все блоки и основания классификации</summary><table><thead><tr><th>Источник</th><th>Тип</th><th>Назначение и пункты</th></tr></thead><tbody><tr><td><a href="#source-line-1">строка 1</a></td><td>заголовок</td><td>Заголовок раздела </td></tr><tr><td><a href="#source-line-2">строка 2</a></td><td>текст</td><td>Описание места выдачи тубуса <a href="#R-001">R-001</a></td></tr><tr><td><a href="#source-line-3">строка 3</a></td><td>текст</td><td>Правило фиксирования окна при первом чтении кода <a href="#R-002">R-002</a></td></tr><tr><td><a href="#source-line-4">строка 4</a></td><td>шапка таблицы</td><td>Названия столбцов. </td></tr><tr><td><a href="#source-line-5">строка 5</a></td><td>разметка</td><td>Разделитель Markdown. </td></tr><tr><td><a href="#source-line-6">строка 6</a></td><td>строка таблицы · шапка <a href="#source-line-4">строка 4</a></td><td>Требование обновления указателя при переносе тубуса <a href="#R-003">R-003</a></td></tr><tr><td><a href="#source-line-7">строка 7</a></td><td>текст</td><td>Приёмочный пример поведения указателя <a href="#R-004">R-004</a></td></tr><tr><td><a href="#source-line-8">строка 8</a></td><td>текст</td><td>Контрольный пример ожидаемого состояния указателя <a href="#R-005">R-005</a></td></tr></tbody></table></details></section>
+<section id="source"><h2>Текст исходного документа</h2><ol class="source-list">
+        <li class="source-row" id="source-line-1" value="1" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>1</span>
+          <span class="source-text"># Выдача тубуса в студии печати</span>
+        </li>
+        <li class="source-row" id="source-line-2" value="2" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>2</span>
+          <span class="source-text">Студия выдаёт готовый тубус у одного из двух окон. Варианты окна — северное и южное.</span><div class="backlinks"><a href="#R-001">↑ R-001</a></div>
+        </li>
+        <li class="source-row" id="source-line-3" value="3" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>3</span>
+          <span class="source-text">При первом чтении кода талон навсегда получает исходное окно. После переноса тубуса указатель клиента сохраняет окно первого чтения.</span><div class="backlinks"><a href="#qa-scenario-1">↑ QA · Первое действие</a><a href="#D-01">↑ D-01</a><a href="#conflict-1-outcome-1">↑ Конфликт 1 · исход 1</a><a href="#conflict-2-outcome-1">↑ Конфликт 2 · исход 1</a><a href="#R-002">↑ R-002</a></div>
+        </li>
+        <li class="source-row" id="source-line-4" value="4" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>4</span>
+          <span class="source-text">| Событие | Что показывает указатель клиенту |</span>
+        </li>
+        <li class="source-row" id="source-line-5" value="5" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>5</span>
+          <span class="source-text">| --- | --- |</span>
+        </li>
+        <li class="source-row" id="source-line-6" value="6" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>6</span>
+          <span class="source-text">| Сотрудник переносит тубус в другое окно до выдачи | Немедленно заменить указанное окно новым местом тубуса |</span><div class="backlinks"><a href="#qa-scenario-1">↑ QA · Первое действие</a><a href="#D-01">↑ D-01</a><a href="#conflict-1-outcome-2">↑ Конфликт 1 · исход 2</a><a href="#conflict-2-outcome-2">↑ Конфликт 2 · исход 2</a><a href="#R-003">↑ R-003</a></div>
+        </li>
+        <li class="source-row" id="source-line-7" value="7" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>7</span>
+          <span class="source-text">Приёмка: код впервые прочитан у северного окна, затем до выдачи тубус перенесли к южному. Клиент открывает указатель.</span><div class="backlinks"><a href="#R-004">↑ R-004</a></div>
+        </li>
+        <li class="source-row" id="source-line-8" value="8" tabindex="-1">
+          <span class="line-number"><span class="sr-only">Строка </span>8</span>
+          <span class="source-text">Контроль: если тубус остался у северного окна, указатель показывает северное.</span><div class="backlinks"><a href="#R-005">↑ R-005</a></div>
+        </li></ol></section>
+    <section class="report-section" aria-labelledby="passport">
+      <h2 id="passport" tabindex="-1">Паспорт прогона</h2>
+      <dl class="facts"><div><dt>Документ</dt><dd>studio-pickup.md</dd></div><div><dt>Строк в документе</dt><dd>8</dd></div><div><dt>SHA-256 документа</dt><dd>d6cb10866f846a81246e3bb391359c588cacfc6e2656b657cc533df9abe4b678</dd></div><div><dt>Провайдер</dt><dd>cloudflare-workers-ai</dd></div><div><dt>Модель</dt><dd>@cf/openai/gpt-oss-120b</dd></div><div><dt>Версия агента</dt><dd>2694a231070b</dd></div><div><dt>Начало · UTC</dt><dd>2026-11-27T16:40:21.987056+00:00</dd></div><div><dt>Длительность · с</dt><dd>185.8</dd></div><div><dt>Лимит параллельных запросов</dt><dd>1</dd></div><div><dt>SHA-256 проверяющего кода</dt><dd>96ef057a95c4b7eede097b033a4cbf53d4e741fd46d2b9722d9b133864c54f54</dd></div><div><dt>Версия формата JSON</dt><dd>2</dd></div><div><dt>Новых обращений к модели</dt><dd>7</dd></div><div><dt>Попыток из контрольных точек</dt><dd>0</dd></div></dl>
+      <h3 class="tokens-heading">Токены этого запуска</h3>
+      <dl class="facts"><div><dt>Вход</dt><dd>15541</dd></div><div><dt>Выход</dt><dd>10130</dd></div></dl>
+
+      <details class="attempts">
+        <summary>Попытки · 7</summary>
+        <ol>
+        <li>
+          <p><strong>Сценарии · Принята · 24.82 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>930</dd></div><div><dt>Выход</dt><dd>1342</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Правила и примеры · Принята · 21.85 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>799</dd></div><div><dt>Выход</dt><dd>1248</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Блоки 1–8 · Принята · 26.45 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>1217</dd></div><div><dt>Выход</dt><dd>1448</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Весь документ · Принята · 35.68 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>3378</dd></div><div><dt>Выход</dt><dd>1983</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Сценарии QA · Принята · 22.17 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>1898</dd></div><div><dt>Выход</dt><dd>1203</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Построение примера D-01 · Отклонена · 42.38 с</strong></p><p>window_type: исходная строка 3 не подтверждает точное значение &#x27;north&#x27;</p>
+          <dl class="facts"><div><dt>Вход</dt><dd>3368</dd></div><div><dt>Выход</dt><dd>2353</dd></div></dl>
+        </li>
+        <li>
+          <p><strong>Построение примера D-01 · Принята · 10.08 с</strong></p>
+          <dl class="facts"><div><dt>Вход</dt><dd>3951</dd></div><div><dt>Выход</dt><dd>553</dd></div></dl>
+        </li>
+        </ol>
+      </details>
+    </section></main><script>const printButton = document.getElementById('print-report');
+printButton.hidden = false;
+printButton.addEventListener('click', () => window.print());
+let openedForPrint = [];
+window.addEventListener('beforeprint', () => {
+  for (const detail of document.querySelectorAll('main details:not([open])')) {
+    openedForPrint.push(detail);
+    detail.open = true;
+  }
+});
+window.addEventListener('afterprint', () => {
+  for (const detail of openedForPrint) detail.open = false;
+  openedForPrint = [];
+});</script></body></html>

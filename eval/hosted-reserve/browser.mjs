@@ -106,6 +106,7 @@ export async function checkForm(context, origin, receipt, output, file = join(he
     receipt[ext + '_sha256'] = sha(bytes);
   }
   receipt.downloaded_utc = now();
+  return page;
 }
 
 async function main() {
