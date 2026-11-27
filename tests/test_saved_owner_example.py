@@ -6,12 +6,12 @@ import unittest
 
 from reviewer.render import render_report
 from reviewer.recheck import render_html
-from reviewer.serve import ROOT, Workbench
+from reviewer.serve import ROOT, Workbench, demo_directory
 
 
 class SavedOwnerExample(unittest.TestCase):
     def test_example_matches_demo_and_renders_both_turns_without_changing_live_discussion(self):
-        baseline = ROOT / "runs/bcc-executable/review.json"
+        baseline = demo_directory(ROOT) / "review.json"
         sample = baseline.parent / "owner"
         digest = sha256(baseline.read_bytes()).hexdigest()
         with TemporaryDirectory() as directory:

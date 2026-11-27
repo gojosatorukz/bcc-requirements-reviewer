@@ -164,7 +164,7 @@ class Run:
 
 
 def demo_directory(root):
-    for name in ("bcc-executable", "bcc-submission", "bcc-priority", "bcc-benchmark", "bcc-final"):
+    for name in ("bcc-release", "bcc-executable", "bcc-submission", "bcc-priority", "bcc-benchmark", "bcc-final"):
         directory = root / "runs" / name
         if all((directory / filename).is_file() for filename in REPORT_FILES):
             return directory
