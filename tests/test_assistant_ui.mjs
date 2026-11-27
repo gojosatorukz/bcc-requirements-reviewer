@@ -80,6 +80,7 @@ test('the recheck action discusses the revision while the header retains the ful
     const sha = createHash('sha256').update(bytes).digest('hex');
     const report = JSON.parse(bytes);
     await page.addInitScript(({id,name}) => {
+      window.addEventListener('review:loaded',e=>{ window.fullReviewForTest=e.detail; });
       sessionStorage.setItem('reviewer.workbench.v1',JSON.stringify({last:{id,mode:'recheck',name},full:[]}));
     },{id,name:report.run.input_name});
     await page.route('**/api/status/'+id,route=>route.fulfill({json:{state:'done',mode:'recheck',progress:[]}}));
@@ -93,6 +94,9 @@ test('the recheck action discusses the revision while the header retains the ful
     });
     await page.goto(base);
     await page.locator('#assistant-recheck-open').click();
+    assert.match(await page.locator('#assistant-document').innerText(),/Перепроверка/);
+    await page.waitForFunction(()=>window.fullReviewForTest);
+    await page.evaluate(()=>window.dispatchEvent(new CustomEvent('review:loaded',{detail:window.fullReviewForTest})));
     assert.match(await page.locator('#assistant-document').innerText(),/Перепроверка/);
     await page.locator('#assistant-focus').selectOption(report.checks[0].id);
     await page.locator('#assistant-input').fill('Что изменилось?');

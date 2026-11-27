@@ -282,9 +282,10 @@
   form.addEventListener('submit', event => { event.preventDefault(); ask(); });
   restart.addEventListener('click', () => ask(true));
   window.addEventListener('review:loaded', ({detail}) => {
+    const sameFull = currentFull?.key === detail.key;
     currentFull = detail;
     element('assistant-qa-open').hidden = !detail.report?.lifecycle_checks?.checks?.length;
-    bind(detail);
+    if (!active?.isRecheck || !sameFull) bind(detail);
   });
   window.addEventListener('review:recheck-assistant', ({detail}) => { currentRecheck = detail; });
 })();
