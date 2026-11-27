@@ -19,6 +19,13 @@ class FullReviewTest(unittest.TestCase):
         self.assertTrue(all(0 < len(group) <= 26 for group in groups))
         self.assertEqual(list(local_batches([], {})), [])
 
+    def test_short_api_examples_cannot_monopolize_a_local_worker(self):
+        blocks = [{"start": i, "end": i, "kind": "пример json" if i % 2 else "заголовок"}
+                  for i in range(1, 16)]
+        groups = list(local_batches(blocks, {i: "{}" for i in range(1, 16)}))
+        self.assertEqual([b for group in groups for b in group], blocks)
+        self.assertTrue(all(sum(b["kind"] == "пример json" for b in group) <= 3 for group in groups))
+
     def test_critical_candidate_requires_both_source_lines(self):
         candidate = {"first": {"source": {"line": 2}}, "second": {"source": {"line": 4}}}
         f = {"priority": "критический", "candidates": [1], "evidence": [{"line": 2}]}
