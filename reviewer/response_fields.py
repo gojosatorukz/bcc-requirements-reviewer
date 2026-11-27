@@ -213,7 +213,12 @@ def check_normative_basis(assessments, sample_lines):
                                  "Нужна цитата нормативного условия вне примера либо unspecified.")
 
 
-def from_addressed(result, choices):
+PRESENCE = re.compile(r"\b(?:при\s|если\b|только\b|всегда\b|обязательн|необязательн|опциональн|"
+                      r"может\s+(?:отсутствовать|присутствовать)|содерж|включа|исключа|отсутств|"
+                      r"required\b|optional\b|only\b|always\b|never\b|when\b|if\b|must\b|omit|absent|present\b)", re.I)
+
+
+def from_addressed(result, choices, sample_lines=frozenset()):
     assessments = []
     for c in choices:
         row = result[f"field_{c['id']}"]
@@ -222,6 +227,14 @@ def from_addressed(result, choices):
             raise ValueError(f"Дай одно обоснование для каждой использованной политики по полю {c['field']}")
         rulings = [{**r, "examples": [n for n, policy in outcomes.items() if policy == r["policy"]]}
                    for r in row["reasons"]]
+        for ruling in rulings:
+            outside = [e["quote"].strip() for e in ruling["evidence"] if e["line"] not in sample_lines]
+            # A value dictionary and an instance are evidence of values, not a closed error schema.
+            if (ruling["policy"] != "unspecified" and outside
+                    and all(q.startswith("|") and not PRESENCE.search(q) for q in outside)):
+                ruling["policy"] = "unspecified"
+                ruling["basis"] = "В процитированных строках таблицы описано поле, но условие его присутствия не задано."
+                outcomes.update(dict.fromkeys(ruling["examples"], "unspecified"))
         unknown = [n for n, policy in outcomes.items() if policy == "unspecified"]
         labels = [f"HTTP {code} (примеры со строк {', '.join(str(n) for n in unknown if c['errors'][n] == code)})"
                   for code in sorted({c["errors"][n] for n in unknown})]

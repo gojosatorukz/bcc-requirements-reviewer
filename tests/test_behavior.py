@@ -87,3 +87,12 @@ class BehaviorTests(unittest.TestCase):
         pair, = report["conflicts"]
         self.assertIn("3 + 1 = 4", pair["second"]["outcome"])
         self.assertEqual(count_limits.review({"probes":[{"case":1,"effects":[]}]}, cases, {}, refs), {"conflicts":[]})
+
+    def test_inferred_precedence_cannot_retire_a_bound_but_an_explicit_exception_can(self):
+        from reviewer import count_limits
+        row = {"reason":"У частного действия есть приоритет.", "evidence":[{"quote":"Produce one record."}]}
+        with self.assertRaisesRegex(ValueError,"явную отмену"):
+            count_limits.check_precedence(row, {2})
+        row["evidence"].append({"quote":"This exception overrides the per-order limit."})
+        count_limits.check_precedence(row,{2})
+        count_limits.check_precedence({"reason":"Правила относятся к разным заказам.", "evidence":[]},{2})

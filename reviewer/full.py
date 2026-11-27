@@ -11,7 +11,7 @@ import sys
 from tempfile import NamedTemporaryFile
 from time import monotonic
 
-from . import behavior, codex_provider, lifecycle, priority, response_fields, source_refs
+from . import behavior, codex_provider, count_limits, lifecycle, priority, response_fields, source_refs
 from .contract import (
     EVIDENCE, HTTP_STATUS_INSTRUCTIONS, HTTP_STATUS_POLICY, INSTRUCTIONS, REVIEW, TEXT,
     record, source_http_statuses, validate_review, validate_shape, validate_witness_http,
@@ -368,12 +368,12 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
             def addressed_fields(stage=stage, data=data, batch=batch, operations=operations):
                 mentions, sample_lines = response_fields.contract_mentions(batch, operations, source)
                 def verify_addressed(result):
-                    section = response_fields.from_addressed(result, batch)
+                    section = response_fields.from_addressed(result, batch, sample_lines)
                     response_fields.verify(section, batch, source)
                     response_fields.check_normative_basis(section, sample_lines)
                 output, events = anchored(stage, response_fields.INSTRUCTIONS + response_fields.ADDRESSED,
                     {**data, "field_mentions": mentions}, response_fields.addressed_schema(batch), verify_addressed)
-                return response_fields.from_addressed(output, batch), events
+                return response_fields.from_addressed(output, batch, sample_lines), events
             tasks.append(addressed_fields)
         else:
             tasks.append(partial(call_stage, stage, response_fields.INSTRUCTIONS, data, response_fields.SCHEMA,
@@ -383,11 +383,13 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     results = run_required(tasks, workers)
     candidates, attempts = results[0]
     product_ids = []
+    limit_ids = []
     if field_start > 1:
         product, product_events = results[1]
         # Preserve independent hypotheses about the same two lines for global adjudication.
         combined = list(product["conflicts"])
         product_ids = list(range(1, len(combined) + 1))
+        limit_ids = product["limit_candidates"]
         combined.extend(c for c in candidates["conflicts"] if c not in product["conflicts"])
         candidates = {"conflicts": combined}
         attempts.extend(product_events)
@@ -428,6 +430,14 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                         "в triage.witness отдельного нарушения. Для повторных кандидатов одной первопричины "
                         "перечисли их номера в одной карточке. Для снятия гипотезы в reconciled процитируй "
                         "обе стороны и объясни, как удовлетворить обе нормы именно в данном сценарии.")
+    if limit_ids:
+        payload["saturated_count_candidates"] = limit_ids
+        instruction += ("\nВ saturated_count_candidates ранее учтённое количество сохраняется в пределах того же "
+                        "объекта и интервала. Проверь отдельно: возможно ли последующее событие при этих условиях, "
+                        "сколько событий допускает исходный предел и сколько требует второй текст. "
+                        "Если итоги различаются, покажи оба в triage.witness и задай вопрос о выборе. "
+                        "Частный порядок действий сам по себе не устанавливает приоритет правила. "
+                        "Для вывода о приоритете нужна явная оговорка об ограничении в исходном документе.")
     instruction += ("\nДля обязательного параметра проверь первый вызов в исходном состоянии: "
                     "откуда клиент получает значение до первой настройки и допускает ли сценарий "
                     "такой вызов. Учитывай явно заданные значения по умолчанию.")
@@ -461,6 +471,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         check_critical_sources(ranked, candidates["conflicts"])
         for row in ranked["reconciled"]:
             cited = {entry["line"] for entry in row["evidence"]}
+            count_limits.check_precedence(row, set(row["candidates"]).intersection(limit_ids))
             for number in set(row["candidates"]).intersection(product_ids):
                 candidate = candidates["conflicts"][number - 1]
                 required = {candidate[side]["source"]["line"] for side in ("first", "second")}
