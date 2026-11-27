@@ -21,6 +21,13 @@ def quantity(value, unit):
     return digits if unit == "1" else f"{digits} {safe(unit)}"
 
 
+def first_step_comparisons(trace):
+    first = trace["first_difference"]
+    step = trace["steps"][first["step"] - 1]
+    for key in step.get("different", [first["field"]]):
+        yield key, step["first"][key], step["second"][key]
+
+
 def values_list(values, definitions, *, keys=False):
     rows = []
     for key, number in values.items():
@@ -119,20 +126,22 @@ def render_execution(item, explanation=None):
     inputs = {s["key"]: s for s in program["inputs"]}
     example = result["scenario"]
     difference = example["first_difference"]
-    definition = states[difference["field"]]
     step = example["steps"][difference["step"] - 1]
-    symbolic = definition["unit"].startswith("enum:")
     comparisons = []
-    for side, letter in (("first", "А"), ("second", "Б")):
-        source = program[side]["source"]
-        line = source["line"]
-        value = quantity(difference[side], definition["unit"])
-        if symbolic:
-            value = value.replace("_", "_<wbr/>")
-        comparisons.append(
-            f'<div class="execution-side"><dt>Правило {letter} · '
-            f'<a href="#source-line-{line}">строка {line}</a></dt>'
-            f'<dd>{value}</dd></div>')
+    for key, first, second in first_step_comparisons(example):
+        definition = states[key]
+        symbolic = definition["unit"].startswith("enum:")
+        sides = []
+        for side, letter, observed in (("first", "А", first), ("second", "Б", second)):
+            line = program[side]["source"]["line"]
+            value = quantity(observed, definition["unit"])
+            if symbolic:
+                value = value.replace("_", "_<wbr/>")
+            sides.append(f'<div class="execution-side"><dt>Правило {letter} · '
+                         f'<a href="#source-line-{line}">строка {line}</a></dt><dd>{value}</dd></div>')
+        label = safe(definition["label"])
+        comparisons.append(f'<h4>{label}</h4><dl class="execution-comparison" aria-label="{label}" '
+                           f'data-values="{"enum" if symbolic else "number"}">{"".join(sides)}</dl>')
     rules = ""
     for key, letter in (("first", "А"), ("second", "Б")):
         source = program[key]["source"]
@@ -150,9 +159,8 @@ def render_execution(item, explanation=None):
              if step["step"] < len(example["steps"]) else "")
     return (f'<div class="execution" id="execution-{fid}">'
             '<p class="execution-caption">Исполняемый пример</p>'
-            f'<h4>{safe(definition["label"])}</h4>'
-            f'<dl class="execution-comparison" data-values="{"enum" if symbolic else "number"}">{"".join(comparisons)}</dl>'
-            f'<p class="execution-break"><b>Первое расхождение · шаг {step["step"]}</b>'
+            + "".join(comparisons)
+            + f'<p class="execution-break"><b>Первое расхождение · шаг {step["step"]}</b>'
             f'<span>{safe(step["label"])}</span></p>'
             + (f'<dl class="execution-values execution-shared" aria-label="Общий вход этого шага">{event_inputs}</dl>'
                if event_inputs else "")

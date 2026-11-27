@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .contract import source_lines, validate_review, validate_shape
 from .executable import unexecuted_message
-from .execution_view import quantity, render_executions
+from .execution_view import first_step_comparisons, quantity, render_executions
 from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
 from .json_examples import check_findings, verify_saved_checks
 from .example_shapes import object_shapes
@@ -125,9 +125,10 @@ def execution_markdown(item):
         return "\n\n".join(lines)
 
     diff = result["scenario"]["first_difference"]
-    key = diff["field"]
-    divergence = (f'Первое расхождение на шаге {diff["step"]} · {markdown_text(fields[key]["label"])}. '
-                  f'Правило А даёт {value(key, diff["first"])}, правило Б даёт {value(key, diff["second"])}.')
+    observations = [f'{markdown_text(fields[key]["label"])}. Правило А даёт {value(key, first)}, '
+                    f'правило Б даёт {value(key, second)}.'
+                    for key, first, second in first_step_comparisons(result["scenario"])]
+    divergence = f'Первое расхождение на шаге {diff["step"]} · ' + "\n\n".join(observations)
     return ("## Исполняемый пример\n\n" + divergence + "\n\n" + scenario("scenario")
             + "\n\n### Контрольный пример\n\nЗначения совпали на каждом шаге.\n\n" + scenario("control")
             + "\n\nОжидаемый исход для приёмки предстоит согласовать с владельцем ТЗ.")
@@ -178,9 +179,12 @@ def decision_brief(report):
         if not item:
             continue
         program = item["program"]
-        split = item["result"]["scenario"]["first_difference"]
-        field = next(s for s in program["states"] if s["key"] == split["field"])
-        amounts = " или ".join(quantity(split[side], field["unit"]) for side in ("first", "second"))
+        states = {s["key"]: s for s in program["states"]}
+        comparisons = []
+        for key, first, second in first_step_comparisons(item["result"]["scenario"]):
+            field = states[key]
+            amounts = " или ".join(quantity(value, field["unit"]) for value in (first, second))
+            comparisons.append(f'<h3>{safe(field["label"])}</h3><strong>{amounts}</strong>')
         sources = []
         for side in ("first", "second"):
             ref = program[side]["source"]
@@ -189,7 +193,7 @@ def decision_brief(report):
                 quote = quote[:180].rsplit(" ", 1)[0] + "…"
             sources.append(f'<li>{line_link(ref["line"])} · {safe(quote)}</li>')
         cards.append(f'<article><small>{link(finding["id"], finding["id"])} · {safe(finding["owner"])}</small>'
-                     f'<h3>{safe(field["label"])}</h3><strong>{amounts}</strong>'
+                     f'{"".join(comparisons)}'
                      f'<p>{safe(finding["question"])}</p><ul>{"".join(sources)}</ul><p>'
                      f'{link("execution-" + finding["id"], "Посмотреть расчёт")}</p></article>')
         if len(cards) == 3:

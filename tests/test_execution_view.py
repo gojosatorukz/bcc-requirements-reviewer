@@ -6,16 +6,41 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from xml.etree import ElementTree
 
+from reviewer.contract import source_lines
 from reviewer.executable import simulate
 from reviewer.execution_view import explain_simulation, render_execution, render_explanation
-from reviewer.full_render import execution_markdown
+from reviewer.full_render import decision_brief, execution_markdown
 from reviewer.serve import Workbench, WorkbenchError
+from reviewer.witness_vm import execute
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExecutionViewTests(TestCase):
+    def test_first_divergent_step_shows_every_changed_observable_in_card_brief_and_handoff(self):
+        report = json.loads((ROOT / "eval/executable/runs/hotel.json").read_bytes())
+        item = report["executables"]["items"][0]
+        program = item["program"]
+        program["observe"] = ["balance", "held", "available"]
+        item["result"] = execute(program, source_lines(report))
+
+        expected = [("Сумма, заблокированная по авторизации", "11 200 ₸", "0 ₸"),
+                    ("Доступный остаток в приложении", "43 300 ₸", "54 500 ₸")]
+        panel = ElementTree.fromstring(render_execution(item))
+        self.assertEqual([h.text for h in panel.findall("h4")], [row[0] for row in expected])
+        comparisons = panel.findall('dl[@class="execution-comparison"]')
+        self.assertEqual([[n.text for n in dl.findall("div/dd")] for dl in comparisons],
+                         [[first, second] for _, first, second in expected])
+        brief = ElementTree.fromstring(decision_brief(report)).find("article")
+        self.assertEqual([h.text for h in brief.findall("h3")], [row[0] for row in expected])
+        self.assertEqual([s.text for s in brief.findall("strong")],
+                         [f"{first} или {second}" for _, first, second in expected])
+        digest = execution_markdown(item).split("Перед первым событием", 1)[0]
+        for label, first, second in expected:
+            self.assertIn(f"{label}. Правило А даёт {first}, правило Б даёт {second}.", digest)
+        self.assertNotIn("Учётный остаток", digest)
+
     def test_replays_and_handoffs_preserve_exact_non_numeric_api_values(self):
         states = [{"key": "status", "label": "Ответ на заявку", "unit": "enum:status"}]
         first, second = "AWAITING_SIGNATURE", "MANUAL_REVIEW"

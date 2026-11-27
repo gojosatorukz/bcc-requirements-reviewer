@@ -22,9 +22,12 @@
     const conclusion = diff ? 'Расхождение на шаге ' + diff.step : 'Совпадение на каждом шаге';
     result.append(element('h3', conclusion));
     if (diff) {
-      const field = states.get(diff.field);
-      result.append(element('p', field.label + ' · ' + units(diff.first, field.unit)
-        + ' по правилу А и ' + units(diff.second, field.unit) + ' по правилу Б.'));
+      const step = trace.steps[diff.step - 1];
+      for (const key of step.different) {
+        const field = states.get(key);
+        result.append(element('p', field.label + ' · ' + units(step.first[key], field.unit)
+          + ' по правилу А и ' + units(step.second[key], field.unit) + ' по правилу Б.'));
+      }
     }
     const table = element('table', undefined, 'execution-table');
     table.dataset.values = program.observe.some(key => states.get(key).unit.startsWith('enum:')) ? 'enum' : 'number';
