@@ -1,4 +1,4 @@
-"""Assemble the seven competition files from the verified release and original specification."""
+"""Assemble the eight competition files from the verified release and original specification."""
 
 import argparse
 from datetime import datetime
@@ -17,11 +17,12 @@ from reviewer.full_render import validate_report
 
 
 def package(source, output):
-    release = ROOT / "runs/bcc-release"
+    release = ROOT / "runs/bcc-jury"
     files = {
         "requirements.md": source,
         "demo.mp4": ROOT / "presentation/bcc-demo.mp4",
-        "pitch.pptx": ROOT / "presentation/bcc-pitch.pptx",
+        "pitch.pptx": ROOT / "presentation/pitch/razbor-tz-pitch.pptx",
+        "pitch.pdf": ROOT / "presentation/pitch/razbor-tz-pitch.pdf",
         **{name: release / name for name in ("review.json", "review.html", "review.pdf")},
     }
     if output.suffix.lower() != ".zip" or output.resolve() in {p.resolve() for p in files.values()}:

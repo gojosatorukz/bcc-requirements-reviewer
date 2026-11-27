@@ -47,6 +47,10 @@ def main():
     for filename in ("review.html", "review.pdf", "review.json"):
         assert sha256(read("/reports/demo/" + filename)).hexdigest() == manifest[filename], filename
     print("Ready HTML, PDF and JSON match the release.", flush=True)
+    for filename in ("dialogue.html", "wrong-revision.html"):
+        page = read("/reports/demo/owner/" + filename)
+        assert page == (ROOT / "runs/bcc-jury/owner" / filename).read_bytes(), filename
+    print("Both owner dialogue and revision pages match this run.", flush=True)
     demo_hash = manifest["review.json"]
     current = read("/reports/demo/review.html?sha256=" + demo_hash).decode()
     assert current.count('class="execution-trace execution-boundary"') == 2

@@ -1,4 +1,6 @@
-# Отчёт на подачу
+# Предыдущий официальный прогон · report-v1
+
+Для текущей подачи выбран [прогон на 312,05 с с индивидуальными оценками](../bcc-jury/README.md). Данные ниже относятся к сохранённому прогону на 410,60 с.
 
 [Отчёт PDF](review.pdf) · [Автономный HTML](review.html) · [Полный JSON](review.json) · [Оригинал BCC](https://github.com/BCC-HUB/ai-requirements-validator-task/blob/928c1aa364265426105b69ba7a3444eac11b22db/docs/requirements.md)
 
@@ -21,11 +23,3 @@
 ```sh
 python3 -m reviewer.executable replay runs/bcc-release/review.json --source requirements.md
 ```
-
-## Собрать комплект по фиксированным файлам
-
-```sh
-python3 presentation/package_submission.py requirements.md bcc-materials.zip
-```
-
-Команда сверяет семь сдаваемых файлов с [контрольными суммами](materials.json), проверяет привязку обоих ходов владельца и перепроверки к исходному JSON, а затем создаёт ZIP. В него входят оригинал ТЗ, JSON, HTML, PDF, презентация, видео и адрес репозитория. Студенческий билет участник прикрепляет отдельно в форму организаторов.

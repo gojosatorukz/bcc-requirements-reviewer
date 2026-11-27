@@ -4,7 +4,7 @@
 
 > Покупку сделали 31 января в 23:58, а банк провёл её 1 февраля в 00:03. Сколько прибавить к расходам за февраль? По строке 38 официального ТЗ выходит **0 ₸**, по строке 64 — **4 000 ₸**. Агент показывает обе цитаты, пересчитывает оба исхода на одном примере и спрашивает владельца продукта, какое правило верное.
 
-[Открыть сайт](https://razbor-tz.onrender.com/) · [Отчёт по официальному ТЗ](https://razbor-tz.onrender.com/reports/demo/review.html) · [Питч · PDF](presentation/pitch/razbor-tz-pitch.pdf) · [Демо · 69 с](presentation/bcc-demo.mp4) · [Бизнес-модель](docs/business-model.md) · [Задание BCC-HUB × MNU](https://github.com/BCC-HUB/ai-requirements-validator-task)
+[Открыть сайт](https://razbor-tz.onrender.com/) · [Отчёт по официальному ТЗ](https://razbor-tz.onrender.com/reports/demo/review.html) · [Питч · PDF](presentation/pitch/razbor-tz-pitch.pdf) · [Демо со звуком · 68 с](presentation/bcc-demo.mp4) · [Бизнес-модель](docs/business-model.md) · [Задание BCC-HUB × MNU](https://github.com/BCC-HUB/ai-requirements-validator-task)
 
 ![Загрузка своего ТЗ и банковский пример с двумя результатами за февраль: 0 и 4 000 ₸](docs/workbench.png)
 
@@ -12,9 +12,9 @@
 
 | Что проверить | Где это лежит |
 | --- | --- |
-| Отчёт агента по выданному ТЗ | [PDF](runs/bcc-release/review.pdf) · [HTML](https://razbor-tz.onrender.com/reports/demo/review.html) · [исходный JSON и паспорт](runs/bcc-release/README.md) |
+| Отчёт агента по выданному ТЗ | [PDF](runs/bcc-jury/review.pdf) · [HTML](https://razbor-tz.onrender.com/reports/demo/review.html) · [исходный JSON и паспорт](runs/bcc-jury/README.md) |
 | Запуск одной командой | `python -m reviewer <путь к ТЗ> <путь к отчёту>`, см. [Быстрый старт](#быстрый-старт) |
-| Повторить расчёт без ключа и модели | `python -m reviewer.executable replay runs/bcc-release/review.json --source requirements.md` |
+| Повторить расчёт без ключа и модели | `python -m reviewer.executable replay runs/bcc-jury/review.json --source requirements.md` |
 | Попробовать без установки | [razbor-tz.onrender.com](https://razbor-tz.onrender.com/): загрузите PDF, DOCX, MD или TXT |
 | Архитектура | [Как устроен агент](#как-устроен-агент) · [подробно](docs/architecture-and-evaluation.md) |
 | Бизнес-модель и питч | [Бизнес-модель](#бизнес-модель) · [питч, 14 слайдов](presentation/pitch/razbor-tz-pitch.pdf) |
@@ -35,7 +35,7 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-**2. Получить ключ LLM.** Создайте бесплатный ключ Gemini в [Google AI Studio](https://aistudio.google.com/apikey). Модель по умолчанию — **Gemini 3.5 Flash-Lite**, бесплатного тарифа достаточно. [Условия Gemini API](https://ai.google.dev/gemini-api/docs/pricing)
+**2. Получить ключ LLM.** Создайте бесплатный ключ Gemini в [Google AI Studio](https://aistudio.google.com/apikey). Модель по умолчанию — **Gemini 3.5 Flash-Lite**, доступность полного прогона зависит от оставшейся квоты. [Условия Gemini API](https://ai.google.dev/gemini-api/docs/pricing)
 
 **3. Положить ключ.** Скопируйте пример конфига и впишите ключ в строку `GEMINI_API_KEY=`. Агент сам читает `.env`, файл исключён из Git.
 
@@ -58,17 +58,17 @@ python -m reviewer requirements.md output/review.html --workers 1
 
 | Что проверено | Результат |
 | --- | --- |
-| 198 строк, включая таблицы и JSON | 104 записи в реестре с исходными ID. 5 нарушений, из них 2 критических, и 12 открытых вопросов |
+| 198 строк, включая таблицы и JSON | 108 записей с исходными ID и 174 оценки качества со ссылками на ТЗ. 6 нарушений, из них 2 критических, и 10 открытых вопросов |
 | Покупка на стыке месяцев (Ф-2 и критерий приёмки) | За февраль 0 или 4 000 ₸. На контрольной покупке внутри месяца обе трактовки дают 4 000 ₸ |
 | Повторное достижение изменённого порога (Ф-3 и Ф-4) | 1 или 2 push. На контроле обе трактовки дают 1 |
 | Четыре ошибочных ответа API | Вопрос владельцу: обязателен ли `result` в каждом ответе. В примерах ошибок есть только `message` |
 
-Отчёт подачи получен на **GPT-6.2 Astra** за 410,60 с, 17 вызовов модели. Тег [`report-v1`](https://github.com/gojosatorukz/bcc-requirements-reviewer/tree/report-v1) указывает на код этого прогона (`67991fe555a3`). Отдельный прогон на бесплатном **Gemini 3.5 Flash-Lite** нашёл оба критических конфликта и вопрос про `result`. [Паспорт и исходный JSON](runs/bcc-release/README.md) · [Сверка 26 контрольных тем](eval/official-coverage/release.md) · [Отчёт и ограничения Gemini](eval/gemini/behavior/README.md)
+Отчёт подачи получен на **GPT-6.2 Astra** за 312,05 с, 19 вызовов модели. Тег [`report-v2`](https://github.com/gojosatorukz/bcc-requirements-reviewer/tree/report-v2) указывает на код этого прогона (`8ab3b76dadae`). Отдельный прогон на бесплатном **Gemini 3.5 Flash-Lite** нашёл оба критических конфликта и вопрос про `result`. Исполнимые примеры обоих конфликтов подтверждены в отчёте Astra. [Паспорт и исходный JSON](runs/bcc-jury/README.md) · [Внутренняя сверка 12 тем и 14 ситуаций](eval/official-coverage/item-quality.md) · [Отчёт и ограничения Gemini](eval/gemini/behavior/README.md)
 
 Повтор вычислений по сохранённому JSON без ключа и новый полный прогон через авторизованный Codex CLI:
 
 ```sh
-python -m reviewer.executable replay runs/bcc-release/review.json --source requirements.md
+python -m reviewer.executable replay runs/bcc-jury/review.json --source requirements.md
 REVIEW_PROVIDER=codex REVIEW_MODEL=gpt-6.2-astra python -m reviewer requirements.md output/astra.json --workers 6
 ```
 
@@ -80,7 +80,7 @@ REVIEW_PROVIDER=codex REVIEW_MODEL=gpt-6.2-astra python -m reviewer requirements
 | Как агент нарезал требования | «Реестр и проверка каждого пункта»: ID в отчёте (R-…), ID в документе (Ф-1…), краткая формулировка и цитата |
 | Проверка каждого требования | Там же: оценка по применимым критериям и основание со ссылкой на строку |
 | Проверка всего набора | «Качество набора требований»: полнота, согласованность, проверяемость, прослеживаемость, границы решения |
-| Сводка | «Сводка · можно ли начинать работу»: число пунктов, нарушений и критических дефектов; «Все замечания · 17» с приоритетом |
+| Сводка | «Сводка · можно ли начинать работу»: число пунктов, нарушений и критических дефектов; «Все замечания · 16» с приоритетом |
 | Итог | Там же и в «Что согласовать в первую очередь»: вердикт отдельно для разработки и тестирования, что исправить первым |
 
 ## Как устроен агент
@@ -139,7 +139,7 @@ flowchart LR
 | --- | --- |
 | [`reviewer/`](reviewer) | Агент: чтение входа, сегментация, провайдеры LLM, валидатор, witness VM, рендер отчёта, веб-интерфейс |
 | [`tests/`](tests) | Автотесты: `python -m unittest discover -s tests` |
-| [`runs/bcc-release/`](runs/bcc-release) | Официальный отчёт подачи: JSON, HTML, PDF, паспорт, ответы владельца |
+| [`runs/bcc-jury/`](runs/bcc-jury) | Официальный отчёт подачи: JSON, HTML, PDF, паспорт, ответы владельца |
 | [`eval/`](eval) | Контрольные прогоны на других ТЗ и сверки качества |
 | [`docs/`](docs) | Архитектура, руководство аналитика, бизнес-модель |
 | [`presentation/`](presentation) | Питч (PDF, PPTX, HTML), демо-видео, сценарий выступления |
