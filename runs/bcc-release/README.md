@@ -19,3 +19,5 @@ python3 -m reviewer.executable replay runs/bcc-release/review.json --source requ
 ```
 
 [Ручная сверка предыдущей версии](../../eval/official-coverage/README.md) · [Исправление ложного числового результата](../../eval/executable/scope/README.md) · [Запуски на печатном PDF](../../eval/pdf-official/results.md)
+
+Для этого отчёта заново проведены [два хода с владельцем](owner/dialogue.html) и [проверка ошибочной редакции](owner/wrong-revision.html). Агент спросил отдельно о трёх счётчиках. В новой редакции переходящая покупка учитывается верно, но операция внутри одного месяца попадает сразу в два счётчика, поэтому замечание осталось открытым. [Интерактивная демонстрация](../../presentation/live-demo.md) · [Сверка 26 тем на этом отчёте](../../eval/official-coverage/release.md)
