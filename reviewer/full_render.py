@@ -416,7 +416,7 @@ def render_full(report):
 <section id="quality"><h2>Качество набора требований</h2>{axes}</section>
 {render_json_checks(report.get("json_checks", {}), lines, report.get("example_shapes", ()))}
 <section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
-<table class="registry"><thead><tr><th>ID отчёта / исходника</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
+<table class="registry"><thead><tr><th scope="col">ID отчёта<br>ID в ТЗ</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
 <section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: {len(scenario_parts)}. У каждого указано решение итогового ревью.</p>
 {''.join(scenario_parts)}{('<h3>Согласованные прочтения</h3><ol>'+''.join(closed)+'</ol>') if closed else ''}</section>
 <section id="coverage"><h2>Карта покрытия исходника</h2><p>Учтено {len(lines)} непустых строк, {len(segments)} блоков, {forms['шапка таблицы']} таблиц, {forms['строка таблицы']} строк данных таблиц и {forms['пример json']} блоков JSON. Структура, шаблоны и контекст имеют отдельные записи.</p>
