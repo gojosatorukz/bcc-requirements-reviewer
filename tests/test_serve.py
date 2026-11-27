@@ -115,6 +115,31 @@ class WorkbenchTest(unittest.TestCase):
             with patch.dict("os.environ", {"CLOUDFLARE_API_TOKEN": ""}):
                 self.assertNotIn("При лимите Gemini текст получит", self.request("GET", "/")[1].decode())
 
+    def test_project_review_is_a_separate_explicit_run_with_normal_local_artifacts(self):
+        (self.root / "reviewer" / "workbench.html").write_text((ROOT / "reviewer/workbench.html").read_text())
+        def project_worker(mode, document, baseline, json_report, html_report, model, progress):
+            self.assertEqual(document.read_bytes(), b"submitted")
+            json_report.write_text('{"source":"remote"}')
+            html_report.write_text("Remote full review")
+        with patch("reviewer.project_review.project_worker", side_effect=project_worker) as worker:
+            home = self.request("GET", "/")[1].decode()
+            self.assertIn('id="project-submit"', home)
+            self.assertIn("razbor-tz.onrender.com", home)
+            self.assertIn("Cloudflare Workers AI", home)
+            self.assertEqual(self.upload("/api/project-runs?target=another-site")[0], 400)
+            self.assertEqual(self.upload("/api/project-runs", Origin="https://other.example")[0], 403)
+            self.assertEqual(self.upload("/api/structure")[0], 200)
+            worker.assert_not_called()
+            code, response, _ = self.upload("/api/project-runs", body=b"submitted")
+            self.assertEqual(code, 202)
+            identifier = json.loads(response)["id"]
+            status = self.wait_until_done(identifier)
+            self.assertEqual((status["execution"], status["mode"], status["state"]), ("project", "full", "done"))
+            self.assertEqual(self.request("GET", f"/reports/{identifier}/review.html")[:2], (200, b"Remote full review"))
+            self.assertEqual(self.request("GET", f"/reports/{identifier}/review.json")[:2], (200, b'{"source":"remote"}'))
+            self.assertFalse(self.calls)
+            worker.assert_called_once()
+
     def test_second_structure_visitor_waits_while_queue_is_bounded(self):
         queued = Event()
         class BusyParser(BoundedSemaphore):

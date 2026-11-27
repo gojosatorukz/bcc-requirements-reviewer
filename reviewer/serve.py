@@ -105,7 +105,7 @@ class SafeWorkerError(RuntimeError):
     """A fixed message safe to return in the workbench."""
 
 
-def imported_full_report(raw):
+def imported_full_report(raw, source=None):
     from .full_render import render_full
 
     if len(raw) > IMPORT_LIMIT:
@@ -133,6 +133,11 @@ def imported_full_report(raw):
             raise ValueError("Некорректный хеш документа")
         if not isinstance(report["source"], list) or not report["source"]:
             raise ValueError("Нет текста исходного документа")
+        if source is not None:
+            from .executable import verify_source
+            if name != source.name:
+                raise ValueError("Имя или формат полученного ТЗ отличаются от отправленного")
+            verify_source(report, source)
         # The renderer expands both PDF pages and Word addresses into per-line maps.
         def spans(key):
             rows = run.get(key, [])
@@ -181,6 +186,7 @@ class Run:
     proof_total: int | None = None
     checked_proofs: set = field(default_factory=set)
     imported: bool = False
+    project_run: bool = False
 
     def record(self, line):
         if line == codex_provider.FALLBACK_PROGRESS:
@@ -533,6 +539,8 @@ class Workbench:
             status = {"state": run.state, "progress": list(run.progress), "error": run.error, "mode": run.mode}
             if run.imported:
                 status["imported"] = True
+            if run.project_run:
+                status["execution"] = "project"
             if run.group_total is not None:
                 status["coverage"] = {"checked": len(run.checked_groups), "total": run.group_total, "phase": run.phase}
                 if run.proof_total is not None:
@@ -555,7 +563,9 @@ class Workbench:
             return run.directory
 
     def start(self, mode, baseline, name, length, stream, findings=(), decisions=(), baseline_sha256=None,
-              dialogue_tokens=(), dialogue_snapshot=False):
+              dialogue_tokens=(), dialogue_snapshot=False, project_run=False):
+        if project_run and (mode != "full" or baseline is not None):
+            raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Через сервер проекта доступно полное ревью.")
         if not self.upload_lock.acquire(blocking=False):
             raise WorkbenchError(HTTPStatus.CONFLICT, "Уже загружается другой документ.")
         reserved = False
@@ -600,7 +610,7 @@ class Workbench:
             uploads.mkdir(parents=True, mode=0o700)
             document = uploads / name
             document.write_bytes(payload)
-            run = Run(identifier, mode, directory)
+            run = Run(identifier, mode, directory, project_run=project_run)
             with self.lock:
                 self.runs[identifier] = run
                 self.active = identifier
@@ -662,7 +672,11 @@ class Workbench:
         resume_key = None
         try:
             options = {"findings": findings} if findings else {}
-            if run.mode == "full" and self.worker is cli_worker:
+            worker = self.worker
+            if run.project_run:
+                from .project_review import project_worker
+                worker = project_worker
+            if run.mode == "full" and worker is cli_worker:
                 resume_key = (document.suffix.lower(), sha256(document.read_bytes()).digest())
                 checkpoint = self.interrupted_reviews.get(resume_key, run.directory / "checkpoints")
                 if checkpoint != run.directory / "checkpoints":
@@ -674,7 +688,7 @@ class Workbench:
                 options.update(decisions=decisions)
             if clarifications:
                 options.update(clarifications=clarifications)
-            self.worker(run.mode, document, baseline, json_report, html_report, self.model, on_progress, **options)
+            worker(run.mode, document, baseline, json_report, html_report, self.model, on_progress, **options)
             if not all((run.directory / name).is_file() for name in REPORT_FILES):
                 raise SafeWorkerError("Проверка не сформировала оба отчёта.")
         except SafeWorkerError as exc:
@@ -701,6 +715,7 @@ class Workbench:
 
 
 class WorkbenchHandler(BaseHTTPRequestHandler):
+    allow_project_runs = True
     server_version = "ReviewerWorkbench"
     structure_slot = BoundedSemaphore(1)
     structure_waiter = BoundedSemaphore(1)
@@ -822,6 +837,8 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 return
             if route.path == "/":
                 page = (app.root / "reviewer" / PAGE.name).read_text(encoding="utf-8")
+                if not self.allow_project_runs:
+                    page = re.sub(r"<!--project-button-->.*?<!--/project-button-->", "", page, flags=re.DOTALL)
                 model = app.model or codex_provider.default_model()
                 fallback = codex_provider.fallback_model(model)
                 disclosure = escape(model)
@@ -899,6 +916,15 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             route = self.route(write=True)
+            if route.path == "/api/project-runs":
+                if not self.allow_project_runs:
+                    raise WorkbenchError(HTTPStatus.NOT_FOUND, "Страница не найдена.")
+                if route.query:
+                    raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Для проверки через сервер проекта передайте только файл.")
+                name, size = self.document_upload()
+                identifier = self.app.start("full", None, name, size, self.rfile, project_run=True)
+                self.json(HTTPStatus.ACCEPTED, {"id": identifier})
+                return
             if route.path == "/api/structure" and not route.query:
                 self.json(HTTPStatus.OK, self.check_structure())
                 return

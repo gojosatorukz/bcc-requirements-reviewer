@@ -99,6 +99,7 @@ class PublicServer(ThreadingHTTPServer):
 
 
 class PublicHandler(WorkbenchHandler):
+    allow_project_runs = False
     entry = None
     new_cookie = None
 

@@ -280,6 +280,10 @@ a{color:var(--accent);text-underline-offset:.18em}
         <p id="upload-error" class="error" role="alert" hidden></p>
         <div class="check-actions"><button id="submit" type="submit">Запустить проверку</button>
           <button id="structure-check" class="text-action" type="button" aria-controls="structure-result">Проверить структуру без ИИ</button></div>
+        <!--project-button--><section id="project-review" class="local-help" aria-labelledby="project-submit">
+          <p id="project-hint">Для полного ревью без своего ключа можно отправить документ на <strong>razbor-tz.onrender.com</strong>. После нажатия сервер проекта передаст текст модели Google Gemini, а при исчерпании квоты — Cloudflare Workers AI. Готовый отчёт откроется здесь.</p>
+          <button type="submit" class="text-action" id="project-submit" aria-describedby="project-hint">Проверить через сервер проекта</button>
+        </section><!--/project-button-->
       </form>
       <section id="structure-result" class="structure-result" aria-labelledby="structure-title" hidden>
         <h3 id="structure-title" tabindex="-1">Структура документа</h3>
@@ -546,6 +550,10 @@ function refreshControls() {
   get('finding-reset').disabled = busy;
   get('use-owner-decisions').disabled = busy;
   get('submit').disabled = busy || (recheck && (!baseline.value || Boolean(findingLoad)));
+  if (get('project-review')) {
+    get('project-review').hidden = recheck;
+    get('project-submit').disabled = busy || recheck;
+  }
   get('structure-check').disabled = busy || Boolean(structureRequest);
   get('download-source').hidden = !fromText || !pastedText.value.trim();
   get('discussion-recheck').disabled = busy || answering;
@@ -1200,7 +1208,8 @@ async function poll(run) {
     const status = await request('/api/status/' + run.id);
     if (session.last?.id !== run.id) return;
     setBrandState(status.state === 'done' ? 'done' : status.state === 'failed' ? 'failed' : 'working');
-    const label = modeLabels[status.mode] || modeLabels[run.mode];
+    const label = status.execution === 'project' ? 'Полное ревью на сервере проекта' :
+      modeLabels[status.mode] || modeLabels[run.mode];
     showProgress(Array.isArray(status.progress) ? status.progress : []);
     showCoverage(status.coverage);
     const phase = {groups:'Проверка строк и сценариев', whole:'Сверка требований', executables:'Расчёт примеров',
@@ -1383,6 +1392,8 @@ get('recovery-structure').addEventListener('click', event => {
 form.addEventListener('submit', async event => {
   event.preventDefault();
   if (busy || (mode() === 'recheck' && findingLoad)) return;
+  const throughProject = event.submitter?.id === 'project-submit';
+  if (throughProject && mode() !== 'full') return;
   dismissRecheck();
   const selectedFile = validatedDocument();
   if (!selectedFile) return;
@@ -1415,7 +1426,7 @@ form.addEventListener('submit', async event => {
   setCompanionRun('Отправка ТЗ', submittedAt, selectedFile.name);
   setStatus('Загружаем документ…', false, true);
   try {
-    const response = await request('/api/runs?' + params, documentUpload(selectedFile));
+    const response = await request(throughProject ? '/api/project-runs' : '/api/runs?' + params, documentUpload(selectedFile));
     if (!idPattern.test(response.id)) throw new Error('Сервер не вернул номер прогона.');
     session.last = {id:response.id, name:selectedFile.name, mode:selectedMode, findings, submittedAt};
     if (params.has('dialogue_snapshot')) {

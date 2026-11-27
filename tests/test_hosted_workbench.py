@@ -56,6 +56,13 @@ class HostedWorkbenchTest(unittest.TestCase):
     def upload(self, cookie, origin="https://review.example"):
         return self.request("POST", "/api/runs?mode=full", cookie, origin, b"my requirements")
 
+    def test_public_site_cannot_forward_uploads_to_the_project_service(self):
+        cookie = self.new_visitor()
+        page = self.request("GET", "/", cookie)[1].decode()
+        self.assertNotIn('id="project-submit"', page)
+        self.assertEqual(self.request("POST", "/api/project-runs", cookie, "https://review.example", b"spec")[0], 404)
+        self.assertFalse(self.server.model_requests)
+
     def test_public_gemini_example_is_the_recorded_run_and_consumes_no_model_quota(self):
         code, html, headers = self.request("GET", "/reports/demo/gemini.html")
         self.assertEqual(code, 200)
