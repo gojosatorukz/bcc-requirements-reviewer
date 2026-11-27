@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 
 from reviewer.example_shapes import object_shapes
-from reviewer.full_render import render_json_checks, validate_report
+from reviewer.full_render import render_json_checks, response_field_comparison, validate_report
 from reviewer.json_examples import inspect_examples
 from reviewer.segments import segment
 
@@ -13,6 +13,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExampleShapeTests(unittest.TestCase):
+    def test_comparison_is_scoped_to_one_parent_and_distinguishes_the_example_caption(self):
+        lines = ["## Lookup", "### HTTP 200", "```json", '{"ready":true}', "```",
+                 "### HTTP 403", "**404**", "```json", '{"reason":"unknown"}', "```",
+                 "## Lookup", "### HTTP 202", "```json", '{"other":"scope"}', "```"]
+        blocks = segment(lines)
+        shapes = object_shapes(lines, blocks, inspect_examples(lines, blocks))
+        by_number = dict(enumerate(lines, 1))
+        html = response_field_comparison(by_number, shapes, blocks)
+        self.assertIn('404 (раздел 403)', html)
+        self.assertIn('Обязано ли поле <code>ready</code>', html)
+        self.assertNotIn('<code>other</code>', html)
+        self.assertNotIn('#source-line-13', html)
+        # An unlisted key in a truncated view cannot establish its absence.
+        shapes[1]["key_count"] += 1
+        html = response_field_comparison(by_number, shapes, blocks)
+        self.assertNotIn('Обязано ли поле <code>ready</code>', html)
+
     def test_anchored_observations_keep_duplicate_status_examples_separate(self):
         lines = ["## First API", "### HTTP 200", "```json", '{"ok":4}', "```",
                  "```json", '{"error":"bad"}', "```", "## Second API",

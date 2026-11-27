@@ -14,7 +14,7 @@ from .json_examples import check_findings, verify_saved_checks
 from .example_shapes import object_shapes
 from . import priority
 from .render import render_conflict, render_passport, render_source, safe
-from .segments import segment
+from .segments import HEADING, segment
 
 
 def validate_report(report):
@@ -237,7 +237,62 @@ def decision_brief(report):
             + '</p>' + "".join(cards) + '</section>')
 
 
-def render_json_checks(checks, lines, shapes=()):
+def response_field_comparison(lines, shapes, segments):
+    """Compare complete, observed key sets only within sibling HTTP response sections."""
+    by_start = {shape["start"]: shape for shape in shapes}
+    headings, groups = [], defaultdict(list)
+    for block in segments:
+        n = block["start"]
+        if block["kind"] == "заголовок":
+            match = HEADING.match(lines[n].strip())
+            if match:
+                level = len(match[1])
+                headings = [h for h in headings if h[0] < level]
+                headings.append((level, n, match[2].strip()))
+        if n not in by_start or len(headings) < 2:
+            continue
+        status = re.match(r"^(?:HTTP\s+([1-5]\d\d)\b|([1-5]\d\d)\.\s*\S)", headings[-1][2], re.I)
+        if not status:
+            continue
+        code = status[1] or status[2]
+        caption = lines.get(n - 1, "").strip(" \t*`")
+        # Some documents label the example differently from its enclosing status heading.
+        label = f"{caption} (раздел {code})" if re.fullmatch(r"[1-5]\d\d", caption) and caption != code else code
+        groups[headings[-2][1]].append((by_start[n], label))
+    tables = []
+    for parent, group in groups.items():
+        if len(group) < 2:
+            continue
+        keys = list(dict.fromkeys(k for shape, _ in group for k in shape["keys"]))
+        rows = []
+        for key in keys[:32]:
+            present, absent, absent_codes = [], [], []
+            for shape, label in group:
+                anchor = link(f"source-line-{shape['start']}", f"{label} · строка {shape['start']}")
+                if key in shape["keys"]:
+                    present.append(anchor)
+                elif shape["key_count"] == len(shape["keys"]):
+                    absent.append(anchor)
+                    absent_codes.append(label)
+            if present and absent:
+                codes = ", ".join(dict.fromkeys(absent_codes))
+                rows.append(f'<tr><td><code>{safe(key)}</code></td><td>{", ".join(present)}</td>'
+                            f'<td>{", ".join(absent)}</td><td>Обязано ли поле <code>{safe(key)}</code> '
+                            f'присутствовать в ответах {safe(codes)} для показанных случаев?</td></tr>')
+        if rows:
+            limit = '<p>Сопоставлены первые 32 имени поля.</p>' if len(keys) > 32 else ''
+            tables.append(f'<p>Раздел ответов · {line_link(parent)}</p><table><thead><tr><th>Поле</th>'
+                          '<th>Есть в примере</th><th>Отсутствует в примере</th><th>Вопрос к контракту</th>'
+                          '</tr></thead><tbody>' + ''.join(rows) + '</tbody></table>' + limit)
+    if not tables:
+        return ''
+    return ('<section id="response-fields"><h2>Состав ответов по примерам</h2>'
+            '<p>Сопоставлены ключи объектов из одного раздела. Проверьте условия по нормативной схеме. '
+            'Если она оставляет выбор, передайте вопрос владельцу контракта.</p>'
+            + ''.join(tables) + '</section>')
+
+
+def render_json_checks(checks, lines, shapes=(), segments=()):
     examples = checks.get("examples", [])
     if not examples:
         return ""
@@ -259,7 +314,7 @@ def render_json_checks(checks, lines, shapes=()):
         rows.append(f'<li>{line_link(item["start"])} · <strong>{status}</strong>{detail}</li>')
     return ('<section id="json-syntax"><h2>Синтаксис JSON-примеров</h2>'
             '<p>Парсер проверяет распознанные примеры. Условия обязательности полей и поведение API оцениваются в реестре требований.</p>'
-            '<ul>' + "".join(rows) + '</ul></section>')
+            '<ul>' + "".join(rows) + '</ul></section>' + response_field_comparison(lines, shapes, segments))
 
 
 def render_decision_drafts(finding, candidates):
@@ -458,7 +513,7 @@ def render_full(report):
 <section id="actions"><h2>Что исправить в первую очередь</h2><p>Замечания в порядке приоритета. У каждого есть адресат, основание и предлагаемое изменение.</p>
 {''.join(findings) or '<p>Замечаний не выявлено.</p>'}</section>
 <section id="quality"><h2>Качество набора требований</h2>{axes}</section>
-{render_json_checks(report.get("json_checks", {}), lines, report.get("example_shapes", ()))}
+{render_json_checks(report.get("json_checks", {}), lines, report.get("example_shapes", ()), report["segments"])}
 {qa_cases}
 <section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
 <table class="registry"><thead><tr><th scope="col">ID отчёта<br>ID в ТЗ</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
