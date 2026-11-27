@@ -19,9 +19,9 @@ try {
   const context = await browser.newContext({viewport:{width:390,height:844}});
   const page = await context.newPage();
   await page.goto(base, {timeout:120000,waitUntil:'domcontentloaded'});
-  await page.locator('input[name="source"][value="file"]').check();
+  await page.getByText('Загрузить файл', {exact:true}).click();
   await page.locator('#file').setInputFiles(file);
-  await page.locator('input[name="mode"][value="full"]').check();
+  assert.ok(await page.locator('input[name="mode"][value="full"]').isChecked());
   const submitted = page.waitForResponse(r => new URL(r.url()).pathname === '/api/runs' && r.request().method() === 'POST');
   await page.locator('#submit').click();
   const response = await submitted;
@@ -47,7 +47,9 @@ try {
     await page.locator('#recovery-structure').click();
     const structure = await inspected;
     assert.equal(structure.status(), 200);
-    evidence.structure = await structure.json();
+    await page.locator('#structure-counts').waitFor();
+    evidence.structure = Object.fromEntries(await page.locator('#structure-counts dt').evaluateAll(
+      nodes => nodes.map(node => [node.textContent, node.nextElementSibling.textContent])));
     evidence.ready_report_visible = await page.locator('#run-recovery a[href="/reports/demo/review.html"]').isVisible();
     process.exitCode = 2;
   }

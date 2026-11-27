@@ -1566,6 +1566,11 @@ function publishReport(report, id, sha) {
   get('open-worked-example').textContent = id === 'demo' ? 'Разобрать пример из банка' : 'К разбору своего ТЗ';
   const activeLink = get('active-report-link');
   activeLink.href = reportUrl;
+  if (id === 'demo' && reportHash.test(sha)) {
+    const rendered = reportUrl + '?sha256=' + sha;
+    activeLink.href = rendered;
+    get('saved-report-link').href = rendered;
+  }
   activeLink.target = '_blank';
   activeLink.rel = 'noopener';
   const download = get('active-json-link');
