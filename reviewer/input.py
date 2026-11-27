@@ -9,7 +9,10 @@ from .word_input import docx_lines
 
 INPUT_LIMITS = {".md": 120_000, ".txt": 120_000, ".pdf": 16_000_000, ".docx": 16_000_000}
 CODE_FONT = re.compile(r"mono|courier|menlo|consolas|fixed|sourcecode|cascadiacode", re.I)
-JSON_START = re.compile(r'^\s*(?:\{\s*"(?:[^"\\]|\\.)+"\s*:|\[\s*(?:\{|\[|"|-?\d|true\b|false\b|null\b))')
+JSON_KEY = r'"(?:[^"\\]|\\.)*"\s*:'
+JSON_START = re.compile(
+    rf'^\s*(?:\{{\s*{JSON_KEY}|(?:\[\s*)+(?:\{{\s*(?:{JSON_KEY}|\}})|\]|"|-?\d|true\b|false\b|null\b))'
+)
 
 
 def pdf_json_blocks(rows, code_lines, first):

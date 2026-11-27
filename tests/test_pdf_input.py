@@ -33,7 +33,8 @@ class PdfInputTest(unittest.TestCase):
             pdf = Canvas(str(path))
             pdf.setFont("Courier", 11)
             rows = ['GET /{account}', '{placeholder}', '{"id": 1} is just prose', '{"ok": "braces } ["}',
-                    '{', ' "items": [1, 2,],', ' "id": 3', '}', '["APPROVED", "REJECTED"]']
+                    '{', ' "items": [1, 2,],', ' "id": 3', '}', '["APPROVED", "REJECTED"]',
+                    '[[wiki-link]]', '[{template}]', '[[{}]]']
             for n, row in enumerate(rows):
                 pdf.drawString(35, 740 - n * 18, row)
             pdf.setFont("Helvetica", 11)
@@ -43,7 +44,7 @@ class PdfInputTest(unittest.TestCase):
         native = segment(lines, meta["pdf_json_blocks"])
         checks = inspect_examples(lines, native)["examples"]
         self.assertEqual([(r["start"], r["end"], r["status"]) for r in checks],
-                         [(4, 4, "valid"), (5, 8, "invalid"), (9, 9, "valid")])
+                         [(4, 4, "valid"), (5, 8, "invalid"), (9, 9, "valid"), (12, 12, "valid")])
         self.assertEqual(checks[1]["line"], 6)
         self.assertFalse(any("```" in text for text in lines))
         self.assertEqual(inspect_examples(lines, segment(lines))["examples"], [])
