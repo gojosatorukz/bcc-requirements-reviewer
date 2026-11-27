@@ -83,6 +83,10 @@ def main():
             for extension in ("json", "html"):
                 assert read(f"/reports/{case}/{stage}.{extension}") == (ROOT / folder / ("review." + extension)).read_bytes()
             print(f"Public {case}/{stage}: archived HTML and JSON match.")
+        for stage, saved in (("partial", "after"), ("corrected", "control")):
+            for extension in ("json", "html"):
+                assert read(f"/reports/spectrometer/{stage}.{extension}") == (ROOT / "eval/quota-review" / f"{saved}.{extension}").read_bytes()
+        print("Both public partial reports match the browser downloads.")
         samples = [(case, stage, ROOT / f"{folder}-{variant}")
                    for case, folder in (("packing", "eval/jury-fallback/runs/astra"),
                                         ("recorder", "eval/fixed-acceptance/results/recorder"))

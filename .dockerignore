@@ -9,6 +9,10 @@
 !reviewer/*.js
 !cloud/runtime.py
 !cloud/public.py
+!eval/quota-review/after.html
+!eval/quota-review/after.json
+!eval/quota-review/control.html
+!eval/quota-review/control.json
 !eval/gemini/behavior/bcc-release.html
 !eval/gemini/behavior/bcc-release.json
 !eval/jury-fallback/runs/astra-v1.html

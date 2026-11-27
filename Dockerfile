@@ -25,6 +25,7 @@ COPY runs/bcc-final/review.json runs/bcc-final/review.html runs/bcc-final/
 COPY runs/bcc-release/review.json runs/bcc-release/review.html runs/bcc-release/review.pdf runs/bcc-release/
 COPY runs/bcc-release/owner/dialogue.json runs/bcc-release/owner/dialogue.html runs/bcc-release/owner/wrong-revision.html runs/bcc-release/owner/
 COPY cloud/runtime.py cloud/public.py cloud/
+COPY eval/quota-review/after.* eval/quota-review/control.* eval/quota-review/
 COPY eval/gemini/behavior/bcc-release.html eval/gemini/behavior/bcc-release.json eval/gemini/behavior/
 COPY eval/jury-fallback/runs/astra-v1.* eval/jury-fallback/runs/astra-v2.* eval/jury-fallback/runs/
 COPY eval/hosted-reserve/runs/site/review.* eval/hosted-reserve/runs/site/

@@ -29,6 +29,8 @@ REPORT_FILES = {"review.html": "text/html; charset=utf-8", "review.json": "appli
 SAVED_EXAMPLES = {
     f"/reports/{route}.{ext}": f"{source}.{ext}"
     for route, source in (("demo/gemini", "eval/gemini/behavior/bcc-release"),
+                          ("spectrometer/partial", "eval/quota-review/after"),
+                          ("spectrometer/corrected", "eval/quota-review/control"),
                           ("packing/before", "eval/jury-fallback/runs/astra-v1"),
                           ("packing/after", "eval/jury-fallback/runs/astra-v2"),
                           ("bindery/before", "eval/hosted-reserve/runs/site/review"),

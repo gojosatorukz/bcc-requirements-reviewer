@@ -1,0 +1,11 @@
+{
+  "stage": "control",
+  "origin": "https://razbor-tz.onrender.com",
+  "filename": "reservations-fixed.md",
+  "sha256": "62b176d26be005af7af7f899c351dfe34ab81191af7467ef675eeb57e67b335e",
+  "accepted": 202,
+  "status": "reservations-fixed.md · Готов частичный отчёт",
+  "summary": "Частичный отчёт\n\nGemini достиг лимита. Замечания собраны по локальным правилам.\n\nВ пределах этих проверок замечаний нет.\n\nОткрыть отчёт с цитатами\nСкачать JSON\n\nДля полного смыслового ревью повторите запуск позже или используйте свою модель.",
+  "questions": [],
+  "checked_utc": "2026-11-27T17:11:12.107Z"
+}
