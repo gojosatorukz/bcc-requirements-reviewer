@@ -126,8 +126,9 @@ test('the companion restores the actual elapsed clock and keeps questions on the
       }));
     }, id);
     let state = 'running';
+    let phase = 'whole';
     await page.route('**/api/status/'+id, route => route.fulfill({json:{
-      state,mode:'full',progress:[],coverage:{phase:'whole',checked:1,total:1}
+      state,mode:'full',progress:[],coverage:{phase,checked:1,total:1}
     }}));
     await page.goto(base);
     await page.waitForFunction(() => document.querySelector('#companion-stage').textContent === 'Сверка требований'
@@ -140,6 +141,12 @@ test('the companion restores the actual elapsed clock and keeps questions on the
     await page.keyboard.press('Enter');
     assert.match(await page.locator('#assistant-document').innerText(), /Полное ревью/);
     assert.match(await page.locator('#assistant-run-note').innerText(), /Свой документ\.md · Сверка требований/);
+    assert.equal(await page.locator('#run-face').getAttribute('data-phase'), 'whole');
+    for (const next of ['executables', 'render']) {
+      phase = next;
+      await page.waitForFunction(expected => document.querySelector('#brand-face').dataset.phase === expected, next);
+      assert.equal(await page.locator('#run-face').getAttribute('data-phase'), next);
+    }
     state = 'failed';
     await page.waitForFunction(()=>document.querySelector('#brand-face').dataset.state === 'failed');
     assert.equal(await page.locator('#assistant-run-note').isVisible(), false);

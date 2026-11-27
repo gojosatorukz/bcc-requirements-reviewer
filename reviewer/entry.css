@@ -38,8 +38,8 @@ body {font-family: Rubik, system-ui, sans-serif}
 }
 .entry-head {grid-area: title}
 .entry-head h1 {
-  font: 870 clamp(3.15rem,6.7vw,5.9rem)/.98 Rubik,system-ui,sans-serif;
-  letter-spacing: -.072em; margin: 0;
+  font: 770 clamp(3.15rem,5.8vw,5.1rem)/.98 Rubik,system-ui,sans-serif;
+  letter-spacing: -.048em; margin: 0;
 }
 .entry-head h1 span {color: var(--panel)}
 .entry-head p {font-size: clamp(1rem,1.5vw,1.22rem); line-height: 1.25; margin-top: .75rem}
@@ -93,7 +93,7 @@ body {font-family: Rubik, system-ui, sans-serif}
 }
 .receipt-source {display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem .6rem; font-size: .78rem}
 .receipt-source strong {font-size: .77rem; letter-spacing: .07em}
-.receipt h2 {margin-block: 1.45rem 1.1rem; font-size: clamp(2.35rem,4vw,3.8rem); line-height: .99; font-weight: 825; letter-spacing: -.064em}
+.receipt h2 {margin-block: 1.45rem 1.1rem; font-size: clamp(2.1rem,3.4vw,3.1rem); line-height: 1.02; font-weight: 740; letter-spacing: -.04em}
 .receipt dl {margin: 0}
 .receipt-dates {display: grid; gap: .18rem; padding-bottom: 1rem; border-bottom: 2px dashed #b7a99d}
 .receipt-dates div {display: flex; align-items: baseline; justify-content: space-between; gap: .4rem}
@@ -132,4 +132,35 @@ body {font-family: Rubik, system-ui, sans-serif}
   #drop label span {display: block; font-size: .88rem}
   .receipt-dates {font-size: .91rem}
   .receipt-source {font-size: .72rem}
+}
+
+.run-heading {display: flex; align-items: center; gap: .55rem}
+.intro-copy .difference-link, #run-links .difference-link {
+  display: inline-block; padding: .45rem .8rem; border-radius: .5rem;
+  background: var(--indigo); color: white; text-decoration: none; font-weight: 600;
+}
+.brand-mark[data-phase="whole"] .brand-mouth {border-radius: 50%; border: 1.5px solid #fff8e9; width: .23rem; height: .23rem}
+.brand-mark[data-phase="executables"] .brand-mouth {height: .16rem; width: .52rem; background: #ffe148; border-radius: .1rem}
+.brand-mark[data-phase="queued"] .brand-eyes, .brand-mark[data-phase="reconnect"] .brand-eyes {top: .66rem}
+.brand-mark[data-phase="done"] .brand-mouth {width: .66rem; height: .33rem; background: #ffe148}
+@media(prefers-reduced-motion:no-preference) {
+  .brand-mark[data-phase="groups"] .brand-eyes {animation: read-lines 1.65s linear infinite}
+  .brand-mark[data-phase="whole"] .brand-eyes {animation: compare-sides 1.8s ease-in-out infinite}
+  .brand-mark[data-phase="executables"] {animation: count-steps 1.05s ease-in-out infinite}
+  .brand-mark[data-phase="render"] .brand-eyes {animation: brand-blink 2.6s ease-in-out infinite}
+  .brand-mark[data-phase="queued"] .brand-eyes, .brand-mark[data-phase="reconnect"] .brand-eyes {animation: brand-blink 3.6s ease-in-out infinite}
+}
+@keyframes read-lines {
+  0%,100% {transform: translate(-2px,-1px)}
+  45% {transform: translate(2px,-1px)}
+  52% {transform: translate(-2px,1px)}
+  94% {transform: translate(2px,1px)}
+}
+@keyframes compare-sides {
+  0%,38%,100% {transform: translateX(-2.5px)}
+  53%,85% {transform: translateX(2.5px)}
+}
+@keyframes count-steps {
+  0%,58%,100% {transform: rotate(-7deg)}
+  28% {transform: translateY(-2px) rotate(2deg)}
 }

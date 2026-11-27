@@ -263,28 +263,11 @@ a{color:var(--accent);text-underline-offset:.18em}
           <button type="submit" class="text-action" id="project-submit" aria-describedby="project-hint">Проверить через сервер проекта</button>
         </section><!--/project-button-->
       </form>
-      <section id="structure-result" class="structure-result" aria-labelledby="structure-title" hidden>
-        <h3 id="structure-title" tabindex="-1">Структура документа</h3>
-        <p id="structure-state" role="status" aria-atomic="true"></p>
-        <dl id="structure-counts" hidden></dl>
-        <p id="structure-summary" hidden></p>
-        <ul id="structure-diagnostics" aria-label="Замечания к примерам JSON" hidden></ul>
-      </section>
-      <details class="restore-review" id="restore-review">
-        <summary>Импортировать свой отчёт (.json)</summary>
-        <label for="import-file">JSON полного ревью</label>
-        <input id="import-file" type="file" accept=".json,application/json" aria-describedby="import-hint import-state">
-        <small id="import-hint">До 8 МиБ. При открытии модель не вызывается.</small>
-        <p id="import-state" role="status" aria-live="polite"></p>
-      </details>
-      <details id="local-review" class="local-help">
-        <summary>Проверить ТЗ на своём компьютере</summary>
-        <p>Откройте папку с выданной вам копией проекта. В разделе «Локальный запуск» файла README.md описано, как установить зависимости и подключить свой ключ Gemini или Codex CLI. Затем подставьте имя своего файла в команду полного ревью.</p>
-        <pre><code>python -m reviewer "Моё ТЗ.md" review.json</code></pre>
-        <p>Подходят MD, TXT, DOCX и текстовый PDF. Когда проверка завершится, <a href="#restore-review" data-open-details="restore-review">импортируйте review.json</a>.</p>
-      </details>
       <div id="run-status" class="status-box" hidden>
-        <h3>Статус проверки</h3>
+        <h3 class="run-heading" id="run-heading" tabindex="-1">
+          <span class="brand-mark" id="run-face" data-state="idle" aria-hidden="true"><span class="brand-eyes"></span><span class="brand-mouth"></span></span>
+          Статус проверки
+        </h3>
         <p id="status-message" role="status" aria-atomic="true"></p>
         <div class="recovery" id="run-recovery" hidden>
           <strong>Как продолжить со своим ТЗ</strong>
@@ -312,10 +295,31 @@ a{color:var(--accent);text-underline-offset:.18em}
           <button class="assistant-launch" id="assistant-recheck-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel" hidden>Спросить о перепроверке</button>
         </section>
         <div class="actions" id="run-links" hidden>
+          <a class="difference-link" id="run-difference" target="_blank" rel="noopener" hidden>Посмотреть расхождение ↗</a>
           <a class="action" id="run-html" target="_blank" rel="noopener">Открыть HTML-отчёт</a>
           <a id="run-json">Скачать JSON</a>
         </div>
       </div>
+      <section id="structure-result" class="structure-result" aria-labelledby="structure-title" hidden>
+        <h3 id="structure-title" tabindex="-1">Структура документа</h3>
+        <p id="structure-state" role="status" aria-atomic="true"></p>
+        <dl id="structure-counts" hidden></dl>
+        <p id="structure-summary" hidden></p>
+        <ul id="structure-diagnostics" aria-label="Замечания к примерам JSON" hidden></ul>
+      </section>
+      <details class="restore-review" id="restore-review">
+        <summary>Импортировать свой отчёт (.json)</summary>
+        <label for="import-file">JSON полного ревью</label>
+        <input id="import-file" type="file" accept=".json,application/json" aria-describedby="import-hint import-state">
+        <small id="import-hint">До 8 МиБ. При открытии модель не вызывается.</small>
+        <p id="import-state" role="status" aria-live="polite"></p>
+      </details>
+      <details id="local-review" class="local-help">
+        <summary>Проверить ТЗ на своём компьютере</summary>
+        <p>Откройте папку с выданной вам копией проекта. В разделе «Локальный запуск» файла README.md описано, как установить зависимости и подключить свой ключ Gemini или Codex CLI. Затем подставьте имя своего файла в команду полного ревью.</p>
+        <pre><code>python -m reviewer "Моё ТЗ.md" review.json</code></pre>
+        <p>Подходят MD, TXT, DOCX и текстовый PDF. Когда проверка завершится, <a href="#restore-review" data-open-details="restore-review">импортируйте review.json</a>.</p>
+      </details>
     </section>
     <aside class="receipt-scene" aria-labelledby="receipt-name">
       <div class="receipt">
@@ -341,6 +345,7 @@ a{color:var(--accent);text-underline-offset:.18em}
         <h2 id="review-title" tabindex="-1">Проверка требований</h2>
         <p id="review-document">Загрузите документ или откройте демо-отчёт.</p>
         <small id="review-origin" hidden></small>
+        <a class="difference-link" id="active-difference" target="_blank" rel="noopener" hidden>Посмотреть расхождение ↗</a>
         <a id="active-report-link" href="#demo-heading">Отчёт</a><a id="active-json-link" href="/reports/demo/review.json?download=1" download="review.json" aria-label="Скачать JSON текущего отчёта" hidden>JSON ↓</a>
         <a id="active-jira-export" download="review-issues.csv" hidden>Скачать задачи для Jira (CSV)</a>
       </div>
@@ -438,9 +443,11 @@ a{color:var(--accent);text-underline-offset:.18em}
 <script>
 'use strict';
 const get = id => document.getElementById(id);
-function setBrandState(state) {
-  const face = get('brand-face');
-  if (face.dataset.state !== state) face.dataset.state = state;
+function setBrandState(state, phase = state) {
+  for (const face of [get('brand-face'), get('run-face')]) {
+    face.dataset.state = state;
+    face.dataset.phase = phase;
+  }
 }
 // The clock measures time since this browser sent the document, including the queue.
 let companionSince = null;
@@ -534,6 +541,7 @@ function refreshControls() {
   loadFindings(recheck ? baseline.value : '');
   get('baseline-field').hidden = !recheck;
   get('modes').disabled = busy;
+  get('submit').textContent = recheck ? 'Проверить новую версию' : 'Запустить проверку';
   const fromText = form.elements.source.value === 'text';
   get('input-sources').disabled = busy;
   get('paste-panel').hidden = !fromText;
@@ -1203,7 +1211,6 @@ async function poll(run) {
   try {
     const status = await request('/api/status/' + run.id);
     if (session.last?.id !== run.id) return;
-    setBrandState(status.state === 'done' ? 'done' : status.state === 'failed' ? 'failed' : 'working');
     const label = status.execution === 'project' ? 'Полное ревью на сервере проекта' :
       modeLabels[status.mode] || modeLabels[run.mode];
     showProgress(Array.isArray(status.progress) ? status.progress : []);
@@ -1212,6 +1219,8 @@ async function poll(run) {
       render:'Сборка отчёта'}[status.coverage?.phase];
     const description = status.state === 'running' && phase ? phase : stateLabels[status.state] || 'Ожидаем статус';
     const inProgress = status.state === 'queued' || status.state === 'running';
+    const facePhase = status.state === 'running' && phase ? status.coverage.phase : status.state;
+    setBrandState(inProgress ? 'working' : status.state, facePhase);
     setCompanionRun(inProgress ? description : '', run.submittedAt, run.name);
     setStatus(label + ' · ' + description, status.state === 'failed', inProgress);
     if (status.state === 'failed') {
@@ -1240,12 +1249,13 @@ async function poll(run) {
     }
   } catch (error) {
     if (session.last?.id !== run.id) return;
-    setBrandState('failed');
     if (error.status === 404) {
+      setBrandState('failed');
       setCompanionRun('');
       forget(run.id);
       setStatus('Прогон недоступен. Запустите проверку снова.', true);
     } else {
+      setBrandState('working', 'reconnect');
       setCompanionRun('Проверяем связь', run.submittedAt, run.name);
       setStatus('Связь с сервером прервалась. Проверяем статус повторно…', true);
       setTimeout(() => poll(run), 3000);
@@ -1412,7 +1422,8 @@ form.addEventListener('submit', async event => {
   }
   busy = true;
   clearReportReuse();
-  setBrandState('working');
+  setBrandState('working', 'sending');
+  get('run-difference').hidden = true;
   refreshControls();
   showError('');
   get('run-links').hidden = true;
@@ -1421,6 +1432,7 @@ form.addEventListener('submit', async event => {
   const submittedAt = Date.now();
   setCompanionRun('Отправка ТЗ', submittedAt, selectedFile.name);
   setStatus('Загружаем документ…', false, true);
+  get('run-heading').focus();
   try {
     const response = await request(throughProject ? '/api/project-runs' : '/api/runs?' + params, documentUpload(selectedFile));
     if (!idPattern.test(response.id)) throw new Error('Сервер не вернул номер прогона.');
@@ -1430,6 +1442,7 @@ form.addEventListener('submit', async event => {
         dialogueTokens:params.getAll('clarification').sort()});
     }
     save();
+    setBrandState('working', 'queued');
     setCompanionRun('В очереди', submittedAt, selectedFile.name);
     setStatus(modeLabels[selectedMode] + ' · В очереди', false, true);
     poll(session.last);
@@ -1582,6 +1595,19 @@ function publishReport(report, id, sha) {
     get('saved-report-link').href = rendered + '#execution-D-01';
     get('receipt-report-link').href = get('saved-report-link').href;
   }
+  // The demo receipt always names the bank. These links belong to the selected document.
+  const divergence = report.executables?.items?.find(item =>
+    item.status === 'executed' && item.result?.scenario?.first_difference);
+  const difference = get('active-difference');
+  difference.hidden = !divergence;
+  if (divergence) difference.href = activeLink.href + '#execution-' + divergence.finding_id;
+  else difference.removeAttribute('href');
+  if (session.last?.id === id) {
+    const runDifference = get('run-difference');
+    runDifference.hidden = !divergence;
+    if (divergence) runDifference.href = difference.href;
+    else runDifference.removeAttribute('href');
+  }
   activeLink.target = '_blank';
   activeLink.rel = 'noopener';
   const download = get('active-json-link');
@@ -1670,7 +1696,7 @@ const demoLoad = loadDemo();
 if (session.full.length) loadGuidedFull(session.full[0].id);
 if (session.last) {
   busy = true;
-  setBrandState('working');
+  setBrandState('working', 'reconnect');
   setCompanionRun('Запрос статуса', null, session.last.name);
   setStatus('Восстанавливаем состояние прогона…');
   poll(session.last);

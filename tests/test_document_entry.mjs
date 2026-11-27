@@ -107,6 +107,9 @@ test('a jury visitor can read the saved example, keep their text after a quota e
     await page.locator('#review-origin').filter({hasText:'Из JSON'}).waitFor();
     const active = await page.locator('#active-report-link').getAttribute('href');
     assert.match(active, /^\/reports\/[a-f0-9]{32}\/review\.html$/);
+    const ownCalculation = await page.locator('#active-difference').getAttribute('href');
+    assert.equal(new URL(ownCalculation).pathname, active);
+    assert.equal(new URL(ownCalculation).hash, '#execution-D-01');
     const exportLink = page.getByRole('link', {name:'Скачать задачи для Jira (CSV)'});
     assert.ok((await exportLink.getAttribute('href')).startsWith(active.replace('review.html', 'issues.csv?sha256=')));
     const csvPromise = page.waitForEvent('download');
@@ -119,6 +122,13 @@ test('a jury visitor can read the saved example, keep their text after a quota e
     assert.match(await report.getAttribute('href'), /^\/reports\/demo\/review\.html\?sha256=[a-f0-9]{64}#execution-D-01$/);
     await page.getByRole('link', {name:'К разбору своего ТЗ'}).click();
     assert.equal(await page.locator('#active-report-link').getAttribute('href'), active);
+
+    // A corrected specification has no calculated divergence to open.
+    const corrected = fileURLToPath(new URL('../eval/jury-fallback/runs/astra-v2.json', import.meta.url));
+    await page.locator('#import-file').setInputFiles(corrected);
+    await page.waitForFunction(old => document.querySelector('#active-report-link').getAttribute('href') !== old, active);
+    assert.equal(await page.locator('#active-difference').isVisible(), false);
+    assert.equal(await page.locator('#active-difference').getAttribute('href'), null);
   } finally {
     await browser.close();
   }
