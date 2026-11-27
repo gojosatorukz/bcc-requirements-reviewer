@@ -68,6 +68,18 @@ class HostedWorkbenchTest(unittest.TestCase):
         self.assertEqual(report["run"]["model"], "gemini-3.5-flash-lite")
         self.assertFalse(self.server.model_requests)
 
+    def test_packing_reports_open_by_direct_links_without_model_quota(self):
+        for version, expected_findings in (("before", 1), ("after", 0)):
+            base = "/reports/packing/" + version
+            code, raw, _ = self.request("GET", base + ".json")
+            self.assertEqual(code, 200)
+            report = json.loads(raw)
+            self.assertEqual(len(report["whole"]["findings"]), expected_findings)
+            code, html, _ = self.request("GET", base + ".html")
+            self.assertEqual(code, 200)
+            self.assertIn(report["run"]["input_sha256"], html.decode())
+        self.assertFalse(self.server.model_requests)
+
     def test_health_and_visitor_isolation_including_completed_download(self):
         self.assertEqual(self.request("GET", "/healthz")[:2], (200, b"ok"))
         self.assertFalse(self.server.visits)

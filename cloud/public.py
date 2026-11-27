@@ -14,7 +14,7 @@ from threading import BoundedSemaphore, Lock
 from time import monotonic
 from urllib.parse import urlsplit
 
-from reviewer.serve import Workbench, WorkbenchError, WorkbenchHandler, cli_worker
+from reviewer.serve import SAVED_EXAMPLES, Workbench, WorkbenchError, WorkbenchHandler, cli_worker
 
 
 COOKIE = "__Host-razbor"
@@ -120,8 +120,8 @@ class PublicHandler(WorkbenchHandler):
         except CookieError:
             jar = SimpleCookie()
         token = jar[COOKIE].value if COOKIE in jar else None
-        landing = path.path in ("/", "/reports/demo/review.html", "/reports/demo/review.pdf", "/reports/demo/review.json",
-                                "/reports/demo/gemini.html", "/reports/demo/gemini.json")
+        landing = path.path in SAVED_EXAMPLES or path.path in (
+            "/", "/reports/demo/review.html", "/reports/demo/review.pdf", "/reports/demo/review.json")
         key, self.entry = self.server.visit(token, landing=not write and landing)
         if key != token:
             self.new_cookie = key

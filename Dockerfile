@@ -25,6 +25,7 @@ COPY runs/bcc-release/review.json runs/bcc-release/review.html runs/bcc-release/
 COPY runs/bcc-release/owner/dialogue.json runs/bcc-release/owner/dialogue.html runs/bcc-release/owner/wrong-revision.html runs/bcc-release/owner/
 COPY cloud/runtime.py cloud/public.py cloud/
 COPY eval/gemini/behavior/bcc-release.html eval/gemini/behavior/bcc-release.json eval/gemini/behavior/
+COPY eval/jury-fallback/runs/astra-v1.* eval/jury-fallback/runs/astra-v2.* eval/jury-fallback/runs/
 RUN chmod -R a+rX,go-w reviewer design runs cloud eval \
     && install -d -m 0700 -o reviewer -g reviewer /home/reviewer/.codex
 USER reviewer

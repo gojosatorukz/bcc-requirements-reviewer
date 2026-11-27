@@ -9,6 +9,10 @@
 !cloud/public.py
 !eval/gemini/behavior/bcc-release.html
 !eval/gemini/behavior/bcc-release.json
+!eval/jury-fallback/runs/astra-v1.html
+!eval/jury-fallback/runs/astra-v1.json
+!eval/jury-fallback/runs/astra-v2.html
+!eval/jury-fallback/runs/astra-v2.json
 !design/concepts/index.html
 !design/concepts/gallery.css
 !design/concepts/case.js

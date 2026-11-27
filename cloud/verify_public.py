@@ -73,8 +73,11 @@ def main():
     print("Fresh specification: a JSON error at line 6 disappears after correction. No LLM request was made.")
 
     if options.with_holdout:
-        for variant in ("v1", "v2"):
+        for variant, stage in (("v1", "before"), ("v2", "after")):
             raw = (ROOT / f"eval/jury-fallback/runs/astra-{variant}.json").read_bytes()
+            assert read(f"/reports/packing/{stage}.json") == raw
+            archived = (ROOT / f"eval/jury-fallback/runs/astra-{variant}.html").read_bytes()
+            assert read(f"/reports/packing/{stage}.html") == archived
             receipt = json.loads(read("/api/import-report", data=raw, headers={
                 "Origin": ORIGIN, "Content-Type": "application/json"}))
             digest = sha256(raw).hexdigest()

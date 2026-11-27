@@ -26,6 +26,13 @@ from .input import INPUT_LIMITS
 ROOT = Path(__file__).resolve().parent.parent
 PAGE = ROOT / "reviewer" / "workbench.html"
 REPORT_FILES = {"review.html": "text/html; charset=utf-8", "review.json": "application/json; charset=utf-8"}
+SAVED_EXAMPLES = {
+    f"/reports/{route}.{ext}": f"{source}.{ext}"
+    for route, source in (("demo/gemini", "eval/gemini/behavior/bcc-release"),
+                          ("packing/before", "eval/jury-fallback/runs/astra-v1"),
+                          ("packing/after", "eval/jury-fallback/runs/astra-v2"))
+    for ext in ("html", "json")
+}
 STATIC_FILES = {
     "/reviewer/guided.css": "text/css; charset=utf-8",
     "/reviewer/guided.js": "text/javascript; charset=utf-8",
@@ -788,10 +795,12 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
         try:
             route = self.route()
             app = self.app
-            if route.path in ("/reports/demo/gemini.html", "/reports/demo/gemini.json"):
+            if route.path in SAVED_EXAMPLES:
                 ext = route.path.rsplit(".", 1)[1]
-                path = app.root / "eval" / "gemini" / "behavior" / ("bcc-release." + ext)
-                name = "bcc-gemini.json" if ext == "json" and route.query == "download=1" else None
+                path = app.root / SAVED_EXAMPLES[route.path]
+                name = None
+                if ext == "json" and route.query == "download=1":
+                    name = "bcc-gemini.json" if route.path == "/reports/demo/gemini.json" else path.name
                 self.reply(HTTPStatus.OK, path.read_bytes(), REPORT_FILES["review." + ext], name)
                 return
             if route.path == "/reports/demo/review.pdf":
