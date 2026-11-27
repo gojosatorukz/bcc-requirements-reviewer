@@ -26,7 +26,7 @@ python3 -m reviewer.render output/recheck.json output/recheck.html
 Тот же диалог доступен через CLI. В следующей команде `SHA` вычисляется по полному JSON-отчёту. Файлы ходов можно сохранить и передать следующему аналитику.
 
 ```sh
-BASE=runs/bcc-submission/review.json
+BASE=runs/bcc-release/review.json
 SHA=$(shasum -a 256 "$BASE" | cut -d ' ' -f 1)
 python3 -m reviewer.clarify "$BASE" --finding D-01 --baseline-sha256 "$SHA" \
   --answer 'Для покупок на стыке месяцев завели отдельный счётчик «Переходящие».' --out output/turn-1.json
