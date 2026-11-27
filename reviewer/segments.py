@@ -14,7 +14,14 @@ def is_table_rule(text):
     return "|" in text and all(TABLE_RULE.fullmatch(cell) for cell in cells)
 
 
-def segment(lines):
+def segment(lines, pdf_json_blocks=()):
+    native = {}
+    previous = 0
+    for span in pdf_json_blocks:
+        if (type(span) is not dict or set(span) != {"start", "end"} or type(span["start"]) is not int
+                or type(span["end"]) is not int or not previous < span["start"] <= span["end"] <= len(lines)):
+            raise ValueError("Неверный диапазон печатного примера JSON в PDF")
+        previous = native[span["start"]] = span["end"]
     blocks = []
     headings = []
     header = None
@@ -29,7 +36,11 @@ def segment(lines):
         kind = "текст"
         fence = FENCE.match(text)
         heading = HEADING.match(text)
-        if fence:
+        if start + 1 in native:
+            kind = "пример json"
+            i = native[start + 1]
+            header = None
+        elif fence:
             marker, language = fence.groups()
             kind = "пример " + (language.strip().lower() or "кода")
             while i < len(lines):

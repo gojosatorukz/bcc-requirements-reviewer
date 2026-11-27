@@ -18,7 +18,7 @@ from .segments import segment
 def validate_report(report):
     lines = source_lines(report)
     raw_lines = [lines.get(i, "") for i in range(1, report["run"]["input_lines"] + 1)]
-    expected = segment(raw_lines)
+    expected = segment(raw_lines, report["run"].get("pdf_json_blocks", ()))
     segments, registry, whole = report["segments"], report["registry"], report["whole"]
     if "json_checks" in report:
         checks = verify_saved_checks(report["json_checks"], raw_lines, expected)

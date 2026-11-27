@@ -119,7 +119,8 @@ def main():
             result, attempts = review_document(prompt, args.model, lines)
         else:
             from .full import analyze
-            result, attempts = analyze(blocks, lines, args.model, args.checkpoint_dir, digest, args.workers)
+            result, attempts = analyze(blocks, lines, args.model, args.checkpoint_dir, digest, args.workers,
+                                       input_metadata.get("pdf_json_blocks", ()))
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
                "provider": "codex-cli", "model": args.model, "agent_version": revision, "engine_sha256": digest,
                "input_name": args.document.name, "input_sha256": input_hash, **input_metadata,

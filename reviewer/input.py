@@ -2,11 +2,48 @@
 
 from hashlib import sha256
 from io import BytesIO
+import re
 
 from .word_input import docx_lines
 
 
 INPUT_LIMITS = {".md": 120_000, ".txt": 120_000, ".pdf": 16_000_000, ".docx": 16_000_000}
+CODE_FONT = re.compile(r"mono|courier|menlo|consolas|fixed|sourcecode|cascadiacode", re.I)
+JSON_START = re.compile(r'^\s*(?:\{\s*"(?:[^"\\]|\\.)+"\s*:|\[\s*(?:\{|\[|"|-?\d|true\b|false\b|null\b))')
+
+
+def pdf_json_blocks(rows, code_lines, first):
+    """Identify standalone typeset containers while retaining their physical line addresses."""
+    tokens = re.compile(r'"(?:\\.|[^"\\])*"|[{}\[\]]')
+    spans = []
+    next_line = 0
+    for start, text in enumerate(rows):
+        if start < next_line or not code_lines[start] or not text.lstrip().startswith(("{", "[")):
+            continue
+        expected = []
+        done = False
+        for end in range(start, min(start + 64, len(rows))):
+            if not code_lines[end]:
+                break
+            for token in tokens.finditer(rows[end]):
+                char = token[0]
+                if char.startswith('"'):
+                    continue
+                if char in ("{", "["):
+                    expected.append("}" if char == "{" else "]")
+                    continue
+                if not expected or expected.pop() != char:
+                    done = True
+                    break
+                if not expected:
+                    if not rows[end][token.end():].strip() and JSON_START.match("\n".join(rows[start:end + 1])):
+                        spans.append({"start": first + start, "end": first + end})
+                        next_line = end + 1
+                    done = True
+                    break
+            if done:
+                break
+    return spans
 
 
 def table_text(rows):
@@ -30,7 +67,7 @@ def pdf_lines(raw):
         raise ValueError("Для входного PDF установите зависимости: python3 -m pip install -r requirements.txt") from exc
 
     lines = []
-    pages = []
+    pages, examples = [], []
     try:
         document = pdfplumber.open(BytesIO(raw))
     except PdfminerException as exc:
@@ -51,20 +88,24 @@ def pdf_lines(raw):
                 y = (obj["top"] + obj["bottom"]) / 2
                 return not any(left <= x < right and top <= y < bottom for left, top, right, bottom in bounds)
 
-            chunks = [(row["top"], row["x0"], [row["text"]])
-                      for row in page.filter(outside_tables).extract_text_lines(return_chars=False)]
-            chunks.extend((table.bbox[1], table.bbox[0], table_text(table.extract())) for table in tables)
-            page_lines = [line for _, _, values in sorted(chunks) for line in values if line.strip()]
+            chunks = [(row["top"], row["x0"], [row["text"]],
+                       all(CODE_FONT.search(c.get("fontname") or "") for c in row["chars"] if c["text"].strip()))
+                      for row in page.filter(outside_tables).extract_text_lines(return_chars=True)]
+            chunks.extend((table.bbox[1], table.bbox[0], table_text(table.extract()), False) for table in tables)
+            rows = [(line, code) for _, _, values, code in sorted(chunks) for line in values if line.strip()]
+            page_lines = [line for line, _ in rows]
             if not page_lines:
                 raise ValueError(f"Не удалось извлечь содержимое страницы {number}")
             start = len(lines) + 1
+            examples.extend(pdf_json_blocks(page_lines, [code for _, code in rows], start))
             lines.extend(page_lines)
             pages.append({"page": number, "start": start, "end": len(lines)})
             lines.append("")
         count = len(document.pages)
     if not lines:
         raise ValueError("В PDF нет читаемого текста")
-    return lines[:-1], {"page_count": count, "pages": pages, "extraction": "pdfplumber · текстовый слой и таблицы с границами"}
+    return lines[:-1], {"page_count": count, "pages": pages, "pdf_json_blocks": examples,
+                       "extraction": "pdfplumber · текстовый слой и таблицы с границами"}
 
 
 def load_document(path):

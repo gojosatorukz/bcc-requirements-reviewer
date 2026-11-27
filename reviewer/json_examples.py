@@ -35,17 +35,24 @@ def canonical_diagnostic(item, lines):
     return item
 
 
+def example_body(lines, start, end):
+    """Return the first body line (one-based) and text of a fenced or printed JSON example."""
+    fence = FENCE.match(lines[start - 1].strip())
+    first, finish = start - 1, end
+    if fence:
+        marker, last = fence[1], lines[end - 1].strip()
+        first += 1
+        finish -= int(end > start and len(last) >= len(marker) and set(last) == {marker[0]})
+    return first + 1, "\n".join(line if line.strip() else "" for line in lines[first:finish])
+
+
 def inspect_examples(lines, segments):
     results = []
     for block in segments:
         if block["kind"] != "пример json":
             continue
         start, end = block["start"], block["end"]
-        marker = FENCE.match(lines[start - 1].strip())[1]
-        last = lines[end - 1].strip()
-        closed = end > start and len(last) >= len(marker) and set(last) == {marker[0]}
-        body = lines[start:end - int(closed)]
-        text = "\n".join(line if line.strip() else "" for line in body)
+        first, text = example_body(lines, start, end)
         item = {"start": start, "end": end, "status": "valid"}
         try:
             def reject_constant(value):
@@ -55,7 +62,7 @@ def inspect_examples(lines, segments):
 
             json.loads(text, parse_int=str, parse_float=str, parse_constant=reject_constant)
         except json.JSONDecodeError as exc:
-            line = min(start + exc.lineno, end)
+            line = min(first + exc.lineno - 1, end)
             item.update(status="invalid", line=line, column=exc.colno, diagnostic=exc.msg)
         except RecursionError:
             item.update(status="unchecked", line=start, diagnostic="Превышена глубина вложенности парсера")

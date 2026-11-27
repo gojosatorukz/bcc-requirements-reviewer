@@ -273,9 +273,9 @@ def local_batches(semantic, source):
         yield batch
 
 
-def analyze(blocks, lines, model, checkpoint, digest, workers=6):
+def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks=()):
     source = {n: text for n, text in enumerate(lines, 1) if text.strip()}
-    segments = segment(lines)
+    segments = segment(lines, pdf_json_blocks)
     json_checks = inspect_examples(lines, segments)
     semantic = [b for b in segments if b["kind"] not in {"разметка", "шапка таблицы"}]
     chunks = list(local_batches(semantic, source))
