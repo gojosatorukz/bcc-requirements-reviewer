@@ -54,6 +54,14 @@ class BehaviorTests(unittest.TestCase):
         disagreement["conflicts"] = [{"first":{"anchor":6}, "second":{"anchor":2}}]
         behavior.check_comparisons(disagreement, [prediction], anchors, {2})
 
+    def test_acceptance_document_title_does_not_hide_normative_prose_or_reveal_table_answers(self):
+        lines = ["# Acceptance of prints", "At most two signed copies per box.", "Send one additional signed copy.",
+                 "| Given | When | Expected result |", "| --- | --- | --- |", "| Full | Send | Hidden output |"]
+        source, reading, anchors = self.read(lines)
+        self.assertEqual(reading["rules"], [2, 3])
+        inputs, _ = behavior.table_cases(segment(lines), source, reading, anchors)
+        self.assertNotIn("Hidden output", str(inputs))
+
     def test_addressed_contract_keeps_same_status_examples_independent(self):
         from reviewer import response_fields
         c = {"id":7, "field":"receipt", "errors":{40:409, 46:409, 58:422}}
@@ -103,7 +111,8 @@ class BehaviorTests(unittest.TestCase):
         anchors = {n: {"line": n, "quote": s} for n, s in source.items()}
         checked = count_limits.projected_pairs(source, count_limits.experiments(source), [], anchors)
         trace = dict(pair=1, applicability="same_scope", retained=2, required_additions=1, explanation="2 + 1",
-                     exception_quote="", scenario="Two copies exist, a third is sent.", metric="copies in the box",
+                     exception_kind="none", exception_quote="", addition_quote="Send an additional copy",
+                     scenario="Two copies exist, a third is sent.", metric="copies in the box",
                      title="Copy limit", owner="Publisher", question="May the third copy be added?",
                      agreement_control="With one copy there is space.")
         def certify(**changes):
@@ -111,8 +120,11 @@ class BehaviorTests(unittest.TestCase):
         proof, = certify()
         self.assertEqual(certify(retained=1), [])
         self.assertEqual(certify(applicability="other_scope"), [])
+        self.assertEqual(certify(addition_quote="the same box"), [])
+        with self.assertRaisesRegex(ValueError, "исключения в цифрах"):
+            certify(exception_quote=source[9], exception_kind="blocked")
         with self.assertRaisesRegex(ValueError, "дословным"):
-            certify(exception_quote="unless this is a reprint")
+            certify(exception_kind="explicit_override", exception_quote="unless this is a reprint")
         gate = dict(status="можно начинать", rationale="Ready.", evidence=[anchors[4]])
         summary = dict(findings=[], reconciled=[dict(requirements=["R-004"], candidates=[1],
                        evidence=list(anchors.values()), reason="The rules supplement each other.")],

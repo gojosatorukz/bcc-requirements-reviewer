@@ -81,6 +81,10 @@ def reading(segments, source):
     # In unstructured specifications ordinary prose and tables may be the only rules.
     if not rules:
         rules = prose - examples
+        if not rules:
+            # A document title like "Acceptance of equipment" can cover an entire normative specification.
+            rules = {b["start"] for b in segments if b["kind"] == "текст"}
+            examples -= rules
     selected = rules | examples
     if len(selected) < 2 or not rules:
         selected = set(source)
@@ -218,12 +222,17 @@ def discover(segments, source, stage):
         def confirm(result):
             proofs = count_limits.certified(result, pairs_to_check, source, anchors)
             validate_review({"conflicts": proofs}, source, http_status_policy=HTTP_STATUS_POLICY)
-        traces, events = stage("Совместимость количественных правил", count_limits.AUDIT_PROMPT,
-                               {"source": source, "clauses": inputs["rules"], "pairs": pairs_to_check},
-                               count_limits.AUDIT, confirm)
-        for proof in count_limits.certified(traces, pairs_to_check, source, anchors):
-            review["conflicts"].append(proof)
-            review["certified"].append(len(review["conflicts"]))
+        from .full import InvalidStageResult
+        try:
+            traces, events = stage("Совместимость количественных правил", count_limits.AUDIT_PROMPT,
+                                   {"source": source, "pairs": pairs_to_check}, count_limits.AUDIT, confirm)
+        except InvalidStageResult as error:
+            # A rejected projection cannot overrule the normal document-wide review.
+            events = error.attempts
+        else:
+            for proof in count_limits.certified(traces, pairs_to_check, source, anchors):
+                review["conflicts"].append(proof)
+                review["certified"].append(len(review["conflicts"]))
         attempts.extend(events)
     if not inputs["cases"] or not inputs["rules"]:
         return review, attempts
