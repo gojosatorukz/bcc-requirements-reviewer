@@ -306,6 +306,41 @@ def run_required(tasks, workers):
     return results
 
 
+def reconcile_examples(whole, candidates, agreements, source, stage, anchored):
+    disputed = behavior.disputed_examples(whole, agreements, candidates)
+    if not disputed:
+        return []
+    def decisions(result):
+        return behavior.agreed_dispositions(result, disputed, source)
+    try:
+        verdict, events = stage("Перепроверка исходов", behavior.RECONCILE,
+                                {"source": source, "disputed": disputed}, behavior.VERDICTS, decisions)
+    except InvalidStageResult as error:
+        return error.attempts
+    resolved = decisions(verdict)
+    if not resolved:
+        return events
+
+    # Rewrite dependent conclusions from the final inventory. Keeping the draft gates
+    # can leave an analyst blocked by a finding that was successfully withdrawn.
+    revised = {**whole, "findings": list(whole["findings"]), "reconciled": list(whole["reconciled"])}
+    behavior.resolve_agreements(revised, resolved)
+    schema = record(dimensions=array(DIMENSION), development=GATE, testing=GATE)
+    def verify_summary(result):
+        if sorted(d["criterion"] for d in result["dimensions"]) != sorted(AXES):
+            raise ValueError("Оцени каждую из пяти осей ровно один раз")
+        for row in [*result["dimensions"], result["development"], result["testing"]]:
+            citations(row["evidence"], source)
+    summary, more = anchored("Итоги после сверки", BASE + """
+Заново оцени пять осей и готовность по окончательным findings, reconciled и источнику.
+Каждому ограничению приведи действующее основание. Снятый конфликт нельзя использовать
+как причину блокировки. Сохрани независимые ограничения и оставшиеся вопросы.""",
+        {"source": source, "axes": AXES, "findings": revised["findings"], "reconciled": revised["reconciled"]},
+        schema, verify_summary)
+    whole.update(revised, **summary)
+    return events + more
+
+
 def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks=()):
     source = {n: text for n, text in enumerate(lines, 1) if text.strip()}
     refs, extra_refs = source_refs.references(source)
@@ -516,17 +551,8 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     if gemini and product["count_checks"]:
         count_limits.retire_unreachable_counts(whole, product["count_checks"])
     if gemini:
-        disputed = behavior.disputed_examples(whole, product["agreements"])
-        if disputed:
-            try:
-                verdict, more = gemini_stage("Перепроверка исходов", behavior.RECONCILE,
-                    {"source": source, "disputed": disputed}, behavior.VERDICTS,
-                    lambda r: behavior.agreed_dispositions(r, disputed))
-            except InvalidStageResult as error:
-                more = error.attempts
-            else:
-                behavior.resolve_agreements(whole, behavior.agreed_dispositions(verdict, disputed))
-            events.extend(more)
+        events.extend(reconcile_examples(whole, candidates["conflicts"], product["agreements"],
+                                         source, gemini_stage, anchored))
         check_whole(whole, registry, candidates["conflicts"], source, http_status_policy=HTTP_STATUS_POLICY)
         check_critical_sources(whole, candidates["conflicts"])
     whole["findings"].sort(key=lambda f: (priority.ORDER[f["priority"]], min(e["line"] for e in f["evidence"])))

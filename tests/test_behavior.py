@@ -70,15 +70,26 @@ class BehaviorTests(unittest.TestCase):
              "question": "Who owns it?"}
         gate = dict(status="заблокировано", rationale="Owner unknown.", evidence=refs)
         whole = {"findings": [f], "reconciled": [], "development": dict(gate), "testing": dict(gate)}
-        disputed = behavior.disputed_examples(whole, [{"example": 26, "rule_lines": [8]}])
+        candidate = {"first": witness["first"], "second": witness["second"]}
+        agreements = [{"example": 26, "rule_lines": [8]}]
+        disputed = behavior.disputed_examples(whole, agreements, [candidate])
+        self.assertNotIn("claimed_outcomes", disputed[0])
+        source = {r["line"]: r["quote"] for r in refs}
         ruling = {"finding": 0, "observable": "owner", "covered": True, "values": ["A"],
-                  "rule_value": 1, "example_value": 1, "explanation": "Both retain A."}
+                  "rule_value": 1, "example_value": 1, "rule_quote": refs[0]["quote"],
+                  "example_quote": refs[1]["quote"], "explanation": "Both retain A."}
         def decide(**changes):
-            return behavior.agreed_dispositions({"comparisons": [dict(ruling, **changes)]}, disputed)
+            return behavior.agreed_dispositions({"comparisons": [dict(ruling, **changes)]}, disputed, source)
         self.assertEqual(decide(covered=False), {})
         self.assertEqual(decide(values=["A", "B"], example_value=2), {})
         with self.assertRaises(ValueError):
             decide(example_value=2)
+        with self.assertRaisesRegex(ValueError, "цитата"):
+            decide(rule_quote=refs[1]["quote"])
+        f["candidates"].append(2)
+        unrelated = {"first": witness["first"], "second": {"source": {"line": 30}}}
+        self.assertEqual(behavior.disputed_examples(whole, agreements, [candidate, unrelated]), [])
+        f["candidates"].pop()
         behavior.resolve_agreements(whole, decide())
         self.assertEqual(whole["findings"], [])
         self.assertEqual(whole["reconciled"][0]["evidence"], refs)
@@ -94,7 +105,7 @@ class BehaviorTests(unittest.TestCase):
         basis = {p["example"]: p["bases"] for p in stages["Прогноз по правилам"]["predictions"]}
         agreed = [dict(c, rule_lines=basis[c["example"]]) for c in stages["Сверка примеров"]["checks"]
                   if c["verdict"] == "agrees"]
-        review, = behavior.disputed_examples(full["whole"], agreed)
+        review, = behavior.disputed_examples(full["whole"], agreed, full["conflicts"])
         self.assertEqual((review["rule_line"], review["example_line"]), (5, 15))
 
     def test_addressed_contract_keeps_same_status_examples_independent(self):
