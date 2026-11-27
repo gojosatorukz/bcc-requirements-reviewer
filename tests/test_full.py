@@ -57,6 +57,11 @@ class FullReviewTest(unittest.TestCase):
                 entry, = json.loads(prompt.rsplit("\n", 1)[1])["registry"]
                 self.assertEqual(entry["quote"], ref["quote"])
                 self.assertNotIn("statement", entry)
+            if name == "checks":
+                payload = json.loads(prompt.rsplit("\n", 1)[1])
+                self.assertEqual(payload["source"], source)
+                self.assertEqual(payload["review_questions"], [{"question": "Когда вернуть OK?",
+                                                                 "evidence": [ref]}])
             qa = {"checks": [], "skipped": [{"axis": axis, "reason": "Только безусловный ответ."}
                                              for axis in lifecycle.AXES]}
             return deepcopy({"rows": local, "dimensions": whole, "conflicts": {"conflicts": []},

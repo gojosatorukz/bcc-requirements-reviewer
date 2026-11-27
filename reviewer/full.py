@@ -300,13 +300,8 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         behavioral = pool.submit(call_stage, "Сценарии", INSTRUCTIONS, blocks, REVIEW,
                                  lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
                                  model, checkpoint, digest)
-        transitions = pool.submit(call_stage, "Сценарии QA", lifecycle.INSTRUCTIONS, blocks,
-                                  lifecycle.SCHEMA, lambda r: lifecycle.validate(r, source),
-                                  model, checkpoint, digest)
         local_results = list(pool.map(local, chunks))
         candidates, attempts = behavioral.result()
-        checks, qa_events = transitions.result()
-        attempts.extend(qa_events)
     marks = {}
     for result, events in local_results:
         marks.update({r["start"]: r for r in result["rows"]})
@@ -366,6 +361,10 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     whole["findings"].sort(key=lambda f: (priority.ORDER[f["priority"]], min(e["line"] for e in f["evidence"])))
     for i, item in enumerate(whole["findings"], 1):
         item["id"] = f"D-{i:02d}"
+    qa_context = [{"question": f["question"], "evidence": f["evidence"]} for f in whole["findings"]]
+    checks, qa_events = call_stage(
+        "Сценарии QA", lifecycle.INSTRUCTIONS, {"source": blocks, "review_questions": qa_context},
+        lifecycle.SCHEMA, lambda r: lifecycle.validate(r, source), model, checkpoint, digest)
     from .executable import build
     result = {"segments": segments, "registry": registry, "whole": whole, "json_checks": json_checks,
               "priority_policy": priority.POLICY, "lifecycle_checks": lifecycle.materialize(checks),
@@ -373,7 +372,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     if shapes:
         result["example_shapes"] = shapes
     result["executables"], execution_attempts = build(result, source, model, checkpoint, digest, workers)
-    return result, attempts + events + execution_attempts
+    return result, attempts + events + qa_events + execution_attempts
 
 
 def original_id(text, header=""):
