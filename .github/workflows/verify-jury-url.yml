@@ -1,0 +1,14 @@
+name: Check the public jury site
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  fresh-visitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Open ready reports and check a new file without Gemini
+        run: python3 cloud/verify_public.py
