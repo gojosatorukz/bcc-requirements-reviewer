@@ -1,5 +1,6 @@
 """Render a validated two-rule execution in the workbench and offline report."""
 
+from .execution_boundary import MAX_REPLAYS_PER_REPORT, scan_boundary
 from .executable import unexecuted_message
 from .render import safe
 
@@ -8,9 +9,12 @@ def render_executions(report, lines):
     from .witness_vm import explain_step
 
     panels = {}
+    remaining = MAX_REPLAYS_PER_REPORT
     for item in report.get("executables", {}).get("items", []):
         why = explain_step(item["program"], lines) if item["status"] == "executed" else None
-        panels[item["finding_id"]] = render_execution(item, why)
+        boundary, used = scan_boundary(item, lines, remaining)
+        remaining -= used
+        panels[item["finding_id"]] = render_execution(item, why, boundary)
     return panels
 
 
@@ -115,7 +119,38 @@ def explain_simulation(report, finding_id, case, trace):
     return render_explanation(why, program, fields, diverged=diff is not None)
 
 
-def render_execution(item, explanation=None):
+def render_boundary(boundary, states, inputs):
+    if not boundary:
+        return ""
+    step = boundary["step"]
+    input_field = (inputs if step else states)[boundary["key"]]
+    unit = input_field["unit"]
+    where = f"на шаге {step}" if step else "до первого шага"
+    start, end = (quantity(boundary[k], unit) for k in ("start", "end"))
+    intro = (f'<p>{safe(input_field["label"])} {where}. Поиск от контрольного значения {start} '
+             f'к значению {end} из примера с шагом в одну единицу. Остальные входы зафиксированы.</p>')
+    if boundary["status"] == "limited":
+        result = f'<p>Проверено до {quantity(boundary["last"], unit)} включительно. '
+        result += 'На этом участке результаты совпали. Поиск остановлен по лимиту вычислений.</p>'
+    elif boundary["status"] == "undefined":
+        result = (f'<p>При {quantity(boundary["failed"], unit)} программа не смогла вычислить результат. '
+                  'Поиск остановлен на этом значении.</p>')
+    else:
+        field = states[boundary["output"]]
+        caption = f'{safe(field["label"])} после шага {boundary["output_step"]}'
+        rows = []
+        for name, label in (("equal", "Совпадение"), ("different", "Первое расхождение")):
+            a, b = (quantity(v, field["unit"]) for v in boundary[name + "_values"])
+            value = quantity(boundary[name + "_input"], unit)
+            rows.append(f'<tr><th scope="row">{label} · {value}</th>'
+                        f'<td data-rule="Правило А">{a}</td><td data-rule="Правило Б">{b}</td></tr>')
+        result = (f'<table class="execution-table"><caption>{caption}</caption><thead><tr>'
+                  '<th scope="col">Значение входа</th><th scope="col">Правило А</th>'
+                  '<th scope="col">Правило Б</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table>')
+    return '<details class="execution-trace execution-boundary"><summary>Граница расхождения двух программ</summary>' + intro + result + '</details>'
+
+
+def render_execution(item, explanation=None, boundary=None):
     fid = safe(item["finding_id"])
     if item["status"] != "executed":
         title, reason = unexecuted_message(item)
@@ -166,6 +201,7 @@ def render_execution(item, explanation=None):
                if event_inputs else "")
             + final
             + render_explanation(explanation, program, {**states, **inputs})
+            + render_boundary(boundary, states, inputs)
             + f'<details class="execution-trace"><summary>Входные данные и шаги расчёта</summary>{full_trace}</details>'
             f'<details class="execution-sources"><summary>Две цитаты из ТЗ</summary>{rules}</details>'
             f'<details class="execution-control"><summary>Контрольный пример · исходы совпали</summary>{control}</details>'
