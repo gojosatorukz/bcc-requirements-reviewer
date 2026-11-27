@@ -4,40 +4,84 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 from typing import NamedTuple
 
 from .contract import REVIEW
+from . import cloudflare_provider, gemini_provider
+
+
+FALLBACK_PROGRESS = "Gemini исчерпал квоту · начинаем проверку через Cloudflare Workers AI"
 
 
 class ModelOptions(NamedTuple):
     name: str
     effort: str
+    provider: str = ""
 
 
-def provider_name():
+def provider_name(model=None):
+    if isinstance(model, ModelOptions) and model.provider:
+        return model.provider
     configured = os.environ.get("REVIEW_PROVIDER", "codex").strip().lower()
     if configured in {"codex", "codex-cli"}:
         return "codex-cli"
     if configured == "gemini":
         return "gemini-api"
-    raise ValueError("Неизвестный REVIEW_PROVIDER. Выберите codex или gemini.")
+    if configured == "cloudflare":
+        return "cloudflare-workers-ai"
+    raise ValueError("Неизвестный REVIEW_PROVIDER. Выберите codex, gemini или cloudflare.")
 
 
 def default_model():
     configured = os.environ.get("REVIEW_MODEL", "").strip()
     if configured:
         return configured
-    if os.environ.get("REVIEW_PROVIDER", "").strip().lower() == "gemini":
+    if provider_name() == "gemini-api":
         return "gemini-3.5-flash-lite"
+    if provider_name() == "cloudflare-workers-ai":
+        return cloudflare_provider.DEFAULT_MODEL
     return "gpt-6.2-astra"
 
 
+def model_name(model):
+    return model.name if isinstance(model, ModelOptions) else model
+
+
+def fallback_model(model):
+    if provider_name(model) != "gemini-api":
+        return None
+    name = os.getenv("REVIEW_FALLBACK_MODEL", "").strip()
+    if not name or not all(os.getenv(k, "").strip() for k in ("CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN")):
+        return None
+    return ModelOptions(name, model.effort if isinstance(model, ModelOptions) else "medium", "cloudflare-workers-ai")
+
+
+def with_quota_fallback(operation, model):
+    """Restart the entire operation with one provider and its own checkpoints."""
+    try:
+        return operation(model), model, None
+    except ValueError as exc:
+        if not (isinstance(exc, gemini_provider.QuotaExceeded)
+                or isinstance(exc.__cause__, gemini_provider.QuotaExceeded)):
+            raise
+        fallback = fallback_model(model)
+        if fallback is None:
+            raise
+    print(FALLBACK_PROGRESS, file=sys.stderr, flush=True)
+    origin = {"provider": provider_name(model), "model": model_name(model), "reason": "HTTP 429"}
+    return operation(fallback), fallback, origin
+
+
 def complete(prompt, model, output_schema=REVIEW):
-    name, effort = model if isinstance(model, ModelOptions) else (model, "medium")
-    if provider_name() == "gemini-api":
-        from . import gemini_provider
+    name = model_name(model)
+    effort = model.effort if isinstance(model, ModelOptions) else "medium"
+    provider = provider_name(model)
+    if provider == "gemini-api":
         return gemini_provider.complete(prompt, name, effort, output_schema)
+    if provider == "cloudflare-workers-ai":
+        return cloudflare_provider.complete(prompt, name, effort, output_schema)
     with tempfile.TemporaryDirectory(prefix="reqreview-") as work:
         directory = Path(work)
         schema = directory / "schema.json"
@@ -53,7 +97,8 @@ def complete(prompt, model, output_schema=REVIEW):
             "--model", name, "--json", "--output-schema", str(schema), "-o", str(result), "-",
         ]
         env = {k: v for k, v in os.environ.items() if k not in {
-            "CODEX_THREAD_ID", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "GEMINI_API_KEY", "GOOGLE_API_KEY"}}
+            "CODEX_THREAD_ID", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "GEMINI_API_KEY", "GOOGLE_API_KEY",
+            "CLOUDFLARE_API_TOKEN"}}
         try:
             proc = subprocess.run(command, cwd=work, env=env, input=prompt, capture_output=True,
                                   text=True, encoding="utf-8", timeout=480)

@@ -57,6 +57,9 @@ QUOTA_DETAIL = re.compile(
     r"\b(?:http(?:/\d(?:\.\d)?)?|status(?: code)?)\s*[:=]?\s*429\b", re.I)
 PROVIDER_FAILURE = re.compile(r"Codex CLI завершился с кодом -?\d+\.\s*(.*)$")
 SAFE_FAILURES = {
+    "Workers AI: HTTP 429": "Исчерпана квота резервной модели. Готовые отчёты доступны.",
+    "Workers AI: HTTP 401": "Резервная модель отклонила ключ. Сообщите администратору сайта.",
+    "Workers AI: HTTP 403": "Резервная модель недоступна этому аккаунту. Сообщите администратору сайта.",
     "Gemini API: ключ не настроен": "Для нового прогона администратору нужно настроить доступ к Gemini API.",
     "Gemini API: ключ отклонён": "Gemini отклонил ключ. Проверьте настройку доступа к модели.",
     "Gemini API: HTTP 401": "Gemini отклонил ключ. Проверьте настройку доступа к модели.",
@@ -170,6 +173,11 @@ class Run:
     imported: bool = False
 
     def record(self, line):
+        if line == codex_provider.FALLBACK_PROGRESS:
+            self.group_total = self.proof_total = None
+            self.checked_groups.clear()
+            self.checked_proofs.clear()
+            self.phase = "groups"
         plan = PLAN.fullmatch(line)
         if plan:
             self.group_total = int(plan[1])
@@ -236,7 +244,8 @@ def execute(command, progress, failure):
             while chunk := process.stdout.readline(4096):
                 line = chunk.decode("utf-8", errors="replace").strip()
                 if (PROGRESS.fullmatch(line) or PLAN.fullmatch(line) or line == CROSS_CHECK
-                        or PROOF_PLAN.fullmatch(line) or PROOF_DONE.fullmatch(line)):
+                        or PROOF_PLAN.fullmatch(line) or PROOF_DONE.fullmatch(line)
+                        or line == codex_provider.FALLBACK_PROGRESS):
                     progress(line)
                 elif not known_failure:
                     if (line.startswith(("Прогон не завершён: ", "Повторная проверка не завершена: ", "Codex CLI завершился с кодом "))
@@ -271,7 +280,7 @@ def cli_worker(mode, document, baseline, json_report, html_report, model, progre
     python = [sys.executable, "-m"]
     if mode == "full":
         command = [*python, "reviewer", str(document), str(json_report)]
-        if codex_provider.provider_name() == "gemini-api":
+        if codex_provider.provider_name() in {"gemini-api", "cloudflare-workers-ai"}:
             command.extend(["--workers", "1"])
         if checkpoint_dir is not None:
             command.extend(["--checkpoint-dir", str(checkpoint_dir)])

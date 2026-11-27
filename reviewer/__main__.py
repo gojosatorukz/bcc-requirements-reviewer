@@ -32,7 +32,8 @@ def version():
 def engine_digest(*modules):
     directory = Path(__file__).resolve().parent
     digest = hashlib.sha256()
-    for name in sorted({"__main__.py", "contract.py", "codex_provider.py", "gemini_provider.py", *modules}):
+    for name in sorted({"__main__.py", "contract.py", "codex_provider.py", "gemini_provider.py",
+                        "cloudflare_provider.py", *modules}):
         content = (directory / name).read_bytes()
         digest.update(name.encode() + b"\0" + hashlib.sha256(content).digest())
     return digest.hexdigest()
@@ -124,18 +125,22 @@ def main():
         clock = time.monotonic()
         # Non-default options are part of each stage's content-addressed checkpoint key.
         model = args.model if args.effort == "medium" else codex_provider.ModelOptions(args.model, args.effort)
-        if args.conflicts_only:
-            prompt = INSTRUCTIONS + "\n\nДокумент:\n" + json.dumps(blocks, ensure_ascii=False)
-            result, attempts = review_document(prompt, model, lines)
-        else:
+        def review(selected):
+            if args.conflicts_only:
+                prompt = INSTRUCTIONS + "\n\nДокумент:\n" + json.dumps(blocks, ensure_ascii=False)
+                return review_document(prompt, selected, lines)
             from .full import analyze
-            result, attempts = analyze(blocks, lines, model, args.checkpoint_dir, digest, args.workers,
-                                       input_metadata.get("pdf_json_blocks", ()))
+            return analyze(blocks, lines, selected, args.checkpoint_dir, digest, args.workers,
+                           input_metadata.get("pdf_json_blocks", ()))
+        (result, attempts), used, failover = codex_provider.with_quota_fallback(review, model)
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
-               "provider": codex_provider.provider_name(), "model": args.model, "reasoning_effort": args.effort,
+               "provider": codex_provider.provider_name(used), "model": codex_provider.model_name(used),
+               "reasoning_effort": args.effort,
                "agent_version": revision, "engine_sha256": digest,
                "input_name": args.document.name, "input_sha256": input_hash, **input_metadata,
                "input_lines": len(lines), **run_usage(attempts), "attempts": attempts}
+        if failover:
+            run["fallback_from"] = failover
         if not args.conflicts_only:
             run["max_workers"] = args.workers
         scope = "Проверка поведенческих противоречий" if args.conflicts_only else "Полное ревью требований"

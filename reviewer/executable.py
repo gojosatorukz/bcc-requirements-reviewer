@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 import time
 
-from . import codex_provider, witness_vm
+from . import codex_provider, gemini_provider, witness_vm
 from .contract import EVIDENCE, TEXT, record, validate_shape
 from .full import InvalidStageResult, StageProviderError, array, call_stage, choice, citations
 
@@ -183,6 +183,9 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, finding, propo
             reason = f"Проверка вычислимого примера исчерпала попытки: {exc}"
             return unsupported()
         except StageProviderError as exc:
+            if (isinstance(exc.__cause__, gemini_provider.QuotaExceeded)
+                    and codex_provider.fallback_model(model)):
+                raise
             attempts.extend(exc.attempts)
             return {"finding_id": fid, "status": "provider_unavailable", "stage": stage, **scope}, attempts
         if audit["verdict"] == "accepted":

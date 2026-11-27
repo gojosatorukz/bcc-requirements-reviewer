@@ -214,7 +214,7 @@ class StageProviderError(ValueError):
 
 def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, digest):
     prompt = instruction + "\n" + packed(payload)
-    key = sha256(packed([codex_provider.provider_name(), model, digest, prompt, schema]).encode()).hexdigest()
+    key = sha256(packed([codex_provider.provider_name(model), model, digest, prompt, schema]).encode()).hexdigest()
     file = checkpoint / (key + ".json") if checkpoint else None
     if file and file.is_file():
         try:
@@ -369,7 +369,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                           {"source": source, "assigned": assigned}, BATCH,
                           lambda result: check_batch(result, batch, source))
 
-    gemini = codex_provider.provider_name() == "gemini-api"
+    api_profile = codex_provider.provider_name(model) in {"gemini-api", "cloudflare-workers-ai"}
 
     def scenarios():
         try:
@@ -377,7 +377,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                               lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
                               model, checkpoint, digest)
         except InvalidStageResult as exc:
-            if not gemini:
+            if not api_profile:
                 raise
             rejected = exc.attempts
         # Preserve the full-document search when a reader cannot transcribe its quotations.
@@ -388,9 +388,9 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         return behavior.expand(wire, refs, source), rejected + events
 
     tasks = [scenarios]
-    if gemini:
-        gemini_stage = partial(call_stage, model=model, checkpoint=checkpoint, digest=digest)
-        tasks.append(partial(behavior.discover, segments, source, gemini_stage))
+    if api_profile:
+        api_stage = partial(call_stage, model=model, checkpoint=checkpoint, digest=digest)
+        tasks.append(partial(behavior.discover, segments, source, api_stage))
     field_start = len(tasks)
     for offset in range(0, len(choices), 6):
         batch = choices[offset:offset + 6]
@@ -399,7 +399,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         data = {"source": source, "examples": operations, "candidates": batch}
         def verify_fields(r, batch=batch):
             response_fields.verify(r, batch, source)
-        if gemini:
+        if api_profile:
             def addressed_fields(stage=stage, data=data, batch=batch, operations=operations):
                 mentions, sample_lines = response_fields.contract_mentions(batch, operations, source)
                 def verify_addressed(result):
@@ -475,13 +475,13 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                         "Если итоги различаются, покажи оба в triage.witness и задай вопрос о выборе. "
                         "Частный порядок действий сам по себе не устанавливает приоритет правила. "
                         "Для вывода о приоритете нужна явная оговорка об ограничении в исходном документе.")
-    if gemini and product["count_checks"]:
+    if api_profile and product["count_checks"]:
         payload["count_checks"] = product["count_checks"]
         instruction += ("\nВ count_checks отдельно просчитано, сколько ранее учтённых объектов сохраняется и "
                         "сколько новых требует конкретная строка. Если добавлено ноль, сохранение или отображение "
                         "существующего объекта не предписывает его создание. Не добавляй выдачу сверх предела "
                         "к предусловию. Объедини подтверждённые варианты одного числового расхождения по двум нормам.")
-    if gemini and product["agreements"]:
+    if api_profile and product["agreements"]:
         payload["agreed_examples"] = product["agreements"]
         instruction += ("\nУ agreed_examples проверяемая величина совпадает с независимо предсказанным итогом. "
                         "Две разные формулировки одного результата не образуют нарушение.")
@@ -548,11 +548,11 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     whole = materialize(response)
     if proof_ids:
         count_limits.apply_proofs(whole, proof_ids, candidates["conflicts"], registry)
-    if gemini and product["count_checks"]:
+    if api_profile and product["count_checks"]:
         count_limits.retire_unreachable_counts(whole, product["count_checks"])
-    if gemini:
+    if api_profile:
         events.extend(reconcile_examples(whole, candidates["conflicts"], product["agreements"],
-                                         source, gemini_stage, anchored))
+                                         source, api_stage, anchored))
         check_whole(whole, registry, candidates["conflicts"], source, http_status_policy=HTTP_STATUS_POLICY)
         check_critical_sources(whole, candidates["conflicts"])
     whole["findings"].sort(key=lambda f: (priority.ORDER[f["priority"]], min(e["line"] for e in f["evidence"])))
@@ -560,7 +560,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         item["id"] = f"D-{i:02d}"
     qa_context = [{"question": f["question"], "evidence": f["evidence"]} for f in whole["findings"]]
     def review_qa():
-        if gemini:
+        if api_profile:
             checks, qa_events = anchored("Сценарии QA", lifecycle.INSTRUCTIONS,
                 {"source": source, "review_questions": qa_context},
                 lifecycle.SCHEMA, lambda r: lifecycle.validate(r, source))

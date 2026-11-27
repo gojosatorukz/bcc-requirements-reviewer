@@ -32,6 +32,10 @@ class SchemaRejected(ValueError):
     """The API rejected the wire schema before generation."""
 
 
+class QuotaExceeded(ValueError):
+    """The configured Gemini endpoint returned HTTP 429."""
+
+
 def wire_schema(schema):
     node = dict(schema)
     if "properties" in node:
@@ -97,8 +101,9 @@ def request_json(model, key, body):
                 and any(word in diagnostic for word in ("invalid", "complex", "not supported", "unsupported",
                                                        "too many", "too deep", "nesting", "constraint"))):
             raise SchemaRejected("Gemini API: схема слишком сложна для структурированного вывода") from None
-        suffix = " RESOURCE_EXHAUSTED" if exc.code == 429 else ""
-        raise ValueError(f"Gemini API: HTTP {exc.code}{suffix}") from None
+        if exc.code == 429:
+            raise QuotaExceeded("Gemini API: HTTP 429 RESOURCE_EXHAUSTED") from None
+        raise ValueError(f"Gemini API: HTTP {exc.code}") from None
     except (TimeoutError, URLError, OSError, HTTPException):
         raise ValueError("Gemini API: модель не ответила") from None
     if len(raw) > RESPONSE_LIMIT:

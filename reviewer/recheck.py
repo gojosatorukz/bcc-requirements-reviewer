@@ -309,7 +309,8 @@ def recheck(previous_path, revised_path, model, selected=(), *, decisions=(), ba
         "previous_agent_version": old_run["agent_version"], "input_name": revised_path.name,
         "input_sha256": revised_hash, "input_lines": len(revised), **input_metadata, "source_unchanged": matches,
         "review_text_unchanged": same_lines,
-        "provider": codex_provider.provider_name() if attempts else None, "model": model if attempts else None,
+        "provider": codex_provider.provider_name(model) if attempts else None,
+        "model": codex_provider.model_name(model) if attempts else None,
         "started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
         "agent_version": revision, "engine_sha256": digest,
         **run_usage(attempts), "attempts": attempts,
@@ -468,9 +469,14 @@ def main():
             raise ValueError("Ожидаются JSON полного ревью, новая версия .md/.txt/.pdf/.docx и выходной .json/.html")
         if args.output.resolve() in {p.resolve() for p in [args.previous_report, args.revised_document, *args.clarification]}:
             raise ValueError("Выходной файл должен отличаться от входных")
-        report = recheck(args.previous_report, args.revised_document, args.model, args.finding,
-                         decisions=args.decision, baseline_sha256=args.baseline_sha256,
-                         clarifications=[json.loads(p.read_bytes()) for p in args.clarification])
+        transcripts = [json.loads(p.read_bytes()) for p in args.clarification]
+        def review(selected):
+            return recheck(args.previous_report, args.revised_document, selected, args.finding,
+                           decisions=args.decision, baseline_sha256=args.baseline_sha256,
+                           clarifications=transcripts)
+        report, _, failover = codex_provider.with_quota_fallback(review, args.model)
+        if failover:
+            report["run"]["fallback_from"] = failover
         write_report(args.output, report)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         parser.exit(1, f"Повторная проверка не завершена: {exc}\n")
