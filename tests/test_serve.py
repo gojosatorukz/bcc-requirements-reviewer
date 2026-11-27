@@ -530,8 +530,10 @@ class CliOutputTest(unittest.TestCase):
         progress = []
         command = [sys.executable, "-c",
                    "print('План проверки · групп строк: 3'); print('План проверки · групп строк: secret'); "
+                   "print('Совместимость количественных правил · проверено'); "
                    "print('Сверка требований · начата'); print('Весь документ · проверено'); print('key=xyz'); "
                    "print('Codex CLI не найден: secret'); raise SystemExit(1)"]
         with self.assertRaisesRegex(RuntimeError, "^Установите Codex CLI перед запуском проверки\\.$"):
             execute(command, progress.append, "Ошибка")
-        self.assertEqual(progress, ["План проверки · групп строк: 3", CROSS_CHECK, "Весь документ · проверено"])
+        self.assertEqual(progress, ["План проверки · групп строк: 3", "Совместимость количественных правил · проверено",
+                                    CROSS_CHECK, "Весь документ · проверено"])
