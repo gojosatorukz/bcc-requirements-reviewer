@@ -332,6 +332,7 @@ class Workbench:
 
     def ask_assistant(self, baseline, sha, payload):
         from .assistant import MAX_HISTORY, MAX_QUESTION, respond
+        from .full import StageProviderError
 
         if (type(payload) is not dict or set(payload) - {"question", "focus", "previous"}
                 or not isinstance(payload.get("question"), str) or not payload["question"].strip()
@@ -369,9 +370,16 @@ class Workbench:
                 raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Формат отчёта не поддерживается помощницей.") from exc
             except LookupError as exc:
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Выбранный фрагмент отсутствует в отчёте.") from exc
+            except StageProviderError as exc:
+                detail = str(exc).lower()
+                if any(k in detail for k in ("usage limit", "rate limit", "insufficient_quota", "too many requests", "429")):
+                    raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, "Провайдер временно ограничил запросы. Повторите вопрос позже.") from exc
+                if "model_not_found" in detail or ("model" in detail and "not supported" in detail):
+                    raise WorkbenchError(HTTPStatus.BAD_GATEWAY, "Выбранная модель недоступна. Проверьте --model или REVIEW_MODEL на сервере.") from exc
+                hint = next((v for k, v in SAFE_FAILURES.items() if k.lower() in detail), None)
+                raise WorkbenchError(HTTPStatus.BAD_GATEWAY, hint or "Провайдер не ответил. Попробуйте ещё раз.") from exc
             except (TypeError, ValueError, OSError) as exc:
-                hint = next((v for k, v in SAFE_FAILURES.items() if k in str(exc)), None)
-                raise WorkbenchError(HTTPStatus.BAD_GATEWAY, hint or "Не удалось получить подтверждённый ответ модели. Попробуйте ещё раз.") from exc
+                raise WorkbenchError(HTTPStatus.BAD_GATEWAY, "Не удалось проверить основания ответа модели. Попробуйте ещё раз.") from exc
             if sha256((self.reports(baseline) / "review.json").read_bytes()).hexdigest() != sha:
                 raise WorkbenchError(HTTPStatus.CONFLICT, "Версия отчёта изменилась, пока готовился ответ.")
             token = uuid4().hex

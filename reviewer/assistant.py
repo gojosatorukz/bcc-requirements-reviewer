@@ -1,4 +1,4 @@
-"""Answer read-only questions using passages and links from one full review."""
+"""Answer read-only questions using passages and links from one review or recheck."""
 
 from collections import Counter
 from dataclasses import dataclass
@@ -84,6 +84,17 @@ def passages(report):
         gate = whole[key]
         summary.append(f"{label}: {gate['status']}. {gate['rationale']}")
     out = {"report": Passage("Сводка отчёта", "\n".join(summary))}
+    timing = [f"Модель: {run['model']}.", f"Время полного прогона: {run['elapsed_seconds']} с.",
+              f"Документ: {run['input_name']}.", f"Строк в документе: {run['input_lines']}."]
+    if "fresh_calls" in run:
+        timing.append(f"Новых обращений к модели: {run['fresh_calls']}. Из контрольных точек: {run['restored_attempts']}.")
+    out["passport"] = Passage("Паспорт прогона · модель и время", " ".join(timing))
+    dimensions = whole.get("dimensions", [])
+    if dimensions:
+        out["quality"] = Passage("Качество набора требований",
+                                 "\n".join(f"{d['criterion']}: {d['assessment']}" for d in dimensions),
+                                 tuple(f"source-line-{e['line']}" for d in dimensions for e in d["evidence"]))
+
     for line in report["source"]:
         n = line["line"]
         out[f"source-line-{n}"] = Passage(f"Строка {n} ТЗ", line["text"])
@@ -134,9 +145,11 @@ def choose_context(all_passages, question, focus, history):
         if key in all_passages:
             related.extend(k for k in (f"execution-{key}", *all_passages[key].related) if k in all_passages)
     terms = words(question)
+
     def score(key):
         source = all_passages[key]
         return len(terms & words(source.label)) * 3 + len(terms & words(source.text))
+
     ranked = sorted(all_passages, key=score, reverse=True)
     defaults = [key for key in all_passages if key.startswith("D-")][:4]
     keys = dict.fromkeys([*priority, *related, "report", *ranked[:18], *defaults])
@@ -159,6 +172,7 @@ def respond(report, digest, question, focus, history, model):
     if focus and focus not in catalog:
         raise LookupError("Выбранный фрагмент отсутствует в этом отчёте.")
     context = choose_context(catalog, question, focus, history)
+
     def verify(reply):
         if reply["status"] != "answered":
             if reply["answer"] is not None or reply["sources"]:
@@ -185,6 +199,7 @@ def respond(report, digest, question, focus, history, model):
         for quoted in re.findall(r'«([^»\n]+)»|"([^"\n]+)"', answer):
             if not any((quoted[0] or quoted[1]) in context[r["anchor"]].text for r in refs):
                 raise ValueError("Кавычки допустимы только для точной цитаты из указанного основания")
+
     payload = {"question": question, "focus": focus, "history": history,
                "passages": [{"anchor": key, "label": p.label, "text": p.text} for key, p in context.items()]}
     reply, _ = call_stage("Помощница по отчёту", INSTRUCTIONS, payload, REPLY, verify, model, None, digest)
