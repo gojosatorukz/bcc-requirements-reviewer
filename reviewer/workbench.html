@@ -39,8 +39,8 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 .intro{isolation:isolate;position:relative;overflow:clip;padding:clamp(1.2rem,3.2vw,2.5rem) 0 clamp(1.85rem,3.8vw,3.3rem);border-bottom:2px solid var(--ink)}
 .intro::before{content:"";position:absolute;z-index:-1;right:clamp(-17rem,-12vw,-6rem);bottom:-24rem;width:clamp(30rem,55vw,49rem);aspect-ratio:1;border-radius:50%;border:1.5px solid var(--ink);background:var(--lemon);pointer-events:none}
 .intro-copy{display:flex;align-items:baseline;flex-wrap:wrap;gap:.3rem .85rem;margin-bottom:1.15rem}
-.intro-copy h1,.workspace h2,.workspace h3,.workspace p{margin:0}
-.intro-copy h1{font-size:clamp(1.6rem,2.55vw,2.25rem);line-height:1.05;font-weight:850;letter-spacing:-.055em}
+.intro-copy h2,.workspace h2,.workspace h3,.workspace p{margin:0}
+.intro-copy h2{font-size:clamp(1.6rem,2.55vw,2.25rem);line-height:1.05;font-weight:850;letter-spacing:-.055em}
 .intro-copy p{max-width:61ch;margin:0;padding-inline-start:.85rem;border-left:1px solid var(--ink);font-weight:560;font-size:clamp(.85rem,1.2vw,1rem)}
 .intro-copy small{flex-basis:100%;font-size:.84rem;color:var(--ink);overflow-wrap:anywhere}
 .active-qa{width:fit-content;max-width:100%;margin:0 0 1rem;padding:.55rem .85rem;border:1.5px solid var(--ink);border-radius:.6rem;background:var(--panel);color:var(--ink)}
@@ -164,6 +164,20 @@ a{color:var(--accent);text-underline-offset:.18em}
 .result-evidence li{padding:.5rem .7rem;background:var(--paper);border-left:2px solid #ec9978;overflow-wrap:anywhere}
 .result-evidence a{display:inline-block;margin-bottom:.15rem;font-weight:690}
 .result-evidence blockquote{white-space:pre-wrap;margin:0}
+.entry{background:#ff784b;border-bottom:2px solid var(--ink)}
+.entry-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.14fr);gap:clamp(1.2rem,5vw,5rem);padding-block:clamp(1.3rem,3.5vw,3rem)}
+.entry-copy{padding-top:clamp(0rem,2.8vw,2.2rem)}
+.entry-copy h1{margin:0;font-size:clamp(2.55rem,6vw,5.35rem);line-height:.97;letter-spacing:-.075em;font-weight:850}
+.entry-copy h1 span{color:#692e28}.workspace .entry-copy p{max-width:36ch;margin:1rem 0;font-size:clamp(1rem,1.6vw,1.15rem)}
+.entry-copy a{display:inline-block;color:var(--ink);font-weight:700}.entry-copy a span{margin-left:.25rem}
+.source-options{display:flex;gap:3px;width:fit-content;max-width:100%;padding:3px;border:1px solid var(--line);border-radius:1.5rem;background:var(--paper)}
+.source-options label{cursor:pointer;position:relative}.source-options input{position:absolute;opacity:0;pointer-events:none;top:0;left:0;width:1px;height:1px;margin:0}
+.source-options span{display:block;padding:.42rem .82rem;border-radius:1.3rem}.source-options input:checked+span{background:var(--ink);color:var(--panel)}
+.source-options input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}.source-options :disabled+span{opacity:.6}
+#pasted-text{display:block;margin:.3rem 0;width:100%;min-height:5rem;resize:vertical;border:1px solid var(--line);border-radius:.55rem;padding:.6rem .7rem;font:inherit;background:var(--panel);color:var(--ink)}
+.report-workspace{display:block}.report-workspace .aside-cards{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+@media(max-width:49rem){.entry-grid,.report-workspace .aside-cards{grid-template-columns:minmax(0,1fr)}.entry-copy{padding:0}.entry-copy h1 br{display:none}.workspace .entry-copy p{max-width:52ch;margin:.55rem 0}.entry-grid{gap:1rem}}
+@media(max-width:27rem){.source-options span{padding-inline:.6rem}}
 </style>
 <link rel="stylesheet" href="/reviewer/guided.css">
 <link rel="stylesheet" href="/reviewer/execution.css">
@@ -178,32 +192,34 @@ a{color:var(--accent);text-underline-offset:.18em}
   </div>
 </header>
 <main>
-  <div class="intro">
-    <div class="inner">
-      <div class="intro-copy">
-        <h1 id="review-title" tabindex="-1">Проверка требований</h1>
-        <p id="review-document">Загрузите документ или откройте демо-отчёт.</p>
-        <small id="review-origin" hidden></small>
-      </div>
-      <details id="active-qa" class="active-qa" hidden>
-        <summary id="qa-summary">Сценарии для QA</summary>
-        <div id="qa-picker"><label for="qa-select">Сценарий</label><select id="qa-select"></select></div>
-        <div id="qa-content" aria-live="polite" aria-atomic="true"></div>
-        <a id="qa-full-link" target="_blank" rel="noopener">Открыть этот сценарий в отчёте ↗</a>
-        <button id="assistant-qa-open" class="assistant-qa-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel">Спросить об этом сценарии</button>
-        <p id="qa-skip-row" hidden><a id="qa-skip-link" target="_blank" rel="noopener"></a></p>
-      </details>
-      <section id="guided-review" aria-label="Согласование" hidden></section>
-      <div id="active-summary" class="active-summary" hidden>
-        <dl id="active-gates"></dl>
-        <p><a id="active-register" target="_blank" rel="noopener"></a><a id="active-findings" target="_blank" rel="noopener"></a></p>
-      </div>
+  <div class="entry">
+  <div class="workspace entry-grid" id="workspace" tabindex="-1">
+    <div class="entry-copy">
+      <h1>Проверить<br> своё ТЗ<span>.</span></h1>
+      <p>Вставьте текст или загрузите документ. Агент сверит требования, таблицы и примеры API, покажет расхождения и подготовит вопросы владельцу.</p>
+      <a href="#review-title" id="open-worked-example">Разобрать пример из банка <span aria-hidden="true">↓</span></a>
     </div>
-  </div>
-  <div class="workspace" id="workspace" tabindex="-1">
     <section class="card" aria-labelledby="upload-heading">
-      <h2 id="upload-heading">Новая проверка</h2>
+      <h2 id="upload-heading" tabindex="-1">Новая проверка</h2>
       <form id="upload-form">
+        <fieldset id="input-sources">
+          <legend>Источник документа</legend>
+          <div class="source-options">
+            <label><input type="radio" name="source" value="text" checked><span>Вставить текст</span></label>
+            <label><input type="radio" name="source" value="file"><span>Загрузить файл</span></label>
+          </div>
+        </fieldset>
+        <div id="paste-panel">
+          <label for="pasted-text">Текст требований</label>
+          <textarea id="pasted-text" rows="4" aria-describedby="paste-help" placeholder="Вставьте разделы ТЗ, таблицы или примеры API…"></textarea>
+          <small id="paste-help" class="muted">Текст или Markdown · до 120 000 байт в UTF-8</small>
+        </div>
+        <div class="drop" id="drop" hidden>
+          <label for="file">Документ</label>
+          <input id="file" type="file" accept=".md,.txt,.pdf,.docx" aria-describedby="file-help file-name">
+          <small id="file-help">Выберите или перетащите один файл MD, TXT, DOCX или PDF. Для PDF нужен текстовый слой.</small>
+          <p id="file-name" aria-live="polite" hidden></p>
+        </div>
         <fieldset id="modes">
           <legend>Режим проверки</legend>
           <div class="radio-options">
@@ -225,12 +241,6 @@ a{color:var(--accent);text-underline-offset:.18em}
             <p id="decision-preflight-text" role="status"></p>
             <label id="use-owner-decisions-label" hidden><input id="use-owner-decisions" type="checkbox" checked> Учитывать зафиксированные решения</label>
           </div>
-        </div>
-        <div class="drop" id="drop">
-          <label for="file">Документ</label>
-          <input id="file" type="file" accept=".md,.txt,.pdf,.docx" aria-describedby="file-help file-name">
-          <small id="file-help">Выберите или перетащите один файл MD, TXT, DOCX или PDF. Для PDF нужен текстовый слой.</small>
-          <p id="file-name" aria-live="polite" hidden></p>
         </div>
         <div class="reuse-report" id="reuse-report" hidden>
           <p id="reuse-report-match" role="status"></p>
@@ -268,6 +278,31 @@ a{color:var(--accent);text-underline-offset:.18em}
         </div>
       </div>
     </section>
+  </div>
+  </div>
+  <div class="intro">
+    <div class="inner">
+      <div class="intro-copy">
+        <h2 id="review-title" tabindex="-1">Проверка требований</h2>
+        <p id="review-document">Загрузите документ или откройте демо-отчёт.</p>
+        <small id="review-origin" hidden></small>
+      </div>
+      <details id="active-qa" class="active-qa" hidden>
+        <summary id="qa-summary">Сценарии для QA</summary>
+        <div id="qa-picker"><label for="qa-select">Сценарий</label><select id="qa-select"></select></div>
+        <div id="qa-content" aria-live="polite" aria-atomic="true"></div>
+        <a id="qa-full-link" target="_blank" rel="noopener">Открыть этот сценарий в отчёте ↗</a>
+        <button id="assistant-qa-open" class="assistant-qa-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel">Спросить об этом сценарии</button>
+        <p id="qa-skip-row" hidden><a id="qa-skip-link" target="_blank" rel="noopener"></a></p>
+      </details>
+      <section id="guided-review" aria-label="Согласование" hidden></section>
+      <div id="active-summary" class="active-summary" hidden>
+        <dl id="active-gates"></dl>
+        <p><a id="active-register" target="_blank" rel="noopener"></a><a id="active-findings" target="_blank" rel="noopener"></a></p>
+      </div>
+    </div>
+  </div>
+  <div class="workspace report-workspace">
     <div class="aside-cards">
     <section class="card" id="discussion" aria-labelledby="discussion-title" hidden>
       <div class="discussion-head"><h2 id="discussion-title">Ответ владельца</h2><button type="button" id="discussion-return" hidden>Вернуться к разбору</button></div>
@@ -348,6 +383,8 @@ const form = get('upload-form');
 const baseline = get('baseline');
 const fileInput = get('file');
 const drop = get('drop');
+const pastedText = get('pasted-text');
+let uploadedFile = null;
 const idPattern = /^[0-9a-f]{32}$/;
 const stateLabels = {queued:'В очереди', running:'Проверка идёт', done:'Отчёт готов', failed:'Ошибка проверки'};
 const modeLabels = {full:'Полное ревью', recheck:'Проверка новой версии'};
@@ -402,7 +439,12 @@ function refreshControls() {
   loadFindings(recheck ? baseline.value : '');
   get('baseline-field').hidden = !recheck;
   get('modes').disabled = busy;
-  fileInput.disabled = busy;
+  const fromText = form.elements.source.value === 'text';
+  get('input-sources').disabled = busy;
+  get('paste-panel').hidden = !fromText;
+  drop.hidden = fromText;
+  pastedText.disabled = busy || !fromText;
+  fileInput.disabled = busy || fromText;
   baseline.disabled = busy || !baseline.value;
   get('finding-options').disabled = busy;
   get('finding-reset').disabled = busy;
@@ -531,13 +573,30 @@ function showError(message) {
 
 function selectFile(selected) {
   setBrandState('idle');
-  file = selected || null;
+  uploadedFile = selected || null;
   const fileName = get('file-name');
-  fileName.textContent = file ? 'Выбран файл · ' + file.name : '';
-  fileName.hidden = !file;
+  fileName.textContent = uploadedFile ? 'Выбран файл · ' + uploadedFile.name : '';
+  fileName.hidden = !uploadedFile;
+  syncInputSource();
+}
+
+function activeDocument() {
+  if (form.elements.source.value === 'file') return uploadedFile;
+  const text = pastedText.value;
+  return text.trim() ? new File([text], 'Текст требований.md', {type:'text/markdown;charset=utf-8'}) : null;
+}
+
+function syncInputSource() {
+  file = activeDocument();
   showError('');
   checkReportReuse();
 }
+
+pastedText.addEventListener('input', () => {
+  clearReportReuse();
+  file = null;
+  showError('');
+});
 
 function clearReportReuse() {
   reuseCheck?.abort();
@@ -882,7 +941,7 @@ get('discussion-recheck').addEventListener('click', async () => {
   for (const input of get('finding-options').querySelectorAll('input')) input.checked = input.value === fid;
   updateFindingSummary();
   refreshControls();
-  get('file').focus();
+  (form.elements.source.value === 'text' ? pastedText : fileInput).focus();
 });
 
 function renderRecheck(report, reportUrl) {
@@ -1063,6 +1122,7 @@ async function poll(run) {
 form.addEventListener('change', event => {
   dismissRecheck();
   if (event.target === fileInput) selectFile(fileInput.files[0]);
+  else if (event.target.name === 'source' || event.target === pastedText) syncInputSource();
   else {
     showError('');
     if (event.target.name === 'mode') checkReportReuse();
@@ -1102,18 +1162,21 @@ form.addEventListener('submit', async event => {
   event.preventDefault();
   if (busy || (mode() === 'recheck' && findingLoad)) return;
   dismissRecheck();
-  if (!file) {
+  const fromText = form.elements.source.value === 'text';
+  const selectedFile = activeDocument();
+  const input = fromText ? pastedText : fileInput;
+  if (!selectedFile) {
     setBrandState('failed');
-    showError('Выберите документ для проверки.');
-    fileInput.focus();
+    showError(fromText ? 'Вставьте текст требований для проверки.' : 'Выберите документ для проверки.');
+    input.focus();
     return;
   }
-  const suffix = file.name.match(/\.(md|txt|pdf|docx)$/i)?.[1]?.toLowerCase();
-  if (!suffix || !file.size || file.size > (['pdf','docx'].includes(suffix) ? 16_000_000 : 120_000)) {
+  const suffix = selectedFile.name.match(/\.(md|txt|pdf|docx)$/i)?.[1]?.toLowerCase();
+  if (!suffix || !selectedFile.size || selectedFile.size > (['pdf','docx'].includes(suffix) ? 16_000_000 : 120_000)) {
     setBrandState('failed');
     showError(!suffix ? 'Поддерживаются файлы MD, TXT, DOCX и PDF.' :
-      !file.size ? 'Выберите непустой документ.' : 'Файл превышает допустимый размер.');
-    fileInput.focus();
+      !selectedFile.size ? 'Выберите непустой документ.' : fromText ? 'Текст превышает 120 000 байт в UTF-8.' : 'Файл превышает допустимый размер.');
+    input.focus();
     return;
   }
   const selectedMode = mode();
@@ -1133,7 +1196,6 @@ form.addEventListener('submit', async event => {
       for (const {token} of records) params.append('clarification', token);
     }
   }
-  const selectedFile = file;
   busy = true;
   clearReportReuse();
   setBrandState('working');
@@ -1295,6 +1357,7 @@ function publishReport(report, id, sha) {
   rememberReportFingerprint(id, report);
   const reportUrl = '/reports/' + id + '/review.html';
   showLifecycleChecks(report, reportUrl, key || (reportUrl + report.run.started_utc));
+  get('open-worked-example').textContent = id === 'demo' ? 'Разобрать пример из банка ↓' : 'Открыть текущий разбор ↓';
   const activeLink = get('active-report-link');
   activeLink.href = reportUrl;
   activeLink.target = '_blank';
@@ -1387,6 +1450,7 @@ if (session.last) {
 }
 refreshBaselines();
 if (fileInput.files[0]) selectFile(fileInput.files[0]);
+else if (pastedText.value) syncInputSource();
 </script>
 </body>
 </html>
