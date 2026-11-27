@@ -11,7 +11,7 @@ import sys
 from tempfile import NamedTemporaryFile
 from time import monotonic
 
-from . import codex_provider, lifecycle, priority, response_fields, source_refs
+from . import behavior, codex_provider, lifecycle, priority, response_fields, source_refs
 from .contract import (
     EVIDENCE, HTTP_STATUS_INSTRUCTIONS, HTTP_STATUS_POLICY, INSTRUCTIONS, REVIEW, TEXT,
     record, source_http_statuses, validate_review, validate_shape, validate_witness_http,
@@ -337,6 +337,16 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     tasks = [partial(call_stage, "Сценарии", INSTRUCTIONS, blocks, REVIEW,
                      lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
                      model, checkpoint, digest)]
+    if codex_provider.provider_name() == "gemini-api":
+        reading, anchors = behavior.reading(segments, source)
+
+        def compare_product():
+            wire, events = call_stage("Правила и примеры", behavior.INSTRUCTIONS, reading, behavior.SCHEMA,
+                                      lambda r: behavior.expand(r, anchors, source), model, checkpoint, digest)
+            return behavior.expand(wire, anchors, source), events
+
+        tasks.append(compare_product)
+    field_start = len(tasks)
     for offset in range(0, len(choices), 6):
         batch = choices[offset:offset + 6]
         operations = {c["operation"]: groups[c["operation"]] for c in batch}
@@ -348,9 +358,18 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     tasks.extend(partial(local, chunk) for chunk in chunks)
     results = run_required(tasks, workers)
     candidates, attempts = results[0]
+    product_ids = []
+    if field_start > 1:
+        product, product_events = results[1]
+        # Preserve independent hypotheses about the same two lines for global adjudication.
+        combined = list(product["conflicts"])
+        product_ids = list(range(1, len(combined) + 1))
+        combined.extend(c for c in candidates["conflicts"] if c not in product["conflicts"])
+        candidates = {"conflicts": combined}
+        attempts.extend(product_events)
     local_results = results[local_start:]
     assessments = []
-    for resolved, field_attempts in results[1:local_start]:
+    for resolved, field_attempts in results[field_start:local_start]:
         assessments.extend(resolved["assessments"])
         attempts.extend(field_attempts)
     fields = {"version": field_version, "candidates": response_fields.describe(choices),
@@ -378,6 +397,13 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                "local_flags": flags, "candidates": [dict(c, id=i) for i, c in enumerate(candidates["conflicts"], 1)]}
     invalid_examples = [e for e in json_checks["examples"] if e["status"] == "invalid"]
     instruction = GLOBAL + priority.INSTRUCTIONS + HTTP_STATUS_INSTRUCTIONS
+    if product_ids:
+        payload["product_candidates"] = product_ids
+        instruction += ("\nДля каждого product_candidate воспроизведи указанный вход по его двум цитатам. "
+                        "Если наблюдаемые бизнес-исходы несовместимы, вынеси обе стороны и общий сценарий "
+                        "в triage.witness отдельного нарушения. Для повторных кандидатов одной первопричины "
+                        "перечисли их номера в одной карточке. Для снятия гипотезы в reconciled процитируй "
+                        "обе стороны и объясни, как удовлетворить обе нормы именно в данном сценарии.")
     instruction += ("\nДля обязательного параметра проверь первый вызов в исходном состоянии: "
                     "откуда клиент получает значение до первой настройки и допускает ли сценарий "
                     "такой вызов. Учитывай явно заданные значения по умолчанию.")
@@ -409,6 +435,13 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         ranked = materialize(result)
         check_whole(ranked, registry, candidates["conflicts"], source, http_status_policy=HTTP_STATUS_POLICY)
         check_critical_sources(ranked, candidates["conflicts"])
+        for row in ranked["reconciled"]:
+            cited = {entry["line"] for entry in row["evidence"]}
+            for number in set(row["candidates"]).intersection(product_ids):
+                candidate = candidates["conflicts"][number - 1]
+                required = {candidate[side]["source"]["line"] for side in ("first", "second")}
+                if not required <= cited:
+                    raise ValueError(f"Для снятия поведенческого кандидата {number} процитируй обе строки {sorted(required)}")
         check_findings(json_checks, ranked["findings"])
         response_fields.check_questions(fields, choices, ranked["findings"], groups)
 
