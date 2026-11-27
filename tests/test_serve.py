@@ -83,6 +83,14 @@ class WorkbenchTest(unittest.TestCase):
                 self.fail(f"Run did not finish: {result}")
             time.sleep(0.01)
 
+    def test_home_names_the_selected_model_before_submission(self):
+        (self.root / "reviewer" / "workbench.html").write_text((ROOT / "reviewer" / "workbench.html").read_text())
+        self.app.model = "Model A & B"
+        self.assertIn("Model A &amp; B", self.request("GET", "/")[1].decode())
+        self.app.model = None
+        with patch.dict("os.environ", {"REVIEW_PROVIDER": "gemini", "REVIEW_MODEL": ""}):
+            self.assertIn("gemini-3.6-flash", self.request("GET", "/")[1].decode())
+
     def test_demo_fallback_and_immutable_modes(self):
         benchmark = self.demo.with_name("bcc-benchmark")
         benchmark.mkdir()

@@ -3,6 +3,7 @@
 import argparse
 from dataclasses import dataclass, field
 from hashlib import sha256
+from html import escape
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -753,7 +754,9 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 self.reply(HTTPStatus.OK, artifact.read_bytes(), STATIC_FILES[route.path])
                 return
             if route.path == "/":
-                self.reply(HTTPStatus.OK, (app.root / "reviewer" / PAGE.name).read_bytes(),
+                page = (app.root / "reviewer" / PAGE.name).read_text(encoding="utf-8")
+                model = app.model or codex_provider.default_model()
+                self.reply(HTTPStatus.OK, page.replace("<!--review-model-->этого сервера", escape(model)).encode(),
                            REPORT_FILES["review.html"])
                 return
             status = re.fullmatch(rf"/api/status/({JOB_ID})", route.path)
