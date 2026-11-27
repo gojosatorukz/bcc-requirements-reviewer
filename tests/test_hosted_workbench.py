@@ -31,14 +31,16 @@ class HostedWorkbenchTest(unittest.TestCase):
         json_report.write_text('{"ok":true}')
         html_report.write_text("my report")
 
-    def request(self, method, path, cookie="", origin=None, body=None):
+    def request(self, method, path, cookie="", origin=None, body=None, filename="draft.md"):
         client = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=3)
         try:
             headers = {"Host": "review.example"}
             if cookie:
                 headers["Cookie"] = cookie
             if origin:
-                headers.update(Origin=origin, **{"X-File-Name": "draft.md"})
+                headers["Origin"] = origin
+                if filename:
+                    headers["X-File-Name"] = filename
             client.request(method, path, body=body, headers=headers)
             reply = client.getresponse()
             return reply.status, reply.read(), dict(reply.getheaders())
@@ -62,6 +64,21 @@ class HostedWorkbenchTest(unittest.TestCase):
         self.assertNotIn('id="project-submit"', page)
         self.assertEqual(self.request("POST", "/api/project-runs", cookie, "https://review.example", b"spec")[0], 404)
         self.assertFalse(self.server.model_requests)
+
+    def test_builtin_job_uses_the_same_origin_session_quota_and_isolation_as_a_file(self):
+        from time import monotonic
+        route = "/api/runs?mode=full&sample=bcc-official"
+        origin = "https://review.example"
+        first, other = self.new_visitor(), self.new_visitor()
+        self.assertEqual(self.request("POST", route, "", origin, filename=None)[0], 401)
+        self.assertEqual(self.request("POST", route, first, "https://other.example", filename=None)[0], 403)
+        code, raw, _ = self.request("POST", route, first, origin, filename=None)
+        self.assertEqual(code, 202)
+        job = json.loads(raw)["id"]
+        self.assertEqual(len(self.server.model_requests), 1)
+        self.assertEqual(self.request("GET", "/api/status/" + job, other)[0], 404)
+        self.server.model_requests.extend([monotonic()] * 39)
+        self.assertEqual(self.request("POST", route, other, origin, filename=None)[0], 429)
 
     def test_public_gemini_example_is_the_recorded_run_and_consumes_no_model_quota(self):
         code, html, headers = self.request("GET", "/reports/demo/gemini.html")

@@ -1,6 +1,7 @@
 **
 !Dockerfile
 !requirements.txt
+!examples/bcc-official.md
 !reviewer/*.py
 !reviewer/workbench.html
 !reviewer/*.css

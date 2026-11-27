@@ -33,6 +33,38 @@ test('the active source alone supplies the review body while both drafts survive
 
 const base = process.env.REVIEWER_WORKBENCH_URL;
 
+test('the visitor can start a fresh official run without a file or from an exact file match', {skip:!base}, async () => {
+  const {chromium} = createRequire(import.meta.url)(process.env.PLAYWRIGHT_PACKAGE || 'playwright');
+  const browser = await chromium.launch({headless:true, executablePath:process.env.CHROME_BINARY});
+  try {
+    const page = await browser.newPage();
+    const jobs = [];
+    await page.route('**/api/runs?*', async route => {
+      const req = route.request();
+      jobs.push([new URL(req.url()).search, req.postData(), req.headers()['x-file-name']]);
+      await route.fulfill({status:429,json:{error:'Тестовый лимит'}});
+    });
+    await page.goto(base);
+    await page.locator('#official-example summary').click();
+    assert.equal(await page.locator('#official-example a').getAttribute('href'), '/reports/demo/review.html');
+    assert.equal(jobs.length, 0);
+    await page.locator('#official-submit').click();
+    await page.getByText('Тестовый лимит', {exact:false}).first().waitFor();
+    const source = readFileSync(new URL('../examples/bcc-official.md', import.meta.url));
+    await page.locator('#file').setInputFiles({name:'renamed.txt', mimeType:'text/plain', buffer:source});
+    await page.locator('#official-matched').click();
+    await page.waitForFunction(() => !document.getElementById('submit').disabled);
+    assert.deepEqual(jobs, Array(2).fill(['?mode=full&sample=bcc-official', null, undefined]));
+    await page.locator('#file').setInputFiles({name:'other.md', mimeType:'text/plain', buffer:Buffer.from('other')});
+    assert.equal(await page.locator('#official-matched').isVisible(), false);
+    await page.locator('#submit').click();
+    await page.waitForFunction(() => !document.getElementById('submit').disabled);
+    assert.deepEqual(jobs[2], ['?mode=full', 'other', 'other.md']);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('a jury visitor can read the saved example, keep their text after a quota error and open their own JSON', {skip:!base}, async () => {
   const require = createRequire(import.meta.url);
   const {chromium} = require(process.env.PLAYWRIGHT_PACKAGE || 'playwright');

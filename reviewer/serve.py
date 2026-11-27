@@ -6,6 +6,7 @@ from hashlib import sha256
 from html import escape
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from io import BytesIO
 import json
 import os
 from pathlib import Path
@@ -25,6 +26,8 @@ from .openai_provider import RETRY_PROGRESS
 
 
 ROOT = Path(__file__).resolve().parent.parent
+OFFICIAL_SAMPLE = Path("examples/bcc-official.md")
+OFFICIAL_SHA256 = "e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381"
 PAGE = ROOT / "reviewer" / "workbench.html"
 REPORT_FILES = {"review.html": "text/html; charset=utf-8", "review.json": "application/json; charset=utf-8"}
 SAVED_EXAMPLES = {
@@ -883,6 +886,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 if fallback:
                     provider = "OpenAI API" if fallback.provider == "openai-responses" else "Cloudflare Workers AI"
                     disclosure += f". При лимите Gemini текст получит {provider} (" + escape(fallback.name) + ")"
+                page = page.replace("<!--official-sha-->", OFFICIAL_SHA256)
                 self.reply(HTTPStatus.OK, page.replace("<!--review-model-->этого сервера", disclosure).encode(),
                            REPORT_FILES["review.html"])
                 return
@@ -1033,6 +1037,20 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             if route.path != "/api/runs":
                 raise WorkbenchError(HTTPStatus.NOT_FOUND, "Страница не найдена.")
             query = parse_qs(route.query, keep_blank_values=True)
+            if query == {"mode": ["full"], "sample": ["bcc-official"]}:
+                if (self.headers.get("Transfer-Encoding") is not None
+                        or self.headers.get_all("Content-Length", []) not in ([], ["0"])
+                        or self.headers.get("X-File-Name") is not None):
+                    raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Для встроенного ТЗ отправьте только идентификатор примера.")
+                try:
+                    content = (self.app.root / OFFICIAL_SAMPLE).read_bytes()
+                except OSError as exc:
+                    raise WorkbenchError(HTTPStatus.SERVICE_UNAVAILABLE, "Официальное ТЗ временно недоступно.") from exc
+                if sha256(content).hexdigest() != OFFICIAL_SHA256:
+                    raise WorkbenchError(HTTPStatus.SERVICE_UNAVAILABLE, "Контрольная сумма официального ТЗ не совпала.")
+                identifier = self.app.start("full", None, "requirements.md", len(content), BytesIO(content))
+                self.json(HTTPStatus.ACCEPTED, {"id": identifier})
+                return
             modes = query.get("mode", [])
             baselines = query.get("baseline", [])
             findings = tuple(query.get("finding", []))

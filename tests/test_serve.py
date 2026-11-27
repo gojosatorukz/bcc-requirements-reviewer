@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 from urllib.parse import quote
 
-from reviewer.serve import CROSS_CHECK, IMPORT_LIMIT, ROOT, Run, Workbench, WorkbenchServer, cli_worker, execute
+from reviewer.serve import CROSS_CHECK, IMPORT_LIMIT, OFFICIAL_SAMPLE, OFFICIAL_SHA256, ROOT, Run, Workbench, WorkbenchServer, cli_worker, execute
 
 
 class WorkbenchTest(unittest.TestCase):
@@ -82,6 +82,31 @@ class WorkbenchTest(unittest.TestCase):
             if time.monotonic() > deadline:
                 self.fail(f"Run did not finish: {result}")
             time.sleep(0.01)
+
+    def test_official_example_is_pinned_and_requires_an_explicit_new_job(self):
+        route = "/api/runs?mode=full&sample=bcc-official"
+        headers = {"Origin": self.origin}
+        sample = self.root / OFFICIAL_SAMPLE
+        sample.parent.mkdir()
+        self.assertEqual(self.request("POST", route, headers=headers)[0], 503)
+        sample.write_bytes(b"changed")
+        self.assertEqual(self.request("POST", route, headers=headers)[0], 503)
+        original = (ROOT / OFFICIAL_SAMPLE).read_bytes()
+        self.assertEqual(sha256(original).hexdigest(), OFFICIAL_SHA256)
+        sample.write_bytes(original)
+        self.assertEqual(self.request("POST", route, b"other document", headers)[0], 400)
+        self.assertEqual(self.request("POST", route + "&sample=other", headers=headers)[0], 400)
+        self.assertEqual(self.request("POST", route, headers={**headers, "X-File-Name": "other.md"})[0], 400)
+        self.assertFalse(self.calls)
+        self.release.set()
+        ids = []
+        for _ in range(2):
+            code, raw, _ = self.request("POST", route, headers=headers)
+            self.assertEqual(code, 202)
+            ids.append(json.loads(raw)["id"])
+            self.assertEqual(self.wait_until_done(ids[-1])["state"], "done")
+        self.assertNotEqual(*ids)
+        self.assertEqual([call[:3] for call in self.calls], [("full", "requirements.md", original)] * 2)
 
     def test_partial_result_can_be_downloaded_but_cannot_be_a_baseline(self):
         def partial(mode, document, baseline, json_report, html_report, model, progress):

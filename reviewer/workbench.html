@@ -253,11 +253,17 @@ a{color:var(--accent);text-underline-offset:.18em}
           <p id="reuse-report-match" role="status"></p>
           <a id="reuse-report-link">Открыть сохранённый отчёт</a>
           <p id="reuse-report-meta"></p>
+          <button id="official-matched" name="official-example" class="text-action" type="submit" hidden>Запустить новую проверку официального ТЗ с расходом квоты</button>
         </div>
         <p class="notice">Для полного ревью текст будет передан в <strong><!--review-model-->этого сервера</strong>.</p>
         <p id="upload-error" class="error" role="alert" hidden></p>
         <div class="check-actions"><button id="submit" type="submit">Запустить проверку</button>
           <button id="structure-check" class="text-action" type="button" aria-controls="structure-result">Проверить структуру без ИИ</button></div>
+        <details id="official-example" class="review-options"><summary>Официальное ТЗ BCC</summary>
+          <p>Месячный порог расходов по карте. <a href="/reports/demo/review.html" target="_blank" rel="noopener">Открыть готовый отчёт Astra</a></p>
+          <button id="official-submit" name="official-example" type="submit" class="text-action" aria-describedby="official-cost">Запустить проверку официального ТЗ</button>
+          <small id="official-cost" class="muted">Агент заново проверит встроенный документ и израсходует квоту модели.</small>
+        </details>
         <!--project-button--><section id="project-review" class="local-help" aria-labelledby="project-submit">
           <p id="project-hint">Без своего ключа отправьте ТЗ на <a href="https://razbor-tz.onrender.com/" target="_blank" rel="noopener">razbor-tz.onrender.com</a>. Для анализа сервер может передать текст в Gemini, OpenAI API или Cloudflare Workers AI. Текущие модели указаны на сайте до загрузки.</p>
           <button type="submit" class="text-action" id="project-submit" aria-describedby="project-hint">Проверить через сервер проекта</button>
@@ -564,6 +570,7 @@ function refreshControls() {
   get('finding-reset').disabled = busy;
   get('use-owner-decisions').disabled = busy;
   get('submit').disabled = busy || (recheck && (!baseline.value || Boolean(findingLoad)));
+  get('official-submit').disabled = busy;
   if (get('project-review')) {
     get('project-review').hidden = recheck;
     get('project-submit').disabled = busy || recheck;
@@ -800,6 +807,7 @@ async function checkReportReuse() {
       const anchor = get('reuse-report-link');
       anchor.textContent = id === 'demo' ? 'Открыть сохранённый демо-отчёт' : 'Открыть сохранённый отчёт';
       anchor.href = '/reports/' + id + '/review.html';
+      get('official-matched').hidden = hash !== '<!--official-sha-->';
       get('reuse-report').hidden = false;
       return;
     }
@@ -1427,15 +1435,18 @@ get('recovery-structure').addEventListener('click', event => {
 
 form.addEventListener('submit', async event => {
   event.preventDefault();
-  if (busy || (mode() === 'recheck' && findingLoad)) return;
+  const official = event.submitter?.name === 'official-example';
+  if (busy || (!official && mode() === 'recheck' && findingLoad)) return;
   const throughProject = event.submitter?.id === 'project-submit';
   if (throughProject && mode() !== 'full') return;
   dismissRecheck();
-  const selectedFile = validatedDocument();
-  if (!selectedFile) return;
-  const selectedMode = mode();
+  const selectedFile = official ? null : validatedDocument();
+  if (!official && !selectedFile) return;
+  const documentName = official ? 'requirements.md' : selectedFile.name;
+  const selectedMode = official ? 'full' : mode();
   const selectedBaseline = baseline.value;
   const params = new URLSearchParams({mode:selectedMode});
+  if (official) params.set('sample', 'bcc-official');
   const findings = selectedMode === 'recheck' ? selectedFindings() : [];
   if (selectedMode === 'recheck') {
     params.set('baseline', selectedBaseline);
@@ -1460,20 +1471,21 @@ form.addEventListener('submit', async event => {
   showProgress([]);
   showCoverage(null);
   const submittedAt = Date.now();
-  setCompanionRun('Отправка ТЗ', submittedAt, selectedFile.name);
-  setStatus('Загружаем документ…', false, true);
+  setCompanionRun('Отправка ТЗ', submittedAt, documentName);
+  setStatus(official ? 'Запускаем проверку официального ТЗ…' : 'Загружаем документ…', false, true);
   get('run-heading').focus();
   try {
-    const response = await request(throughProject ? '/api/project-runs' : '/api/runs?' + params, documentUpload(selectedFile));
+    const options = official ? {method:'POST'} : documentUpload(selectedFile);
+    const response = await request(throughProject ? '/api/project-runs' : '/api/runs?' + params, options);
     if (!idPattern.test(response.id)) throw new Error('Сервер не вернул номер прогона.');
-    session.last = {id:response.id, name:selectedFile.name, mode:selectedMode, findings, submittedAt};
+    session.last = {id:response.id, name:documentName, mode:selectedMode, findings, submittedAt};
     if (params.has('dialogue_snapshot')) {
       Object.assign(session.last, {baseline:selectedBaseline, sha:params.get('baseline_sha256'),
         dialogueTokens:params.getAll('clarification').sort()});
     }
     save();
     setBrandState('working', 'queued');
-    setCompanionRun('В очереди', submittedAt, selectedFile.name);
+    setCompanionRun('В очереди', submittedAt, documentName);
     setStatus(modeLabels[selectedMode] + ' · В очереди', false, true);
     poll(session.last);
   } catch (error) {
