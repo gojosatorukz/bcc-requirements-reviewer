@@ -214,7 +214,7 @@ class StageProviderError(ValueError):
 
 def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, digest):
     prompt = instruction + "\n" + packed(payload)
-    key = sha256(packed([model, digest, prompt, schema]).encode()).hexdigest()
+    key = sha256(packed([codex_provider.provider_name(), model, digest, prompt, schema]).encode()).hexdigest()
     file = checkpoint / (key + ".json") if checkpoint else None
     if file and file.is_file():
         try:

@@ -5,12 +5,11 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
-import os
 from pathlib import Path
 import sys
 import time
 
-from . import witness_vm
+from . import codex_provider, witness_vm
 from .contract import EVIDENCE, TEXT, record, validate_shape
 from .full import InvalidStageResult, StageProviderError, array, call_stage, choice, citations
 
@@ -325,7 +324,7 @@ def main():
     enrich = commands.add_parser("build", help="Построить исполняемые примеры к ранее сохранённому полному ревью")
     enrich.add_argument("report", type=Path)
     enrich.add_argument("output", type=Path)
-    enrich.add_argument("--model", default=os.environ.get("REVIEW_MODEL", "gpt-6.2-astra"))
+    enrich.add_argument("--model", default=codex_provider.default_model())
     enrich.add_argument("--workers", type=int, choices=range(1, 9), default=4)
     enrich.add_argument("--checkpoint-dir", type=Path)
     args = parser.parse_args()
@@ -351,7 +350,7 @@ def main():
             report["executables"] = section
             report["execution_run"] = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
                                        "base_report_sha256": sha256(raw).hexdigest(), "agent_version": version(),
-                                       "engine_sha256": digest, "model": args.model, "provider": "codex-cli",
+                                       "engine_sha256": digest, "model": args.model, "provider": codex_provider.provider_name(),
                                        **run_usage(attempts), "attempts": attempts}
             validate_saved(report, lines)
             write_report(args.output, report)

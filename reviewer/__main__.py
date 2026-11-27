@@ -32,7 +32,7 @@ def version():
 def engine_digest(*modules):
     directory = Path(__file__).resolve().parent
     digest = hashlib.sha256()
-    for name in sorted({"__main__.py", "contract.py", "codex_provider.py", *modules}):
+    for name in sorted({"__main__.py", "contract.py", "codex_provider.py", "gemini_provider.py", *modules}):
         content = (directory / name).read_bytes()
         digest.update(name.encode() + b"\0" + hashlib.sha256(content).digest())
     return digest.hexdigest()
@@ -99,7 +99,7 @@ def main():
     parser = argparse.ArgumentParser(description="Полное ревью спецификации требований")
     parser.add_argument("document", type=Path)
     parser.add_argument("report", type=Path, help="Выходной файл JSON, HTML или PDF")
-    parser.add_argument("--model", default=os.environ.get("REVIEW_MODEL", "gpt-6.2-astra"))
+    parser.add_argument("--model", default=codex_provider.default_model())
     parser.add_argument("--effort", choices=("medium", "low"), default="medium",
                         help="Глубина рассуждения модели. В паспорте сохраняется выбранный режим.")
     parser.add_argument("--workers", type=int, choices=range(1, 9), default=6, metavar="1..8",
@@ -132,7 +132,7 @@ def main():
             result, attempts = analyze(blocks, lines, model, args.checkpoint_dir, digest, args.workers,
                                        input_metadata.get("pdf_json_blocks", ()))
         run = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
-               "provider": "codex-cli", "model": args.model, "reasoning_effort": args.effort,
+               "provider": codex_provider.provider_name(), "model": args.model, "reasoning_effort": args.effort,
                "agent_version": revision, "engine_sha256": digest,
                "input_name": args.document.name, "input_sha256": input_hash, **input_metadata,
                "input_lines": len(lines), **run_usage(attempts), "attempts": attempts}

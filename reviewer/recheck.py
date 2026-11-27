@@ -6,11 +6,11 @@ from difflib import SequenceMatcher
 from hashlib import sha256
 from html import escape
 import json
-import os
 from pathlib import Path
 import re
 import time
 
+from . import codex_provider
 from .__main__ import engine_digest, run_usage, version, write_report
 from .contract import EVIDENCE, TEXT, record, source_lines, validate_shape
 from .full import array, call_stage, choice, citations
@@ -309,7 +309,7 @@ def recheck(previous_path, revised_path, model, selected=(), *, decisions=(), ba
         "previous_agent_version": old_run["agent_version"], "input_name": revised_path.name,
         "input_sha256": revised_hash, "input_lines": len(revised), **input_metadata, "source_unchanged": matches,
         "review_text_unchanged": same_lines,
-        "provider": "codex-cli" if attempts else None, "model": model if attempts else None,
+        "provider": codex_provider.provider_name() if attempts else None, "model": model if attempts else None,
         "started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
         "agent_version": revision, "engine_sha256": digest,
         **run_usage(attempts), "attempts": attempts,
@@ -452,7 +452,7 @@ def main():
     parser.add_argument("previous_report", type=Path, help="JSON полного ревью")
     parser.add_argument("revised_document", type=Path, help="Новая версия .md, .txt, .pdf или .docx")
     parser.add_argument("output", type=Path, help="Новый отчёт JSON или HTML")
-    parser.add_argument("--model", default=os.environ.get("REVIEW_MODEL", "gpt-6.2-astra"))
+    parser.add_argument("--model", default=codex_provider.default_model())
     parser.add_argument("--finding", action="append", default=[], metavar="D-ID",
                         help="Проверить указанный ID; можно повторить для нескольких замечаний")
     parser.add_argument("--decision", action="append", default=[], metavar="D-ID=first|second",

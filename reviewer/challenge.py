@@ -48,7 +48,7 @@ def main():
     parser = argparse.ArgumentParser(description="Проверить альтернативное прочтение найденных конфликтов")
     parser.add_argument("source_report", type=Path)
     parser.add_argument("audit", type=Path)
-    parser.add_argument("--model", default="gpt-6.2-astra")
+    parser.add_argument("--model", default=codex_provider.default_model())
     args = parser.parse_args()
     try:
         if args.audit.suffix.lower() != ".json" or args.audit.resolve() == args.source_report.resolve():
@@ -77,6 +77,7 @@ def main():
         audit = {"source_report_sha256": hashlib.sha256(raw).hexdigest(),
                  "input_sha256": report["run"]["input_sha256"], "started_utc": started,
                  "agent_version": revision, "engine_sha256": digest, "model": args.model if candidates else None,
+                 "provider": codex_provider.provider_name() if candidates else None,
                  "elapsed_seconds": round(time.monotonic() - clock, 2), "usage": usage,
                  "decisions": sorted(response["decisions"], key=lambda row: row["id"])}
         write_report(args.audit, audit)

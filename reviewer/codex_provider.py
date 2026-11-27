@@ -1,4 +1,4 @@
-"""Read a Codex CLI structured response in a fresh temporary working directory."""
+"""Select the configured model provider for every structured review call."""
 
 import json
 import os
@@ -15,8 +15,29 @@ class ModelOptions(NamedTuple):
     effort: str
 
 
+def provider_name():
+    configured = os.environ.get("REVIEW_PROVIDER", "codex").strip().lower()
+    if configured in {"codex", "codex-cli"}:
+        return "codex-cli"
+    if configured == "gemini":
+        return "gemini-api"
+    raise ValueError("Неизвестный REVIEW_PROVIDER. Выберите codex или gemini.")
+
+
+def default_model():
+    configured = os.environ.get("REVIEW_MODEL", "").strip()
+    if configured:
+        return configured
+    if os.environ.get("REVIEW_PROVIDER", "").strip().lower() == "gemini":
+        return "gemini-3.5-flash-lite"
+    return "gpt-6.2-astra"
+
+
 def complete(prompt, model, output_schema=REVIEW):
     name, effort = model if isinstance(model, ModelOptions) else (model, "medium")
+    if provider_name() == "gemini-api":
+        from . import gemini_provider
+        return gemini_provider.complete(prompt, name, effort, output_schema)
     with tempfile.TemporaryDirectory(prefix="reqreview-") as work:
         directory = Path(work)
         schema = directory / "schema.json"
@@ -31,7 +52,8 @@ def complete(prompt, model, output_schema=REVIEW):
             "--disable", "unified_exec", "--disable", "multi_agent", "--disable", "multi_agent_v2",
             "--model", name, "--json", "--output-schema", str(schema), "-o", str(result), "-",
         ]
-        env = {k: v for k, v in os.environ.items() if k not in {"CODEX_THREAD_ID", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE"}}
+        env = {k: v for k, v in os.environ.items() if k not in {
+            "CODEX_THREAD_ID", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "GEMINI_API_KEY", "GOOGLE_API_KEY"}}
         try:
             proc = subprocess.run(command, cwd=work, env=env, input=prompt, capture_output=True,
                                   text=True, encoding="utf-8", timeout=480)

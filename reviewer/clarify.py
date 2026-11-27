@@ -3,10 +3,10 @@
 import argparse
 from hashlib import sha256
 import json
-import os
 from pathlib import Path
 from time import monotonic
 
+from . import codex_provider
 from .__main__ import engine_digest, run_usage, version, write_report
 from .contract import EVIDENCE, TEXT, record, validate_shape
 from .full import INTEGER, array, call_stage, choice, citations
@@ -203,7 +203,7 @@ def clarify(previous_path, finding_id, answers, model, baseline_sha256, *, prior
         "report_type": "owner_dialogue", "schema_version": 1, "finding_id": finding_id,
         "baseline_sha256": digest, "answers": list(answers), "turns": [*turns, current], "finding_status": "открыто",
         **{key: current[key] for key in SUMMARY},
-        "run": {"model": model, "provider": "codex-cli", "elapsed_seconds": round(monotonic() - start, 2),
+        "run": {"model": model, "provider": codex_provider.provider_name(), "elapsed_seconds": round(monotonic() - start, 2),
                 "agent_version": version(), "engine_sha256": engine_digest("clarify.py", "full.py", "recheck.py"),
                 **run_usage(attempts), "attempts": attempts},
     }
@@ -219,7 +219,7 @@ def main():
     parser.add_argument("--answer", required=True, help="Новый ответ владельца")
     parser.add_argument("--previous", type=Path, help="JSON предыдущего хода этого диалога")
     parser.add_argument("--out", required=True, type=Path, help="JSON результата")
-    parser.add_argument("--model", default=os.environ.get("REVIEW_MODEL", "gpt-6.2-astra"))
+    parser.add_argument("--model", default=codex_provider.default_model())
     args = parser.parse_args()
     try:
         if args.out.suffix.lower() != ".json" or args.out.resolve() == args.report.resolve():
