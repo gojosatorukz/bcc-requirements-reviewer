@@ -56,6 +56,33 @@ class ExecutableStageTests(TestCase):
         old = dict(report, executables={"version": "witness-v1", "items": []})
         executable.validate_saved(old, LINES)
 
+    def test_missing_contract_does_not_become_a_second_observed_result(self):
+        finding = {"id": "D-03", "priority": "существенный", "category": "нарушение",
+                   "candidates": [1], "evidence": REFS, "reason": "Вторая операция не определена."}
+        report = {"whole": {"findings": [finding]}, "conflicts": [WITNESS]}
+        scope = {"relation": "not_established", "first_requires": "Названо назначение первой операции.",
+                 "second_requires": "У второй описан результат.", "reason": "Уточните контракт первого вызова.",
+                 "evidence": REFS}
+        with patch("reviewer.full.codex_provider.complete", return_value=(scope, {})) as provider:
+            section, attempts = executable.build(report, LINES, "test", None, "digest", 1)
+            self.assertEqual(provider.call_count, 1)
+            self.assertIn(finding["reason"], provider.call_args.args[0])
+        row, = section["items"]
+        self.assertEqual((row["status"], row["reason"]), ("unsupported", scope["reason"]))
+        self.assertEqual(len(attempts), 1)
+        executable.validate_saved({**report, "executables": section}, LINES)
+        accepted = dict(scope, relation="same_operation")
+        with patch("reviewer.full.codex_provider.complete", side_effect=[(accepted, {}), (PROPOSAL, {}), (AUDIT, {})]):
+            section, attempts = executable.build(report, LINES, "test", None, "digest", 1)
+        self.assertEqual(section["items"][0]["status"], "executed")
+        executable.validate_saved({**report, "executables": section}, LINES)
+        section["items"][0]["scope_assessment"] = scope
+        with self.assertRaisesRegex(ValueError, "основания"):
+            executable.validate_saved({**report, "executables": section}, LINES)
+        del section["items"][0]["scope_assessment"]
+        with self.assertRaisesRegex(ValueError, "основания"):
+            executable.validate_saved({**report, "executables": section}, LINES)
+
     def test_replay_recomputes_numbers_and_checks_grounding(self):
         section, attempts = self.run_stage([(PROPOSAL, {}), (AUDIT, {})])
         report = {**BASE, "executables": section}

@@ -32,13 +32,15 @@ def run_pair(sample, output, order, commit, digest):
     review = json.loads(raw)
     lines = validate_report(review)
     witness = targets(review, VERSION)[fid]
+    finding = next(f for f in review["whole"]["findings"] if f["id"] == fid)
 
     def trial(proposer):
         path = output / (tag + "-" + proposer.rsplit("-", 1)[1] + ".json")
         if path.exists():
             raise ValueError(f"Result from this round already exists: {path.name}")
         start = monotonic()
-        result, attempts = build_one(fid, witness, lines, ASTRA, None, digest, proposal_model=proposer)
+        result, attempts = build_one(fid, witness, lines, ASTRA, None, digest,
+                                     finding=finding, proposal_model=proposer)
         row = {"document": tag, "baseline": filename, "baseline_sha256": sha256(raw).hexdigest(),
                "finding_id": fid, "commit": commit, "engine_sha256": digest, "proposer": proposer,
                "auditor": ASTRA, "utc_end": datetime.now(timezone.utc).isoformat(),
