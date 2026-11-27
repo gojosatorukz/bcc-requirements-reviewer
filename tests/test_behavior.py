@@ -69,3 +69,20 @@ class BehaviorTests(unittest.TestCase):
         self.assertIn("receipt", q)
         self.assertIn("46", q)
         self.assertNotIn("строк 40", q)
+
+    def test_a_saturated_count_is_evaluated_with_an_independent_rule(self):
+        from reviewer import count_limits
+        rules = {4:"There can be at most 3 current leases per bin.", 8:"An extra lease is issued upon arrival."}
+        cases = count_limits.experiments(rules)
+        self.assertEqual(len(cases), 1)
+        self.assertEqual(cases[0]["initial"], 3)
+        self.assertNotIn("at most", cases[0]["observation"])
+        self.assertEqual(count_limits.experiments({4:"At most 3,000 parts."}), [])
+        self.assertEqual(count_limits.experiments({4:"Не более двух тысяч деталей."}), [])
+        refs = {n:{"line":n,"quote":t} for n,t in rules.items()}
+        effect = {"other":8,"added":1,"observable":"leases","scenario":"A new lease is issued with three active.",
+                  "owner":"Lead","question":"May a fourth be issued?","agreement_control":"Start with two."}
+        report = count_limits.review({"probes":[{"case":1,"effects":[effect]}]}, cases, {8:rules[8]}, refs)
+        pair, = report["conflicts"]
+        self.assertIn("3 + 1 = 4", pair["second"]["outcome"])
+        self.assertEqual(count_limits.review({"probes":[{"case":1,"effects":[]}]}, cases, {}, refs), {"conflicts":[]})

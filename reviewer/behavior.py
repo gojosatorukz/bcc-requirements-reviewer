@@ -3,7 +3,7 @@
 from itertools import combinations
 import re
 
-from . import source_refs
+from . import count_limits, source_refs
 from .contract import HTTP_STATUS_POLICY, TEXT, record, validate_review
 
 RULE_SECTION = re.compile(
@@ -197,6 +197,18 @@ def discover(segments, source, stage):
     rule_result, attempts = stage("Правила и примеры", instructions, rules_payload,
                                   RULE_COMPARISON if pairs else SCHEMA, verify_rules)
     review = expand(rule_result, anchors, source)
+    bound_cases = count_limits.experiments(inputs["rules"])
+    # The transition reader sees the occupied state, but cannot copy the limiting clause.
+    bound_anchors = {c["anchor"] for c in bound_cases}
+    other_rules = {n: text for n, text in inputs["rules"].items() if n not in bound_anchors}
+    if bound_cases and other_rules:
+        def check_effects(result):
+            validate_review(count_limits.review(result, bound_cases, other_rules, anchors), source,
+                            http_status_policy=HTTP_STATUS_POLICY)
+        limited, events = stage("Проверка границы", count_limits.PROMPT,
+                                {"cases": bound_cases, "other_rules": other_rules}, count_limits.SCHEMA, check_effects)
+        review["conflicts"].extend(count_limits.review(limited, bound_cases, other_rules, anchors)["conflicts"])
+        attempts.extend(events)
     if not inputs["cases"] or not inputs["rules"]:
         return review, attempts
 
