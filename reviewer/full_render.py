@@ -104,7 +104,7 @@ def render_lifecycle(checks, backlinks, skipped=()):
         for ref in check["evidence"]:
             backlinks[ref["line"]].append((anchor, f"QA · {label}"))
         cards.append(f'''<article class="finding qa-scenario" id="{anchor}" tabindex="-1">
-<h3>{label}</h3><small>{"Нужно решение владельца" if needs_decision else "Ожидание описано в ТЗ"}</small>
+<h3>{label}</h3><small>{"Нужно решение владельца" if needs_decision else "Результат следует из ТЗ"}</small>
 <p><b>Условия.</b> {safe(check['situation'])}</p><p><b>Действие.</b> {safe(check['action'])}</p>
 <p><b>{observation_label}.</b> {safe(check['observation'])}</p>{question}{evidence(check['evidence'])}</article>''')
     if skipped:

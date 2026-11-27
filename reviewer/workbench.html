@@ -1223,7 +1223,7 @@ function showLifecycleChecks(report, reportUrl, identity) {
   const labels = {initial_action:'Первое действие', retry_effect:'Повтор действия',
     reentry:'Повторное наступление условия', boundary:'Граница значения', isolation:'Независимость объектов'};
   checks.forEach((check, index) => {
-    const disposition = check.status === 'needs_decision' ? 'нужен ответ' : 'ожидание описано';
+    const disposition = check.status === 'needs_decision' ? 'нужен ответ' : 'следует из ТЗ';
     select.add(new Option(labels[check.axis] + ' · ' + disposition, String(index)));
   });
   select.selectedIndex = Math.max(0, checks.findIndex(check => check.axis === 'initial_action'));
