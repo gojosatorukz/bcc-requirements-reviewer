@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from reviewer.full import AXES, analyze, check_batch, check_critical_sources, local_batches, original_id
+from reviewer import lifecycle
 from reviewer.render import render_report
 
 
@@ -51,14 +52,17 @@ class FullReviewTest(unittest.TestCase):
 
         def complete(prompt, model, schema):
             name = next(iter(schema["properties"]))
-            return deepcopy({"rows": local, "dimensions": whole, "conflicts": {"conflicts": []}}[name]), {}
+            qa = {"checks": [], "skipped": [{"axis": axis, "reason": "Только безусловный ответ."}
+                                             for axis in lifecycle.AXES]}
+            return deepcopy({"rows": local, "dimensions": whole, "conflicts": {"conflicts": []},
+                             "checks": qa}[name]), {}
 
         with tempfile.TemporaryDirectory() as temp:
             with patch("reviewer.codex_provider.complete", side_effect=complete) as provider:
                 result, attempts = analyze(source, lines, "demo", Path(temp), "digest")
-                self.assertEqual(provider.call_count, 3)
+                self.assertEqual(provider.call_count, 4)
                 second, restored = analyze(source, lines, "demo", Path(temp), "digest")
-                self.assertEqual(provider.call_count, 3)
+                self.assertEqual(provider.call_count, 4)
                 self.assertTrue(all(a["restored"] for a in restored))
                 self.assertEqual(second, result)
         self.assertEqual(result["registry"][0]["original_id"], "X-1")

@@ -9,7 +9,7 @@ import sys
 from tempfile import NamedTemporaryFile
 from time import monotonic
 
-from . import codex_provider, priority
+from . import codex_provider, lifecycle, priority
 from .contract import (
     EVIDENCE, HTTP_STATUS_INSTRUCTIONS, HTTP_STATUS_POLICY, INSTRUCTIONS, REVIEW, TEXT,
     record, source_http_statuses, validate_review, validate_shape, validate_witness_http,
@@ -293,8 +293,13 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         behavioral = pool.submit(call_stage, "Сценарии", INSTRUCTIONS, blocks, REVIEW,
                                  lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
                                  model, checkpoint, digest)
+        transitions = pool.submit(call_stage, "Сценарии QA", lifecycle.INSTRUCTIONS, blocks,
+                                  lifecycle.SCHEMA, lambda r: lifecycle.validate(r, source),
+                                  model, checkpoint, digest)
         local_results = list(pool.map(local, chunks))
         candidates, attempts = behavioral.result()
+        checks, qa_events = transitions.result()
+        attempts.extend(qa_events)
     marks = {}
     for result, events in local_results:
         marks.update({r["start"]: r for r in result["rows"]})
@@ -356,7 +361,8 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         item["id"] = f"D-{i:02d}"
     from .executable import build
     result = {"segments": segments, "registry": registry, "whole": whole, "json_checks": json_checks,
-              "priority_policy": priority.POLICY, **candidates}
+              "priority_policy": priority.POLICY, "lifecycle_checks": lifecycle.materialize(checks),
+              **candidates}
     if shapes:
         result["example_shapes"] = shapes
     result["executables"], execution_attempts = build(result, source, model, checkpoint, digest, workers)
