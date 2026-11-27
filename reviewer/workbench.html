@@ -11,19 +11,21 @@
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 .inner,.workspace{width:min(75rem,calc(100% - 3rem));margin-inline:auto}
-.masthead,.intro{background:#ff6c42}
+.masthead{background:#ff602b}.intro{background:#ff784b}
 .masthead{border-bottom:2px solid var(--ink)}
-.masthead .inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.35rem 1rem;padding:.8rem 0}
+.masthead .inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.35rem 1rem;padding:.72rem 0}
 .brand{display:inline-flex;gap:.6rem;align-items:center;color:var(--ink);font-size:clamp(1.2rem,1.8vw,1.45rem);font-weight:850;letter-spacing:-.05em;text-decoration:none}
-.brand-mark{position:relative;display:grid;width:1.9rem;height:1.9rem;flex:none;place-items:center;background:var(--ink);border-radius:48% 52% 50% 46%;transform:rotate(-7deg)}
-.brand-eyes{position:absolute;top:.5rem;display:flex;gap:.14rem;animation:brand-blink 5.2s ease-in-out infinite}
-.brand-eyes::before,.brand-eyes::after{content:"";width:.34rem;height:.42rem;border-radius:50%;background:radial-gradient(circle at 58% 56%,var(--ink) 0 26%,var(--panel) 30%)}
-.brand-mouth{position:absolute;top:.99rem;width:.38rem;height:.23rem;border:1.5px solid var(--lemon);border-top:0;border-radius:0 0 1rem 1rem}
+.brand-mark{position:relative;display:grid;width:2.12rem;height:2.05rem;flex:none;place-items:center;background:var(--ink);border-radius:52% 48% 50% 45%;transform:rotate(-7deg)}
+.brand-mark::after{content:"";position:absolute;right:-.1rem;top:.02rem;width:.26rem;height:.26rem;background:var(--ink);border-radius:50%}
+.brand:hover .brand-mark,.brand:focus-visible .brand-mark{transform:rotate(5deg)}
+.brand-eyes{position:absolute;top:.5rem;display:flex;gap:.16rem;animation:brand-blink 5.2s ease-in-out infinite}
+.brand-eyes::before,.brand-eyes::after{content:"";width:.43rem;height:.51rem;border-radius:50%;background:radial-gradient(circle at 58% 56%,var(--ink) 0 26%,var(--panel) 30%)}
+.brand-mouth{position:absolute;top:1.15rem;width:.47rem;height:.23rem;border:1.5px solid var(--lemon);border-top:0;border-radius:0 0 1rem 1rem}
 .brand-mark[data-state="working"] .brand-eyes{animation:brand-think 1.55s var(--ease) infinite alternate}
-.brand-mark[data-state="working"] .brand-mouth{top:1.05rem;height:0;border-radius:0;border-left:0;border-right:0}
+.brand-mark[data-state="working"] .brand-mouth{top:1.19rem;height:0;border-radius:0;border-left:0;border-right:0}
 .brand-mark[data-state="done"]{animation:brand-bob .38s var(--ease) both}
 .brand-mark[data-state="done"] .brand-mouth{width:.53rem;height:.29rem}
-.brand-mark[data-state="failed"] .brand-mouth{top:1.04rem;border-top:1.5px solid var(--lemon);border-bottom:0;border-radius:1rem 1rem 0 0}
+.brand-mark[data-state="failed"] .brand-mouth{top:1.17rem;border-top:1.5px solid var(--lemon);border-bottom:0;border-radius:1rem 1rem 0 0}
 @keyframes brand-blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.12)}}
 @keyframes brand-think{from{transform:translateX(-.1rem)}to{transform:translateX(.1rem)}}
 @keyframes brand-bob{50%{transform:translateY(-.2rem) rotate(6deg)}}
@@ -35,10 +37,10 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 .masthead .skip-work{position:absolute;left:1rem;top:-8rem;padding:.55rem;background:var(--panel);color:var(--ink);z-index:5}
 .masthead .skip-work:focus{top:.4rem}
 .intro{isolation:isolate;position:relative;overflow:clip;padding:clamp(1.2rem,3.2vw,2.5rem) 0 clamp(1.85rem,3.8vw,3.3rem);border-bottom:2px solid var(--ink)}
-.intro::before{content:"";position:absolute;z-index:-1;right:clamp(-15rem,-12vw,-6rem);bottom:-16rem;width:clamp(25rem,49vw,44rem);aspect-ratio:1;border-radius:50%;background:var(--lemon);pointer-events:none}
+.intro::before{content:"";position:absolute;z-index:-1;right:clamp(-17rem,-12vw,-6rem);bottom:-24rem;width:clamp(30rem,55vw,49rem);aspect-ratio:1;border-radius:50%;border:1.5px solid var(--ink);background:var(--lemon);pointer-events:none}
 .intro-copy{display:flex;align-items:baseline;flex-wrap:wrap;gap:.3rem .85rem;margin-bottom:1.15rem}
 .intro-copy h1,.workspace h2,.workspace h3,.workspace p{margin:0}
-.intro-copy h1{font-size:clamp(1.3rem,2.1vw,1.9rem);line-height:1.1;font-weight:830;letter-spacing:-.045em}
+.intro-copy h1{font-size:clamp(1.6rem,2.55vw,2.25rem);line-height:1.05;font-weight:850;letter-spacing:-.055em}
 .intro-copy p{max-width:61ch;margin:0;padding-inline-start:.85rem;border-left:1px solid var(--ink);font-weight:560;font-size:clamp(.85rem,1.2vw,1rem)}
 .intro-copy small{flex-basis:100%;font-size:.84rem;color:var(--ink);overflow-wrap:anywhere}
 .active-qa{width:fit-content;max-width:100%;margin:0 0 1rem;padding:.55rem .85rem;border:1.5px solid var(--ink);border-radius:.6rem;background:var(--panel);color:var(--ink)}
@@ -56,7 +58,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font:1rem/1.5 system-ui,-
 @keyframes reveal{from{opacity:0;transform:translateY(.45rem)}to{opacity:1;transform:translateY(0)}}
 .workspace{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:1.35rem;align-items:start;padding:clamp(1.6rem,4vw,3rem) 0 3.5rem}
 .workspace article,.workspace section{scroll-margin-top:1rem}
-.workspace .card{min-width:0;background:var(--panel);border:2px solid var(--ink);border-radius:1rem;padding:clamp(1rem,3vw,1.65rem);box-shadow:0 .4rem 0 var(--ink)}
+.workspace .card{min-width:0;background:var(--panel);border:2px solid var(--ink);border-radius:1rem;padding:clamp(1rem,3vw,1.65rem);box-shadow:0 .26rem 0 var(--ink)}
 .workspace .card h2{margin-bottom:1rem;font-size:clamp(1.4rem,2.6vw,2rem);line-height:1.05;letter-spacing:-.045em;font-weight:830}
 .workspace .card h3{font-size:1.14rem;line-height:1.2}
 .workspace .card p{overflow-wrap:anywhere}
@@ -146,7 +148,7 @@ a{color:var(--accent);text-underline-offset:.18em}
 @media(max-width:49rem){.workspace{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:35rem){.inner,.workspace{width:calc(100% - 1.5rem)}.intro::before{right:-18rem;bottom:-14rem}.masthead nav{gap:.35rem .65rem}.masthead nav a{font-size:.85rem}.intro-copy{display:grid;gap:.25rem}.intro-copy p{border:0;padding:0}}
 @media(max-width:29rem){.radio-options{grid-template-columns:minmax(0,1fr)}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}#guided-review:not([hidden]),#run-log li:last-child,.workspace #run-links:not([hidden]),#status-message[data-running]::before{animation:none}#submit,.workspace a.action,.radio-options label,.drop{transition:none}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.brand:hover .brand-mark,.brand:focus-visible .brand-mark{transform:none}#guided-review:not([hidden]),#run-log li:last-child,.workspace #run-links:not([hidden]),#status-message[data-running]::before{animation:none}#submit,.workspace a.action,.radio-options label,.drop{transition:none}}
 .recheck-result{margin-top:1.15rem;padding-top:1rem;border-top:1px solid var(--line)}
 .workspace .recheck-result h3{margin-bottom:.4rem}
 .workspace .recheck-result .result-scope{margin-bottom:.85rem;padding:.6rem .75rem;border-left:3px solid #ff7045;background:var(--soft)}
@@ -171,7 +173,7 @@ a{color:var(--accent);text-underline-offset:.18em}
   <a class="skip-work" href="#workspace">Перейти к работе с документом</a>
   <div class="inner">
     <a class="brand" href="/"><span class="brand-mark" id="brand-face" data-state="idle" aria-hidden="true"><span class="brand-eyes"></span><span class="brand-mouth"></span></span>Разбор ТЗ</a>
-    <nav aria-label="Разделы"><a id="active-report-link" href="#demo-heading">Отчёт</a><a class="nav-start" href="#upload-heading">Проверить ТЗ</a></nav>
+    <nav aria-label="Разделы"><a id="active-report-link" href="#demo-heading">Отчёт</a><a id="active-json-link" href="/reports/demo/review.json?download=1" download="review.json" aria-label="Скачать JSON текущего отчёта" hidden>JSON ↓</a><a class="nav-start" href="#upload-heading">Проверить ТЗ</a></nav>
   </div>
 </header>
 <main>
@@ -1265,6 +1267,9 @@ function publishReport(report, id, sha) {
   activeLink.href = reportUrl;
   activeLink.target = '_blank';
   activeLink.rel = 'noopener';
+  const download = get('active-json-link');
+  download.href = '/reports/' + id + '/review.json?download=1';
+  download.hidden = false;
   activeLink.setAttribute('aria-label', 'Открыть ' + (id === 'demo' ? 'демо-отчёт' : 'текущий отчёт') + ' в новой вкладке');
   const name = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
   get('review-document').textContent = [id === 'demo' ? 'Демо' : 'Полное ревью', name].filter(Boolean).join(' · ');
