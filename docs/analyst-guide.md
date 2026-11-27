@@ -72,3 +72,12 @@ python3 -m unittest discover -s tests -v
 [Первый живой прогон и контрольная копия](../runs/allocation/README.md) · [Слепой контроль на корпоративном платеже](../eval/holdout/results.md) · [Предварительный поиск конфликтов в официальном кейсе](../runs/bcc-preview/README.md) · [Архитектура и протокол оценки](../docs/architecture-and-evaluation.md)
 
 [Шесть независимых прогонов и сравнение приоритетов](../eval/priority/README.md) · [Сравнение скорости и перепроверка после правки](../runs/bcc-benchmark/README.md) · [Исследование рынка](../research/market/README.md) · [Шесть вариантов интерфейса для сравнения в локальном браузере](../design/concepts/index.html)
+
+## Примеры для самостоятельной проверки
+
+| Документ | Что можно проверить |
+| --- | --- |
+| Метеозонд | Агент выполняет расчёт с фиксированным входом. 33 Вт·ч расходятся с ожидаемыми 37. После исправления ячейки расхождение исчезает. [До](https://razbor-tz.onrender.com/reports/recorder/before.html#execution-D-01) · [После](https://razbor-tz.onrender.com/reports/recorder/after.html) |
+| Переплётная мастерская | При 18 мм он вычисляет два разных участка. При 17 мм обе трактовки дают клеевой участок. [Расчёт](https://razbor-tz.onrender.com/reports/bindery/after.html#execution-D-01) · [Другой домен и контроль](../eval/route-decisions/protocol.md) |
+| Студия печати | Результат — название окна, в которое пойдёт клиент. Исходное замечание получено через Cloudflare, исполняемый пример по отчёту построила Astra. [Студия](https://razbor-tz.onrender.com/reports/studio-pickup/assisted.html#execution-D-01) · [Второй пример с языком субтитров](https://razbor-tz.onrender.com/reports/caption-export/assisted.html#execution-D-01) |
+| Спектрометр при исчерпанной квоте | Локальные правила обнаружили три конкретные проблемы. В исправленном контроле они исчезли. Оба отчёта помечены как частичные. [До](https://razbor-tz.onrender.com/reports/spectrometer/partial.html) · [После](https://razbor-tz.onrender.com/reports/spectrometer/corrected.html) |
