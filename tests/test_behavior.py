@@ -108,6 +108,17 @@ class BehaviorTests(unittest.TestCase):
         review, = behavior.disputed_examples(full["whole"], agreed, full["conflicts"])
         self.assertEqual((review["rule_line"], review["example_line"]), (5, 15))
 
+    def test_production_reconciliation_replays_recorded_decisions_and_keeps_true_conflicts(self):
+        from eval.gemini.behavior.precision import CASES, ROOT, replay
+        for case in CASES:
+            with self.subTest(case=case):
+                result = replay(case, ROOT / "precision")
+                if case == "museum-aligned":
+                    self.assertEqual(result["after"], [])
+                    self.assertEqual(result["readiness"], ["можно начинать", "можно начинать"])
+                else:
+                    self.assertEqual(result["after"], result["before"])
+
     def test_addressed_contract_keeps_same_status_examples_independent(self):
         from reviewer import response_fields
         c = {"id":7, "field":"receipt", "errors":{40:409, 46:409, 58:422}}
