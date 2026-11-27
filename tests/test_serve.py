@@ -106,6 +106,14 @@ class WorkbenchTest(unittest.TestCase):
         self.app.model = None
         with patch.dict("os.environ", {"REVIEW_PROVIDER": "gemini", "REVIEW_MODEL": ""}):
             self.assertIn("gemini-3.5-flash-lite", self.request("GET", "/")[1].decode())
+        reserve = {"REVIEW_PROVIDER": "gemini", "REVIEW_FALLBACK_MODEL": "@cf/openai/gpt-oss-120b",
+                   "CLOUDFLARE_ACCOUNT_ID": "0" * 32, "CLOUDFLARE_API_TOKEN": "test-reserve-secret"}
+        with patch.dict("os.environ", reserve, clear=True):
+            page = self.request("GET", "/")[1].decode()
+            self.assertIn("При лимите Gemini текст получит Cloudflare Workers AI", page)
+            self.assertNotIn("test-reserve-secret", page)
+            with patch.dict("os.environ", {"CLOUDFLARE_API_TOKEN": ""}):
+                self.assertNotIn("При лимите Gemini текст получит", self.request("GET", "/")[1].decode())
 
     def test_demo_fallback_and_immutable_modes(self):
         benchmark = self.demo.with_name("bcc-benchmark")

@@ -803,7 +803,11 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             if route.path == "/":
                 page = (app.root / "reviewer" / PAGE.name).read_text(encoding="utf-8")
                 model = app.model or codex_provider.default_model()
-                self.reply(HTTPStatus.OK, page.replace("<!--review-model-->этого сервера", escape(model)).encode(),
+                fallback = codex_provider.fallback_model(model)
+                disclosure = escape(model)
+                if fallback:
+                    disclosure += ". При лимите Gemini текст получит Cloudflare Workers AI (" + escape(fallback.name) + ")"
+                self.reply(HTTPStatus.OK, page.replace("<!--review-model-->этого сервера", disclosure).encode(),
                            REPORT_FILES["review.html"])
                 return
             status = re.fullmatch(rf"/api/status/({JOB_ID})", route.path)
