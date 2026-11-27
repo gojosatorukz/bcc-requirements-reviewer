@@ -218,10 +218,16 @@ PRESENCE = re.compile(r"\b(?:при\s|если\b|только\b|всегда\b|�
                       r"required\b|optional\b|only\b|always\b|never\b|when\b|if\b|must\b|omit|absent|present\b)", re.I)
 
 
+CLOSED_FIELD_SET = re.compile(r"единственн\w*\s+пол|только\s+(?:эти\s+)?пол[яе]|"
+                              r"исчерпывающ\w*\s+(?:перечень|список)|only\s+(?:these\s+)?fields?\b|"
+                              r"additionalProperties[\s`\":=]+false", re.I)
+
+
 def from_addressed(result, choices, sample_lines=frozenset()):
     assessments = []
     for c in choices:
         row = result[f"field_{c['id']}"]
+        field = re.compile(r"(?<!\w)" + re.escape(c["field"]) + r"(?!\w)")
         outcomes = {n: row["outcomes"][f"example_{n}"] for n in c["errors"]}
         if sorted(reason["policy"] for reason in row["reasons"]) != sorted(set(outcomes.values())):
             raise ValueError(f"Дай одно обоснование для каждой использованной политики по полю {c['field']}")
@@ -230,8 +236,8 @@ def from_addressed(result, choices, sample_lines=frozenset()):
         for ruling in rulings:
             outside = [e["quote"].strip() for e in ruling["evidence"] if e["line"] not in sample_lines]
             # A value dictionary and an instance are evidence of values, not a closed error schema.
-            if (ruling["policy"] != "unspecified" and outside
-                    and all(q.startswith("|") and not PRESENCE.search(q) for q in outside)):
+            if (ruling["policy"] != "unspecified" and outside and all(q.startswith("|") for q in outside)
+                    and not any(CLOSED_FIELD_SET.search(q) or field.search(q) and PRESENCE.search(q) for q in outside)):
                 ruling["policy"] = "unspecified"
                 ruling["basis"] = "В процитированных строках таблицы описано поле, но условие его присутствия не задано."
                 outcomes.update(dict.fromkeys(ruling["examples"], "unspecified"))

@@ -93,9 +93,14 @@ def review(result, cases, other_rules, anchors):
                              f"{effect['action']} {effect['triggering_event']}"),
                 "first": {"source": anchors[case["anchor"]], "outcome": f"{observable}: {initial} (верхняя граница)."},
                 "second": {"source": anchors[effect["other"]], "outcome": f"{observable}: {initial} + {added} = {initial + added}."},
-                "owner": effect["owner"], "question": effect["question"], "agreement_control": effect["agreement_control"],
+                "owner": effect["owner"], "question": quantity_question(observable, initial, initial + added),
+                "agreement_control": effect["agreement_control"],
             })
     return {"conflicts": conflicts}
+
+
+def quantity_question(metric, upper, projected):
+    return f"Какой итог по показателю «{metric}» нужен в описанной ситуации — максимум {upper} или {projected}?"
 
 
 OPTIONAL_TEXT = {"type": ["string", "null"]}
@@ -210,6 +215,7 @@ def certified(result, pairs, sources, anchors):
         first = {"source": anchors[pair["count_rule"]], "outcome": f"{metric}: допустимо максимум {cap}."}
         second = {"source": anchors[pair["transition"]], "outcome": f"{metric}: {kept} + {added} = {kept + added}."}
         candidate = {k: trace[k] for k in ("scenario", "title", "owner", "question", "agreement_control")}
+        candidate["question"] = quantity_question(metric, cap, kept + added)
         proofs.append({**candidate, "first": first, "second": second})
     return proofs
 
@@ -238,6 +244,7 @@ def apply_proofs(whole, ids, candidates, registry):
             whole["findings"].append(target)
         # Explicit decisions on other candidate numbers still belong to their original rows.
         target["candidates"] = sorted(set(target["candidates"]) | {number})
+        target["question"] = proof["question"]
         refs = {r["id"] for r in registry if r["evidence"]["line"] in lines}
         target["requirements"] = sorted(set(target["requirements"]) | refs)
         for section in ("findings", "reconciled"):

@@ -78,6 +78,19 @@ class BehaviorTests(unittest.TestCase):
         self.assertIn("46", q)
         self.assertNotIn("строк 40", q)
 
+    def test_presence_rule_for_another_field_does_not_close_a_field_dictionary(self):
+        from reviewer import response_fields
+        candidate = {"id": 1, "field": "receipt", "errors": {33: 409}}
+        row = {"outcomes": {"example_33": "excluded"}, "reasons": [
+            {"policy": "excluded", "basis": "Description", "evidence": [
+                {"line": 4, "quote": "| receipt | string | PASS / HOLD |"},
+                {"line": 5, "quote": "| detail | string | when validation fails |"}]}]}
+        ruling, = response_fields.from_addressed({"field_1": row}, [candidate])["assessments"]
+        self.assertIn("409", ruling["questions"][0])
+        row["reasons"][0]["evidence"][1]["quote"] = "| Error schema | Only field: detail |"
+        ruling, = response_fields.from_addressed({"field_1": row}, [candidate])["assessments"]
+        self.assertEqual(ruling["questions"], [])
+
     def test_a_saturated_count_is_evaluated_with_an_independent_rule(self):
         from reviewer import count_limits
         rules = {4:"There can be at most 3 current leases per bin.", 8:"An extra lease is issued upon arrival."}
@@ -147,4 +160,5 @@ class BehaviorTests(unittest.TestCase):
                          ("критический", ["R-004"], [1]))
         self.assertEqual(summary["reconciled"], [])
         self.assertIn("2 + 1 = 3", finding["impact"])
+        self.assertIn("максимум 2 или 3?", finding["question"])
         self.assertEqual(summary["testing"]["status"], "можно частично")
