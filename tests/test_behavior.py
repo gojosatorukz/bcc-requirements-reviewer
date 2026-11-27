@@ -110,7 +110,8 @@ class BehaviorTests(unittest.TestCase):
         source = {4: "At most two signed copies per box.", 9: "Send an additional copy to the same box."}
         anchors = {n: {"line": n, "quote": s} for n, s in source.items()}
         checked = count_limits.projected_pairs(source, count_limits.experiments(source), [], anchors)
-        trace = dict(pair=1, applicability="same_scope", retained=2, required_additions=1, explanation="2 + 1",
+        trace = dict(pair=1, applicability="same_scope", population="current_objects",
+                     retained=2, removal_quote=None, required_additions=1, explanation="2 + 1",
                      exception_kind="none", exception_quote=None, addition_quote="Send an additional copy",
                      scenario="Two copies exist, a third is sent.", metric="copies in the box",
                      title="Copy limit", owner="Publisher", question="May the third copy be added?",
@@ -122,7 +123,13 @@ class BehaviorTests(unittest.TestCase):
             return count_limits.certified(output, checked, source, anchors)
         proof, = certify()
         self.assertEqual(certify(required_additions=0, addition_quote=None), [])
-        self.assertEqual(certify(retained=1), [])
+        with self.assertRaisesRegex(ValueError, "Для убыли"):
+            certify(retained=1)
+        source[12] = "One earlier copy is withdrawn before a new one is sent."
+        self.assertEqual(certify(retained=1, removal_quote=source[12]), [])
+        historical, = certify(population="occurred_events", retained=0, exception_kind="explicit_override",
+                              exception_quote="Send an additional copy")
+        self.assertIn("2 + 1 = 3", historical["second"]["outcome"])
         self.assertEqual(certify(applicability="other_scope"), [])
         self.assertEqual(certify(addition_quote="the same box"), [])
         with self.assertRaisesRegex(ValueError, "исключения в цифрах"):

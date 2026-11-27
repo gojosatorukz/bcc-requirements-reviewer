@@ -242,11 +242,15 @@ def discover(segments, source, stage):
                 review["certified"].append(len(review["conflicts"]))
             for t in traces["traces"]:
                 pair = pairs_to_check[t["pair"] - 1]
+                exception = t["exception_quote"]
+                if t["exception_kind"] == "explicit_override" and not count_limits.EXPLICIT_OVERRIDE.search(exception or ""):
+                    exception = None
                 review["count_checks"].append({"limit_line": anchors[pair["count_rule"]]["line"],
                     "action_line": anchors[pair["transition"]]["line"], "counted_object": pair["counted_phrase"],
-                    "initial_limit": pair["count"], "retained": t["retained"], "added": t["required_additions"],
+                    "initial_limit": pair["count"], "retained": count_limits.retained_count(t, pair),
+                    "added": t["required_additions"], "population": t["population"],
                     "applicability": t["applicability"], "addition_quote": t["addition_quote"],
-                    "exception": t["exception_quote"], "explanation": t["explanation"]})
+                    "exception": exception, "scenario": t["scenario"]})
         attempts.extend(events)
     if not inputs["cases"] or not inputs["rules"]:
         return review, attempts

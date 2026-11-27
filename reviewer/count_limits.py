@@ -101,7 +101,8 @@ def review(result, cases, other_rules, anchors):
 OPTIONAL_TEXT = {"type": ["string", "null"]}
 AUDIT = record(traces={"type": "array", "items": record(pair=NUMBER,
     applicability={"type": "string", "enum": ["same_scope", "other_scope", "unreachable", "unrelated"]},
-    retained=NUMBER, required_additions=NUMBER, explanation=TEXT, addition_quote=OPTIONAL_TEXT,
+    population={"type": "string", "enum": ["occurred_events", "current_objects"]},
+    retained=NUMBER, removal_quote=OPTIONAL_TEXT, required_additions=NUMBER, explanation=TEXT, addition_quote=OPTIONAL_TEXT,
     exception_kind={"type": "string", "enum": ["none", "explicit_override", "release", "blocked", "reset"]},
     exception_quote=OPTIONAL_TEXT,
     scenario=TEXT, metric=TEXT, title=TEXT, owner=TEXT, question=TEXT, agreement_control=TEXT)})
@@ -111,6 +112,10 @@ AUDIT_PROMPT = """Оцени каждую пару limit_text и transition_text
 до события из transition, в том числе промежуточную настройку и последующий триггер. В scenario опиши
 все предусловия и действия. Сколько из ранее учтённых объектов или событий к концу всё ещё учитываются
 (retained)? Сколько НОВЫХ объектов или событий отдельно требует transition (required_additions)?
+Различай число фактически произошедших событий (occurred_events) и количество существующих
+сейчас объектов (current_objects). История настроек и внутренние флаги не меняют фактическое число
+прошлых событий того же объекта за тот же период. У текущих объектов для каждой убыли нужна
+дословная removal_quote о снятии, замене или окончании их действия; при отсутствии убыли верни null.
 При вычислении добавления пользуйся самой нормой перехода, не применяй к ней ограничивающую норму.
 В добавление считай только НОВЫЙ экземпляр того же объекта или события, который ограничен в limit_text.
 Иные промежуточные действия не увеличивают проверяемый счётчик. В addition_quote дай дословную
@@ -160,6 +165,12 @@ def projected_pairs(rules, caps, hypotheses, anchors):
     return pairs
 
 
+def retained_count(trace, pair):
+    if trace["applicability"] == "same_scope" and trace["population"] == "occurred_events":
+        return pair["count"]
+    return trace["retained"]
+
+
 def certified(result, pairs, sources, anchors):
     traces = result["traces"]
     if sorted(t["pair"] for t in traces) != [p["pair"] for p in pairs]:
@@ -167,9 +178,13 @@ def certified(result, pairs, sources, anchors):
     proofs = []
     for trace in traces:
         pair = pairs[trace["pair"] - 1]
-        cap, kept, added = pair["count"], trace["retained"], trace["required_additions"]
-        if not (0 <= kept <= cap and added >= 0):
+        cap, kept, added = pair["count"], retained_count(trace, pair), trace["required_additions"]
+        if not (0 <= trace["retained"] <= cap and added >= 0):
             raise ValueError("retained не может превышать исходное количество, прирост неотрицателен.")
+        removal = (trace["removal_quote"] or "").strip()
+        if trace["applicability"] == "same_scope" and kept < cap and (
+                not removal or not any(removal in line for line in sources.values())):
+            raise ValueError("Для убыли назови исходную фразу об окончании действия ранее учтённых объектов.")
         exception = (trace["exception_quote"] or "").strip()
         kind = trace["exception_kind"]
         if bool(exception) != (kind != "none") or exception and not any(exception in line for line in sources.values()):
@@ -182,12 +197,13 @@ def certified(result, pairs, sources, anchors):
         if not mentions_counted_object(pair["counted_phrase"], addition_quote):
             continue
         if kind != "none":
-            if kind == "explicit_override" and EXPLICIT_OVERRIDE.search(exception):
-                continue
-            raise ValueError("Покажи действие исключения в цифрах: когда выдача блокируется, добавлено ноль, "
-                             "при освобождении измени retained, при смене области измени applicability. "
-                             "Для разрешения превысить сам предел приведи прямую оговорку о пределе. "
-                             "Если её нет, оставь exception_kind=none, сохрани несовместимые исходы.")
+            if kind == "explicit_override":
+                if EXPLICIT_OVERRIDE.search(exception):
+                    continue
+                # A transition which ignores earlier configuration is still counted under an unamended bound.
+            else:
+                raise ValueError("Покажи действие исключения в цифрах: когда выдача блокируется, добавлено ноль, "
+                                 "при освобождении измени retained, при смене области измени applicability.")
         if not trace["question"].strip().endswith("?"):
             raise ValueError("Сформулируй вопрос владельцу о выборе итогового состояния.")
         metric = trace["metric"].strip().rstrip(".:")
