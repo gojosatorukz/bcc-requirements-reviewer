@@ -31,6 +31,24 @@ def http_error(code, text):
 
 
 class GeminiProviderTests(unittest.TestCase):
+    def test_only_the_explicit_minute_quota_uses_the_provider_retry_delay(self):
+        for ids, expected_calls in ((["GenerateRequestsPerMinutePerProject"], 2),
+                                    (["GenerateRequestsPerDayPerProject"], 1),
+                                    (["RequestsPerMinute", "RequestsPerDay"], 1)):
+            details = [{"violations": [{"quotaId": name} for name in ids]}, {"retryDelay": "1.25s"}]
+            raw = json.dumps({"error": {"details": details}}).encode()
+            err = HTTPError(gemini_provider.ENDPOINT, 429, "quota", {}, io.BytesIO(raw))
+            with patch.object(gemini_provider, "urlopen", side_effect=[err, response({})]) as transport, \
+                    patch.object(gemini_provider, "sleep") as sleep:
+                if expected_calls == 2:
+                    self.assertEqual(gemini_provider.complete("check", MODEL, "low", {"type":"object"})[0], {})
+                    sleep.assert_called_once_with(2)
+                else:
+                    with self.assertRaisesRegex(ValueError, "429"):
+                        gemini_provider.complete("check", MODEL, "low", {"type":"object"})
+                    sleep.assert_not_called()
+                self.assertEqual(transport.call_count, expected_calls)
+
     def test_transient_unavailability_retries_once_while_quota_and_long_waits_do_not(self):
         schema = {"type": "object"}
         with patch.object(gemini_provider, "sleep") as delay, patch.object(

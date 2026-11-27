@@ -271,6 +271,8 @@ def cli_worker(mode, document, baseline, json_report, html_report, model, progre
     python = [sys.executable, "-m"]
     if mode == "full":
         command = [*python, "reviewer", str(document), str(json_report)]
+        if codex_provider.provider_name() == "gemini-api":
+            command.extend(["--workers", "1"])
         if checkpoint_dir is not None:
             command.extend(["--checkpoint-dir", str(checkpoint_dir)])
     else:

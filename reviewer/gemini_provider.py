@@ -2,6 +2,7 @@
 
 from http.client import HTTPException
 import json
+from math import ceil
 import os
 import re
 from time import sleep
@@ -43,15 +44,36 @@ def wire_schema(schema):
     return node
 
 
+def quota_wait(exc):
+    try:
+        details = json.loads(exc.read(32_768))["error"]["details"]
+        violations = [v["quotaId"] for entry in details for v in entry.get("violations", ())]
+        if not violations or not all("PerMinute" in name for name in violations):
+            return None
+        for entry in details:
+            match = re.fullmatch(r"([0-9]{1,2}(?:\.[0-9]{1,9})?)s", entry.get("retryDelay", ""))
+            if match and float(match[1]) <= 60:
+                return max(1, ceil(float(match[1])))
+    except (KeyError, TypeError, AttributeError, ValueError, OSError, HTTPException):
+        pass
+    return None
+
+
 def open_generation(request):
     try:
         return urlopen(request, timeout=120)
     except HTTPError as exc:
-        delay = (exc.headers or {}).get("Retry-After", "2").strip()
-        if exc.code != 503 or not re.fullmatch(r"[0-9]{1,2}", delay) or int(delay) > 10:
+        delay = None
+        if exc.code == 429:
+            delay = quota_wait(exc)
+        elif exc.code == 503:
+            after = (exc.headers or {}).get("Retry-After", "2").strip()
+            if re.fullmatch(r"[0-9]{1,2}", after) and int(after) <= 10:
+                delay = int(after)
+        if delay is None:
             raise
         exc.close()
-        sleep(int(delay))
+        sleep(delay)
     return urlopen(request, timeout=120)
 
 

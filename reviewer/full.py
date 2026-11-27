@@ -349,10 +349,14 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         def verify_fields(r, batch=batch):
             response_fields.verify(r, batch, source)
         if codex_provider.provider_name() == "gemini-api":
-            def addressed_fields(stage=stage, data=data, batch=batch):
+            def addressed_fields(stage=stage, data=data, batch=batch, operations=operations):
+                mentions, sample_lines = response_fields.contract_mentions(batch, operations, source)
+                def verify_addressed(result):
+                    section = response_fields.from_addressed(result, batch)
+                    response_fields.verify(section, batch, source)
+                    response_fields.check_normative_basis(section, sample_lines)
                 output, events = anchored(stage, response_fields.INSTRUCTIONS + response_fields.ADDRESSED,
-                    data, response_fields.addressed_schema(batch),
-                    lambda r: response_fields.verify(response_fields.from_addressed(r, batch), batch, source))
+                    {**data, "field_mentions": mentions}, response_fields.addressed_schema(batch), verify_addressed)
                 return response_fields.from_addressed(output, batch), events
             tasks.append(addressed_fields)
         else:

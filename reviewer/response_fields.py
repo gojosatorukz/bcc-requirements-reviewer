@@ -189,8 +189,28 @@ def addressed_schema(choices):
 
 ADDRESSED = """\nДля этого формата ответь по фиксированным ключам field_ID и example_N.
 В outcomes укажи policy для КАЖДОГО исхода. В reasons дай одно обоснование и его исходные
-цитаты для каждой использованной политики. Открытый вопрос будет сформирован из тех исходов,
-для которых ты выберешь unspecified. Обязательность нельзя вывести только из образца тела."""
+цитаты для каждой использованной политики. В field_mentions указаны вхождения имени вне образцов
+тел. Описание назначения или допустимых значений не задаёт состав ошибок. Отделяй условие
+присутствия от смысла поля. Для required, excluded или optional нужна именно норма о составе.
+Если ни одна цитата не задаёт его, верни unspecified. Открытый вопрос будет сформирован из этих исходов."""
+
+
+def contract_mentions(choices, operations, source):
+    sample_lines = {line for examples in operations.values() for ex in examples
+                    for line in range(ex["start"], ex["end"] + 1)}
+    mentions = {}
+    for c in choices:
+        name = re.compile(r"(?<!\w)" + re.escape(c["field"]) + r"(?!\w)")
+        mentions[f"field_{c['id']}"] = [n for n, line in source.items() if n not in sample_lines and name.search(line)]
+    return mentions, sample_lines
+
+
+def check_normative_basis(assessments, sample_lines):
+    for item in assessments["assessments"]:
+        for ruling in item["rulings"]:
+            if ruling["policy"] != "unspecified" and not any(e["line"] not in sample_lines for e in ruling["evidence"]):
+                raise ValueError(f"Поле {item['candidate']}: пример тела сам не устанавливает {ruling['policy']}. "
+                                 "Нужна цитата нормативного условия вне примера либо unspecified.")
 
 
 def from_addressed(result, choices):

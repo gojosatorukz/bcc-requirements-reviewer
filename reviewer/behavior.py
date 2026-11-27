@@ -22,7 +22,8 @@ PREDICTIONS = record(predictions={"type": "array", "items": PREDICTION})
 CHECK = record(example=NUMBER, observable=TEXT, predicted_value=TEXT, printed_value=TEXT, verdict={"type": "string", "enum": ["agrees", "disagrees", "undetermined"]})
 COMPARISON = record(**SCHEMA["properties"], checks={"type": "array", "items": CHECK})
 
-RULE_CHECK = record(pair=NUMBER, relation={"type": "string", "enum": ["compatible", "independent", "incompatible"]})
+RULE_CHECK = record(pair=NUMBER, scenario=TEXT, observable=TEXT, first_value=TEXT, second_value=TEXT,
+                    relation={"type": "string", "enum": ["compatible", "independent", "incompatible"]})
 RULE_COMPARISON = record(**SCHEMA["properties"], checks={"type": "array", "items": RULE_CHECK})
 
 PREDICT = """Прими роль тестировщика, который самостоятельно рассчитывает ожидаемые результаты.
@@ -159,7 +160,7 @@ def discover(segments, source, stage):
     reading_input, anchors = reading(segments, source)
     inputs, printed = table_cases(segments, source, reading_input, anchors)
     rule_ids = set(reading_input["rules"])
-    pairs = list(combinations(sorted(rule_ids), 2)) if 2 <= len(rule_ids) <= 10 else []
+    pairs = list(combinations(sorted(rule_ids), 2)) if 2 <= len(rule_ids) <= 6 else []
     checks = {i: set(pair) for i, pair in enumerate(pairs, 1)}
 
     def verify_rules(result):
@@ -170,6 +171,9 @@ def discover(segments, source, stage):
             raise ValueError("Укажи решение по каждой предложенной паре номеров")
         cited = [{c["first"]["anchor"], c["second"]["anchor"]} for c in result["conflicts"]]
         for c in result["checks"]:
+            equal = c["first_value"].strip().casefold() == c["second_value"].strip().casefold()
+            if c["relation"] == "compatible" and not equal or c["relation"] == "incompatible" and equal:
+                raise ValueError(f"Пара {c['pair']}: вердикт не соответствует нормализованным значениям одной величины")
             if (c["relation"] == "incompatible") != (checks[c["pair"]] in cited):
                 raise ValueError(f"Сверь решение и обе ссылки для пары {c['pair']}")
 
@@ -181,6 +185,13 @@ def discover(segments, source, stage):
         instructions += ("\nВ pairs перечислены пары нормативных строк. Обработай каждую по её порядковому номеру. "
                          "Для каждой пары установи, есть ли общая допустимая последовательность событий, где "
                          "при исполнении только одного правила и только другого получаются РАЗНЫЕ результаты. "
+                         "Проверь границу инварианта: сначала выполни разрешённое действие до достижения "
+                         "ограничения. Сохрани историю. Затем примени другую норму, включая допустимое изменение "
+                         "состояния и следующее событие. Даже если первый шаг согласуется, проверь весь путь. "
+                         "Новый режим сам по себе не отменяет универсальное ограничение. Назови общий показатель "
+                         "после ПОСЛЕДНЕГО события, вычисли first_value только по первой норме и second_value только "
+                         "по второй. Используй одну и ту же шкалу. Для compatible значения запиши одинаково; "
+                         "для independent объясни, почему нормы не предписывают два значения общего показателя. "
                          "Для incompatible обязательно верни conflicts с адресами ровно этих двух строк.")
         rules_payload["pairs"] = [{"id": i, "first": a, "second": b} for i, (a, b) in enumerate(pairs, 1)]
     rule_result, attempts = stage("Правила и примеры", instructions, rules_payload,
