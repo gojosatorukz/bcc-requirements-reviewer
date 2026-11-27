@@ -670,3 +670,17 @@ class CliOutputTest(unittest.TestCase):
             execute(command, progress.append, "Ошибка")
         self.assertEqual(progress, ["План проверки · групп строк: 3", "Совместимость количественных правил · проверено",
                                     CROSS_CHECK, "Весь документ · проверено"])
+
+    def test_stage_failure_log_rejects_arbitrary_fields_and_keeps_safe_diagnostic(self):
+        from contextlib import redirect_stderr
+        from io import StringIO
+        from reviewer.serve import SafeWorkerError
+        lines = ["review_stage_error|Проверка границы|evidence_validation",
+                 "review_stage_error|секретный фрагмент|evidence_validation",
+                 "review_stage_error|Блоки 1–2|секретный фрагмент",
+                 "Прогон не завершён: Приватное содержимое документа"]
+        command = [sys.executable, "-c", "import sys; print(*sys.argv[1:], sep='\\n'); sys.exit(1)", *lines]
+        with redirect_stderr(StringIO()) as log, self.assertRaises(SafeWorkerError) as failure:
+            execute(command, lambda line: self.fail(line), "Ошибка")
+        self.assertEqual(str(failure.exception), "Этап «Проверка границы»: вывод модели не прошёл сверку с источником.")
+        self.assertEqual(log.getvalue(), "review_stage_error stage=Проверка границы code=evidence_validation\n")

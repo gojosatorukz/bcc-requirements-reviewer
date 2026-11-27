@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -171,6 +172,10 @@ def main():
                   "source": blocks, **result}
         write_report(args.report, report)
     except (OSError, ValueError) as exc:
+        from .full import InvalidStageResult, StageProviderError
+        if isinstance(exc, (StageProviderError, InvalidStageResult)):
+            code = exc.code if isinstance(exc, InvalidStageResult) else getattr(exc.__cause__, "code", "provider_failure")
+            print(f"review_stage_error|{exc.stage}|{code}", file=sys.stderr, flush=True)
         parser.exit(1, f"Прогон не завершён: {exc}\n")
     print(f"Отчёт сохранён: {args.report}")
 

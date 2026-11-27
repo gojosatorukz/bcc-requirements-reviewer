@@ -2,6 +2,7 @@
 
 from itertools import combinations
 import re
+import sys
 
 from . import count_limits, source_refs
 from .contract import HTTP_STATUS_POLICY, TEXT, record, validate_review
@@ -216,14 +217,22 @@ def discover(segments, source, stage):
     bound_anchors = {c["anchor"] for c in bound_cases}
     other_rules = {n: text for n, text in inputs["rules"].items() if n not in bound_anchors}
     if bound_cases and other_rules:
+        from .full import InvalidStageResult
         def check_effects(result):
             validate_review(count_limits.review(result, bound_cases, other_rules, anchors), source,
                             http_status_policy=HTTP_STATUS_POLICY)
-        limited, events = stage("Проверка границы", count_limits.PROMPT,
-                                {"cases": bound_cases, "other_rules": other_rules}, count_limits.SCHEMA, check_effects)
-        additions = count_limits.review(limited, bound_cases, other_rules, anchors)["conflicts"]
-        review["limit_candidates"] = list(range(len(review["conflicts"]) + 1, len(review["conflicts"]) + len(additions) + 1))
-        review["conflicts"].extend(additions)
+        try:
+            limited, events = stage("Проверка границы", count_limits.PROMPT,
+                                    {"cases": bound_cases, "other_rules": other_rules}, count_limits.SCHEMA, check_effects)
+        except InvalidStageResult as error:
+            # Keep the rejected evidence in the receipt. The independent numeric
+            # audit and document-wide reconciliation still check the boundary.
+            events = error.attempts
+            print("Проверка границы · вывод не подтверждён", file=sys.stderr, flush=True)
+        else:
+            additions = count_limits.review(limited, bound_cases, other_rules, anchors)["conflicts"]
+            review["limit_candidates"] = list(range(len(review["conflicts"]) + 1, len(review["conflicts"]) + len(additions) + 1))
+            review["conflicts"].extend(additions)
         attempts.extend(events)
     pairs_to_check = count_limits.projected_pairs(inputs["rules"], bound_cases, review["conflicts"], anchors)
     if pairs_to_check:

@@ -166,6 +166,49 @@ class BehaviorTests(unittest.TestCase):
         self.assertIn("3 + 1 = 4", pair["second"]["outcome"])
         self.assertEqual(count_limits.review({"probes":[{"case":1,"effects":[]}]}, cases, {}, refs), {"conflicts":[]})
 
+    def test_only_identifiers_from_the_two_cited_rules_are_exempt_from_numeric_checks(self):
+        from reviewer import count_limits
+        from reviewer.serve import ROOT, OFFICIAL_SAMPLE
+        original = (ROOT / OFFICIAL_SAMPLE).read_text().splitlines()
+        for first, second, limit, action in [
+            (original[38], original[39], "Ф-3", "Ф-4"),
+            ("REQ-72: at most one ticket.", "SPEC-90: issue another ticket upon arrival.", "REQ-72", "SPEC-90"),
+        ]:
+            rules = {1:first, 2:second}
+            cases = count_limits.experiments(rules)
+            anchors = {n:{"line":n,"quote":line} for n, line in rules.items()}
+            effect = {"other":2, "added":1, "setup":limit, "action":action, "triggering_event":"Следующее событие",
+                      "observable":"события", "owner":"Аналитик", "agreement_control":"Без события"}
+            probes = {"probes":[{"case":1,"effects":[effect]}]}
+            self.assertEqual(len(count_limits.review(probes, cases, {2:second}, anchors)["conflicts"]), 1)
+            for extra in [" 87", " OTHER-87"]:
+                effect["action"] = action + extra
+                with self.assertRaisesRegex(ValueError, "посторонних числовых"):
+                    count_limits.review(probes, cases, {2:second}, anchors)
+
+    def test_rejected_optional_probe_still_runs_the_independent_quantitative_audit(self):
+        from reviewer.full import InvalidStageResult, StageProviderError
+        lines = ["At most 1 active badge per account.", "On delivery one more badge is issued."]
+        source = dict(enumerate(lines, 1))
+        stages = []
+        attempts = [{"stage":"Проверка границы", "status":"rejected", "usage":{}}] * 3
+        def stage(name, instruction, payload, schema, verify):
+            stages.append(name)
+            if name == "Проверка границы":
+                raise InvalidStageResult(name, "test rejection", attempts)
+            if name == "Совместимость количественных правил":
+                self.assertTrue(payload["pairs"])
+                raise InvalidStageResult(name, "test rejection", [])
+            raise AssertionError(name)
+        review, history = behavior.discover(segment(lines), source, stage)
+        self.assertEqual(stages, ["Проверка границы", "Совместимость количественных правил"])
+        self.assertEqual(history, attempts)
+        self.assertEqual(review["conflicts"], [])
+        def unavailable(*args):
+            raise StageProviderError(args[0], "provider unavailable", [])
+        with self.assertRaises(StageProviderError):
+            behavior.discover(segment(lines), source, unavailable)
+
     def test_inferred_precedence_cannot_retire_a_bound_but_an_explicit_exception_can(self):
         from reviewer import count_limits
         row = {"reason":"У частного действия есть приоритет.", "evidence":[{"quote":"Produce one record."}]}

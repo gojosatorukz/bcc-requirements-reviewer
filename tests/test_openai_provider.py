@@ -212,17 +212,20 @@ class OpenAIProviderTests(TestCase):
                     else:
                         self.assertNotIn("attempted_openai_reserve", result)
 
-    def test_direct_public_worker_writes_both_partial_artifacts_after_one_paid_stage(self):
+    def direct_worker_env(self):
         # Site and CLI use independent real subprocesses. Redirect the transport only
         # inside this test environment and reject any off-host network connection.
-        self.source.write_text("Порог: TBD\n", encoding="utf-8")
         (self.source.parent / "sitecustomize.py").write_text(
             f"from reviewer import openai_provider\nopenai_provider.ENDPOINT = {openai_provider.ENDPOINT!r}\n")
+        return {"PYTHONPATH": str(self.source.parent) + os.pathsep + str(serve.ROOT),
+                "REVIEW_PROVIDER": "openai", "REVIEW_MODEL": MODEL, "OPENAI_API_KEY": TOKEN,
+                "HTTPS_PROXY": "http://127.0.0.1:1", "NO_PROXY": "127.0.0.1"}
+
+    def test_direct_public_worker_writes_both_partial_artifacts_after_one_paid_stage(self):
+        self.source.write_text("Порог: TBD\n", encoding="utf-8")
         html = self.out.with_suffix(".html")
         progress = []
-        env = {"PYTHONPATH": str(self.source.parent) + os.pathsep + str(serve.ROOT),
-               "REVIEW_PROVIDER": "openai", "REVIEW_MODEL": MODEL, "OPENAI_API_KEY": TOKEN,
-               "HTTPS_PROXY": "http://127.0.0.1:1", "NO_PROXY": "127.0.0.1"}
+        env = self.direct_worker_env()
         for status, failure in ((429, {"error": {"code": "credit_balance_exhausted"}}),
                                 (200, {"status": "failed", "error": {"code": "insufficient_quota"}})):
             with self.subTest(status=status), patch.dict(os.environ, env, clear=True):
@@ -235,6 +238,16 @@ class OpenAIProviderTests(TestCase):
                 self.assertIn(report["findings"][0]["question"], html.read_text())
                 self.assertNotIn("run", report)
                 self.assertEqual(len(self.events), 2)
+
+    def test_direct_worker_reports_stage_and_known_http_code_without_response_content(self):
+        for supplied, expected in [("invalid_json_schema", "http_400_invalid_json_schema"), (TOKEN, "http_400")]:
+            with self.subTest(code=expected), patch.dict(os.environ, self.direct_worker_env(), clear=True):
+                self.reserve_replies.append((400, {"error":{"code":supplied, "message":TOKEN}}))
+                with redirect_stderr(io.StringIO()) as log, self.assertRaises(serve.SafeWorkerError) as failure:
+                    serve.cli_worker("full", self.source, None, self.out, self.out.with_suffix(".html"), MODEL, lambda _: None)
+                self.assertEqual(log.getvalue(), f"review_stage_error stage=Сценарии code={expected}\n")
+                self.assertIn("Сценарии", str(failure.exception))
+                self.assertNotIn(TOKEN, str(failure.exception))
 
     def test_retry_after_and_spend_limit_handling(self):
         model = {"REVIEW_PROVIDER": "openai", "OPENAI_API_KEY": TOKEN}

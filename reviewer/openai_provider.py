@@ -21,6 +21,8 @@ OUTPUT_LIMIT = 16384
 TEMPORARY_LIMITS = ("rate_limit_exceeded", "slow_down")
 BILLING_LIMITS = ("insufficient_quota", "credit_balance_exhausted", "organization_spend_limit_exceeded",
                   "project_spend_limit_exceeded", "organization_usage_limit_exceeded")
+SAFE_ERROR_CODES = {"invalid_json_schema", "invalid_request_error", "context_length_exceeded",
+                    "unsupported_parameter", "unsupported_value", "model_not_found", "server_error"}
 RETRY_PROGRESS = "OpenAI API попросил подождать. Одна повторная попытка в течение 30 секунд."
 
 
@@ -29,6 +31,13 @@ class QuotaExceeded(ValueError):
     def __init__(self, status, reason):
         super().__init__(f"OpenAI API: HTTP {status} {reason}")
         self.reason = reason
+
+
+class ResponseError(ValueError):
+    """Keep a fixed transport category distinct from untrusted API error text."""
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code = code
 
 
 def quota_error(exc):
@@ -93,12 +102,15 @@ def request_json(body, key):
             break
         except HTTPError as exc:
             with exc:
-                if exc.code not in (402, 429):
-                    raise ValueError(f"OpenAI API: HTTP {exc.code}") from None
                 try:
                     diagnostic = diagnostic_code(json.loads(exc.read(8192))["error"])
                 except (KeyError, ValueError, TypeError, OSError, HTTPException):
                     diagnostic = None
+                if exc.code not in (402, 429):
+                    category = f"http_{exc.code}"
+                    if diagnostic in SAFE_ERROR_CODES:
+                        category += "_" + diagnostic
+                    raise ResponseError(category, f"OpenAI API: HTTP {exc.code}") from None
             if reason := billing_reason(diagnostic):
                 raise QuotaExceeded(exc.code, reason) from None
             if exc.code == 402:
@@ -109,13 +121,13 @@ def request_json(body, key):
                 continue
             raise QuotaExceeded(429, "rate_limit") from None
         except (TimeoutError, URLError, OSError, HTTPException):
-            raise ValueError("OpenAI API: модель не ответила") from None
+            raise ResponseError("provider_network", "OpenAI API: модель не ответила") from None
     if len(raw) > RESPONSE_LIMIT:
-        raise ValueError("OpenAI API: ответ превышает допустимый размер")
+        raise ResponseError("response_size", "OpenAI API: ответ превышает допустимый размер")
     try:
         return json.loads(raw)
     except (ValueError, UnicodeError, RecursionError):
-        raise ValueError("OpenAI API: повреждён ответ сервиса") from None
+        raise ResponseError("response_format", "OpenAI API: повреждён ответ сервиса") from None
 
 
 def complete(prompt, model, effort, schema):
@@ -134,9 +146,10 @@ def complete(prompt, model, effort, schema):
             raise QuotaExceeded(200, reason)
         if code in TEMPORARY_LIMITS:
             raise QuotaExceeded(200, "rate_limit")
+        raise ResponseError("provider_failed", "OpenAI API: модель не завершила запрос")
     if (isinstance(response, dict) and response.get("status") == "incomplete"
             and response.get("incomplete_details") == {"reason": "max_output_tokens"}):
-        raise ValueError(f"OpenAI API: ответа не хватило для полного JSON за {body['max_output_tokens']} токенов")
+        raise ResponseError("output_limit", f"OpenAI API: ответа не хватило для полного JSON за {body['max_output_tokens']} токенов")
     try:
         if response["status"] != "completed" or not MODEL_ID.fullmatch(response["model"]):
             raise ValueError()
@@ -156,7 +169,7 @@ def complete(prompt, model, effort, schema):
         if not isinstance(result, dict):
             raise ValueError()
     except (KeyError, IndexError, TypeError, ValueError, RecursionError):
-        raise ValueError("OpenAI API: не получен завершённый структурированный ответ") from None
+        raise ResponseError("response_format", "OpenAI API: не получен завершённый структурированный ответ") from None
     usage = response.get("usage") or {}
     if not isinstance(usage, dict):
         usage = {}

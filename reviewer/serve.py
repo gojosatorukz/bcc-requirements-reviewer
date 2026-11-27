@@ -22,7 +22,7 @@ from uuid import uuid4
 
 from . import codex_provider
 from .input import INPUT_LIMITS
-from .openai_provider import RETRY_PROGRESS
+from .openai_provider import RETRY_PROGRESS, SAFE_ERROR_CODES
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -75,6 +75,11 @@ MAX_INPUT_LINES = INPUT_LIMITS[".txt"] + 1
 DIALOGUE_ROUTE = rf"/api/clarifications/(demo|{JOB_ID})/([0-9a-f]{{64}})"
 PROGRESS = re.compile(r"(?:Сценарии(?: QA| по ссылкам)?|Прогноз по правилам|Правила и примеры|(?:Правило выбора|Исходы по источнику) D-[0-9]+|Проверка границы|Совместимость количественных правил|Перепроверка исходов|Итоги после сверки|Сверка примеров|(?:Блоки|Поля ответов) [0-9]+–[0-9]+|Весь документ|Повторная проверка) · "
                       r"(?:проверено|проверена сохранённая стадия)")
+STAGE_ERROR = re.compile(r"review_stage_error\|([^|]{1,70})\|"
+                         r"(response_schema|evidence_validation|response_format|output_limit|response_size|"
+                         r"provider_network|provider_failure|provider_failed|http_[45][0-9]{2}(?:_"
+                         + "|_".join(sorted(SAFE_ERROR_CODES)) + r")?)")
+BOUNDARY_REJECTED = "Проверка границы · вывод не подтверждён"
 PROOF_PLAN = re.compile(r"План расчётов · примеров: ([0-9]{1,6})")
 PROOF_DONE = re.compile(rf"Исполняемый пример ({FINDING_ID}) · "
                         r"(?:подтверждён|сверен на фиксированном входе|не подтверждён|модель недоступна)")
@@ -281,11 +286,21 @@ def execute(command, progress, failure):
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                           start_new_session=True) as process:
         known_failure = []
+        stage_failure = []
 
         def read_output():
             while chunk := process.stdout.readline(4096):
                 line = chunk.decode("utf-8", errors="replace").strip()
-                if (PROGRESS.fullmatch(line) or PLAN.fullmatch(line) or line == CROSS_CHECK
+                if (event := STAGE_ERROR.fullmatch(line)) and PROGRESS.fullmatch(event[1] + " · проверено"):
+                    print(f"review_stage_error stage={event[1]} code={event[2]}", file=sys.stderr, flush=True)
+                    detail = {"evidence_validation": "вывод модели не прошёл сверку с источником",
+                              "response_schema": "ответ модели не прошёл проверку структуры",
+                              "provider_network": "сервис модели не ответил"}.get(event[2], "модель не завершила проверку")
+                    stage_failure.append(f"Этап «{event[1]}»: {detail}.")
+                elif line == BOUNDARY_REJECTED:
+                    print("review_stage_skipped stage=Проверка границы code=validation_rejected", file=sys.stderr, flush=True)
+                    progress(line)
+                elif (PROGRESS.fullmatch(line) or PLAN.fullmatch(line) or line == CROSS_CHECK
                         or PROOF_PLAN.fullmatch(line) or PROOF_DONE.fullmatch(line)
                         or line in codex_provider.FALLBACK_MESSAGES or line == RETRY_PROGRESS):
                     progress(line)
@@ -314,7 +329,7 @@ def execute(command, progress, failure):
         finally:
             reader.join(timeout=5)
         if code:
-            raise SafeWorkerError(known_failure[0] if known_failure else failure)
+            raise SafeWorkerError(next(iter(known_failure or stage_failure), failure))
 
 
 def cli_worker(mode, document, baseline, json_report, html_report, model, progress, findings=(),

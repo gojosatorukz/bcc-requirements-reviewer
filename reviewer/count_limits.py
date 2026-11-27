@@ -15,6 +15,7 @@ NUMBERS = {
 BOUND = re.compile(r"\b(?:максимум|не более|не больше|at most|no more than|a maximum of)\s+"
                    r"(?P<num>[0-9]{1,6}|" + "|".join(NUMBERS) + r")(?![\w.,]\d|\w)", re.I)
 NUMBER = {"type": "integer"}
+REQUIREMENT_ID = re.compile(r"(?<!\w)[A-ZА-ЯЁ][A-ZА-ЯЁ0-9_]{0,15}[-‑–][0-9]{1,8}(?!\w)")
 EFFECT = record(other=NUMBER, setup=TEXT, action=TEXT, triggering_event=TEXT, observable=TEXT, added=NUMBER,
                 owner=TEXT, question=TEXT, agreement_control=TEXT)
 SCHEMA = record(probes={"type": "array", "items": record(case=NUMBER, effects={"type": "array", "items": EFFECT})})
@@ -84,7 +85,12 @@ def review(result, cases, other_rules, anchors):
                 raise ValueError("Для прироста нужны другое исходное правило и положительное число событий")
             initial, added = case["initial"], effect["added"]
             trace = " ".join(effect[key] for key in ("setup", "action", "triggering_event"))
-            if set(re.findall(r"\b\d+\b", trace)) - {str(initial), str(added), str(initial + added)}:
+            # A cited requirement ID is not an amount. Only exempt IDs present
+            # in the two actual source rules, leaving unrelated numbers intact.
+            rules = anchors[case["anchor"]]["quote"] + "\n" + anchors[effect["other"]]["quote"]
+            identifiers = set(REQUIREMENT_ID.findall(rules))
+            quantities = REQUIREMENT_ID.sub(lambda m: "" if m[0] in identifiers else m[0], trace)
+            if set(re.findall(r"\b\d+\b", quantities)) - {str(initial), str(added), str(initial + added)}:
                 raise ValueError("Сохрани условия перехода из источника словами, без посторонних числовых подстановок")
             observable = effect["observable"].rstrip(". ")
             conflicts.append({

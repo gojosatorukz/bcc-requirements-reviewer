@@ -220,14 +220,17 @@ def check_critical_sources(result, candidates):
 
 
 class InvalidStageResult(ValueError):
-    def __init__(self, stage, reason, attempts):
+    def __init__(self, stage, reason, attempts, code="evidence_validation"):
         super().__init__(f"{stage}: {reason}")
+        self.stage = stage
+        self.code = code
         self.attempts = attempts
 
 
 class StageProviderError(ValueError):
     def __init__(self, stage, reason, attempts):
         super().__init__(f"{stage}: {reason}")
+        self.stage = stage
         self.attempts = attempts
 
 
@@ -267,12 +270,14 @@ def call_stage(stage, instruction, payload, schema, verify, model, checkpoint, d
                  "seconds": round(monotonic() - start, 2)}
         attempts.append(entry)
         try:
+            check = "response_schema"
             validate_shape(result, schema, stage)
+            check = "evidence_validation"
             verify(result)
         except ValueError as exc:
             entry.update(status="rejected", reason=str(exc))
             if attempt == 2:
-                raise InvalidStageResult(stage, str(exc), attempts) from exc
+                raise InvalidStageResult(stage, str(exc), attempts, check) from exc
             message = (prompt + "\nПредыдущий ответ:\n" + packed(result)
                        + "\nИсправь ошибку и верни полный результат: " + str(exc))
         else:
