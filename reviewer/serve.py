@@ -42,7 +42,7 @@ FINDING_ID = r"D-(?:0[1-9]|[1-9][0-9]+)"
 IMPORT_LIMIT = 8 * 1024 * 1024
 MAX_INPUT_LINES = INPUT_LIMITS[".txt"] + 1
 DIALOGUE_ROUTE = rf"/api/clarifications/(demo|{JOB_ID})/([0-9a-f]{{64}})"
-PROGRESS = re.compile(r"(?:Сценарии|Блоки [0-9]+–[0-9]+|Весь документ|Повторная проверка) · "
+PROGRESS = re.compile(r"(?:Сценарии(?: QA)?|(?:Блоки|Поля ответов) [0-9]+–[0-9]+|Весь документ|Повторная проверка) · "
                       r"(?:проверено|проверена сохранённая стадия)")
 PROOF_PLAN = re.compile(r"План расчётов · примеров: ([0-9]{1,6})")
 PROOF_DONE = re.compile(rf"Исполняемый пример ({FINDING_ID}) · (?:подтверждён|не подтверждён|модель недоступна)")
@@ -242,10 +242,12 @@ def execute(command, progress, failure):
 
 
 def cli_worker(mode, document, baseline, json_report, html_report, model, progress, findings=(),
-               decisions=(), baseline_sha256=None, clarifications=()):
+               decisions=(), baseline_sha256=None, clarifications=(), checkpoint_dir=None):
     python = [sys.executable, "-m"]
     if mode == "full":
         command = [*python, "reviewer", str(document), str(json_report)]
+        if checkpoint_dir is not None:
+            command.extend(["--checkpoint-dir", str(checkpoint_dir)])
     else:
         command = [*python, "reviewer.recheck", str(baseline), str(document), str(json_report)]
         for finding in findings:
@@ -283,6 +285,7 @@ class Workbench:
         self.assistant_history = {}
         self.assistant_pending = set()
         self.assistant_slots = BoundedSemaphore(2)
+        self.interrupted_reviews = {}
 
     def import_report(self, raw):
         digest = sha256(raw).hexdigest()
@@ -584,8 +587,15 @@ class Workbench:
         with self.lock:
             run.state = "running"
         state, error = "done", ""
+        resume_key = None
         try:
             options = {"findings": findings} if findings else {}
+            if run.mode == "full" and self.worker is cli_worker:
+                resume_key = (document.suffix.lower(), sha256(document.read_bytes()).digest())
+                checkpoint = self.interrupted_reviews.get(resume_key, run.directory / "checkpoints")
+                if checkpoint != run.directory / "checkpoints":
+                    on_progress("Продолжаем с проверенных стадий предыдущей попытки")
+                options["checkpoint_dir"] = checkpoint
             if decisions or clarifications:
                 options.update(baseline_sha256=baseline_sha256)
             if decisions:
@@ -601,6 +611,11 @@ class Workbench:
             state, error = "failed", "Не удалось завершить проверку."
         finally:
             with self.lock:
+                if resume_key is not None:
+                    if state == "failed" and any(checkpoint.glob("*.json")):
+                        self.interrupted_reviews[resume_key] = checkpoint
+                    else:
+                        self.interrupted_reviews.pop(resume_key, None)
                 run.state, run.error = state, error
                 self.active = None
 

@@ -93,6 +93,7 @@ class WorkbenchTest(unittest.TestCase):
         code, body, headers = self.request("GET", "/reports/demo/review.json?download=1")
         self.assertEqual((code, json.loads(body)), (200, {"demo": True}))
         self.assertEqual(headers["Content-Disposition"], 'attachment; filename="review.json"')
+
         (benchmark / "review.html").write_text("<title>Benchmark</title>")
         self.assertIn(b"Benchmark", self.request("GET", "/reports/demo/review.html")[1])
         latest = self.demo.with_name("bcc-priority")
@@ -109,6 +110,40 @@ class WorkbenchTest(unittest.TestCase):
         self.assertIn(b"Submitted run", self.request("GET", "/reports/demo/review.html")[1])
         self.assertEqual(self.request("GET", "/reports/demo/../review.json")[0], 404)
         self.assertEqual(self.calls, [])
+
+    def test_same_source_resumes_after_failure_and_runs_fresh_after_success(self):
+        self.app.worker = cli_worker
+        locations = []
+
+        def staged(command, progress, failure):
+            if "reviewer.render" in command:
+                Path(command[-1]).write_text("<title>Review</title>")
+                return
+            cache = Path(command[command.index("--checkpoint-dir") + 1])
+            locations.append(cache)
+            if len(locations) == 1:
+                cache.mkdir()
+                (cache / "validated.json").write_text("{}")
+                from reviewer.serve import SafeWorkerError
+                raise SafeWorkerError("Провайдер недоступен.")
+            Path(command[4]).write_text("{}")
+
+        def run(name, content):
+            code, body, _ = self.upload(name=name, body=content)
+            self.assertEqual(code, 202)
+            return self.wait_until_done(json.loads(body)["id"])
+
+        with patch("reviewer.serve.execute", side_effect=staged):
+            self.assertEqual(run("v1.md", b"old")["state"], "failed")
+            self.assertEqual(run("v1.md", b"updated")["state"], "done")
+            self.assertEqual(run("v1.txt", b"old")["state"], "done")
+            resumed = run("copy.md", b"old")
+            self.assertEqual(resumed["state"], "done")
+            self.assertIn("Продолжаем с проверенных стадий предыдущей попытки", resumed["progress"])
+            self.assertEqual(run("v1.md", b"old")["state"], "done")
+        initial, changed, other_format, retried, fresh = locations
+        self.assertEqual(initial, retried)
+        self.assertEqual(len({initial, changed, other_format, fresh}), 4)
 
     def test_assistant_http_is_bound_to_the_import_and_verified_html(self):
         raw = (ROOT / "eval/external-bowling/review.json").read_bytes()
