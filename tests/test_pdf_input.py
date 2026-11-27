@@ -3,6 +3,7 @@ import tempfile
 import unittest
 
 from reviewer.input import load_document
+from reviewer.contract import HTTP_STATUS_POLICY, source_http_statuses
 from reviewer.executable import verify_source
 from reviewer.json_examples import inspect_examples
 from reviewer.segments import segment
@@ -17,6 +18,15 @@ except ImportError:
 
 @unittest.skipUnless(Canvas, "PDF integration test requires pdfplumber and reportlab")
 class PdfInputTest(unittest.TestCase):
+    def test_printed_official_response_contract_retains_all_seven_http_codes(self):
+        path = Path(__file__).resolve().parents[1] / "eval/pdf-official/requirements.pdf"
+        lines, _, _ = load_document(path)
+        self.assertEqual(source_http_statuses(lines, HTTP_STATUS_POLICY),
+                         {"200", "201", "400", "401", "403", "404", "500"})
+        self.assertEqual(source_http_statuses(
+            ["Ответ", "Результат 401 балл", "403. Unsuccessful — Forbidden", "В пакете 422 записи.",
+             "422", '{"id":1}', "Номер заказа 418", "418", '{"id":2}'], HTTP_STATUS_POLICY), {"403"})
+
     def test_printed_api_objects_keep_real_line_numbers_and_a_failure_location(self):
         with tempfile.TemporaryDirectory() as root:
             path = Path(root, "typed.pdf")

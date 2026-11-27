@@ -28,6 +28,7 @@ _EXPLICIT_STATUSES = re.compile(
 )
 _STATUS_WITH_REASON = re.compile(
     rf"(?P<codes>{_STATUS_TOKEN})[.\s:–—-]+"
+    r"(?:(?:Un)?Successful\s*[-:–—]\s*)?"
     r"\b(?:OK|Created|Accepted|No Content|Bad Request|Unauthorized|Forbidden|Not Found|"
     r"Method Not Allowed|Conflict|Unprocessable (?:Content|Entity)|Too Many Requests|"
     r"Internal Server Error|Bad Gateway|Service Unavailable|Gateway Timeout)\b",
@@ -47,6 +48,9 @@ _RESPONSE_ENTRY = re.compile(
     re.I,
 )
 _RESPONSE_RESULT = re.compile(rf"\b(?:результат|result)\s+(?P<codes>{_STATUS_LIST})", re.I)
+_RETURNED_CODE = re.compile(
+    rf"\b(?:возвраща\w*|верн[её]т\w*|статус\w*|returns?|responds? with|status)\s+(?P<code>{_STATUS_TOKEN})", re.I,
+)
 
 
 def explicit_http_statuses(text):
@@ -67,7 +71,8 @@ def source_http_statuses(lines, policy):
     columns = []
     previous = 0
     response_level = None
-    for number, text in (sorted(lines.items()) if isinstance(lines, dict) else enumerate(lines, 1)):
+    indexed = lines if isinstance(lines, dict) else dict(enumerate(lines, 1))
+    for number, text in sorted(indexed.items()):
         if number != previous + 1:
             columns = []
         previous = number
@@ -81,8 +86,19 @@ def source_http_statuses(lines, policy):
         if response_level is not None:
             if entry := _RESPONSE_ENTRY.match(text):
                 statuses.add(entry["code"].lower())
+        # Typeset documents can retain a response caption but lose its Markdown level.
+        after_caption = _RESPONSE_SECTION.fullmatch(indexed.get(number - 1, "").strip())
+        if response_level is not None or (after_caption and re.search(r"успеш|ошиб|success|fail", text, re.I)):
             for result in _RESPONSE_RESULT.finditer(text):
                 statuses.update(code.lower() for code in _STATUS_VALUE.findall(result["codes"]))
+        if bare := _STATUS_CELL.fullmatch(text):
+            # A bare number is ambiguous. Require a neighboring HTTP reason phrase,
+            # the same number in the preceding description, and a following JSON body.
+            before = indexed.get(number - 1, "")
+            if (bare["code"].lower() in {value.lower() for value in _RETURNED_CODE.findall(before)}
+                    and _STATUS_WITH_REASON.search(indexed.get(number - 2, ""))
+                    and re.match(r'^\s*\{\s*"', indexed.get(number + 1, ""))):
+                statuses.add(bare["code"].lower())
         if not text.strip().startswith("|"):
             columns = []
             continue
