@@ -116,6 +116,12 @@ def load_document(path):
     limit = INPUT_LIMITS.get(suffix, 120_000)
     with path.open("rb") as stream:
         raw = stream.read(limit + 1)
+    lines, metadata = extract_document(raw, suffix)
+    return lines, sha256(raw).hexdigest(), metadata
+
+
+def extract_document(raw, suffix):
+    limit = INPUT_LIMITS.get(suffix, 120_000)
     if len(raw) > limit:
         raise ValueError(f"Превышен предел размера входного файла: {limit} байт")
     if suffix in {".pdf", ".docx"}:
@@ -125,4 +131,4 @@ def load_document(path):
     else:
         lines = raw.decode("utf-8-sig").splitlines()
         metadata = {}
-    return lines, sha256(raw).hexdigest(), metadata
+    return lines, metadata

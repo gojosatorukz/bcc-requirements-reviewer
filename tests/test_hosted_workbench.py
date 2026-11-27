@@ -97,3 +97,27 @@ class HostedWorkbenchTest(unittest.TestCase):
         for entry in self.server.visits.values():
             entry.app.wait()
         self.assertEqual(self.upload(cookies[2])[0], 202)
+
+    def test_guest_can_check_own_structure_after_model_quota_without_saving_it(self):
+        from time import monotonic
+        self.server.model_requests.extend([monotonic()] * 40)
+        cookie = self.new_visitor()
+        self.assertEqual(self.upload(cookie)[0], 429)
+        path = "/api/structure"
+        origin = "https://review.example"
+        sample = b'# Limits\n| Name | Value |\n| --- | --- |\n| Daily | 10 |\n~~~json\n{"daily":10,}\n~~~'
+        self.assertEqual(self.request("POST", path, "", origin, sample)[0], 401)
+        self.assertEqual(self.request("POST", path, cookie, "https://other.example", sample)[0], 403)
+        status, body, _ = self.request("POST", path, cookie, origin, sample)
+        self.assertEqual(status, 200)
+        data = json.loads(body)
+        self.assertEqual((data["filename"], data["lines"], data["units"], data["tables"], data["examples"]),
+                         ("draft.md", 7, 4, 1, 1))
+        self.assertEqual([d["line"] for d in data["diagnostics"]], [6])
+        fixed = sample.replace(b"10,}", b"10}")
+        self.assertEqual(json.loads(self.request("POST", path, cookie, origin, fixed)[1])["diagnostics"], [])
+        for invalid in (b"  \n", b"\xff"):
+            self.assertEqual(self.request("POST", path, cookie, origin, invalid)[0], 422)
+        self.assertEqual(len(self.server.model_requests), 40)
+        visit = next(iter(self.server.visits.values()))
+        self.assertEqual(list(visit.app.storage.iterdir()), [])

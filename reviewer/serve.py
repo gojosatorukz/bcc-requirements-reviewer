@@ -683,6 +683,7 @@ class Workbench:
 
 class WorkbenchHandler(BaseHTTPRequestHandler):
     server_version = "ReviewerWorkbench"
+    structure_slot = BoundedSemaphore(1)
 
     def setup(self):
         self.request.settimeout(20)
@@ -743,6 +744,35 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
         if size > limit:
             raise WorkbenchError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, size_message)
         return size
+
+    def document_upload(self):
+        names = self.headers.get_all("X-File-Name", [])
+        if len(names) != 1:
+            raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Укажите одно имя файла в X-File-Name.")
+        name = upload_name(names[0])
+        return name, self.body_size(INPUT_LIMITS[Path(name).suffix.lower()])
+
+    def check_structure(self):
+        name, size = self.document_upload()
+        if not self.structure_slot.acquire(blocking=False):
+            raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, "Идёт проверка структуры другого файла. Попробуйте ещё раз.")
+        try:
+            body = self.rfile.read(size)
+            if len(body) != size:
+                raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Получен неполный файл.")
+            try:
+                result = subprocess.run([sys.executable, "-m", "reviewer.structure", Path(name).suffix.lower()],
+                                        cwd=ROOT, input=body, stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, timeout=25, check=True)
+                report = json.loads(result.stdout)
+            except (subprocess.SubprocessError, ValueError) as exc:
+                raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY,
+                                     "Не удалось разобрать документ. Попробуйте версию в TXT или Markdown.") from exc
+            if "error" in report:
+                raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, report["error"])
+            return dict(report, filename=name)
+        finally:
+            self.structure_slot.release()
 
     def do_GET(self):
         try:
@@ -830,6 +860,9 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             route = self.route(write=True)
+            if route.path == "/api/structure" and not route.query:
+                self.json(HTTPStatus.OK, self.check_structure())
+                return
             if route.path == "/api/import-report":
                 if route.query or self.headers.get_content_type() != "application/json":
                     raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Передайте сохранённый отчёт с типом application/json.")
@@ -914,11 +947,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                     ((decisions or tokens or snapshot) and (len(hashes) != 1 or not re.fullmatch(r"[0-9a-f]{64}", hashes[0]))) or
                     (hashes and not (decisions or tokens or snapshot))):
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Для решений нужны уникальные D-ID, исходы и SHA-256 базового отчёта.")
-            names = self.headers.get_all("X-File-Name", [])
-            if len(names) != 1:
-                raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Укажите одно имя файла в X-File-Name.")
-            name = upload_name(names[0])
-            size = self.body_size(INPUT_LIMITS[Path(name).suffix.lower()])
+            name, size = self.document_upload()
             decision_options = ({"decisions": decisions, "dialogue_tokens": tokens, "baseline_sha256": hashes[0],
                                  "dialogue_snapshot": bool(snapshot)} if hashes else {})
             identifier = self.app.start(modes[0], baseline, name, size, self.rfile, findings, **decision_options)
