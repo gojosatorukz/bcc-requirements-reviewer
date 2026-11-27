@@ -1,0 +1,23 @@
+{
+  "agent_version": "26f9ad4",
+  "model": "gpt-6.2-astra",
+  "reasoning_effort": "medium (configured in pinned adapter)",
+  "input_sha256": "e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381",
+  "workers": 6,
+  "exit_code": 1,
+  "report_written": false,
+  "resumed_accepted_stages": [
+    "Поля ответов 1–4",
+    "Блоки 1–28",
+    "Блоки 46–72",
+    "Блоки 73–83",
+    "Блоки 196–198"
+  ],
+  "new_accepted_call": {
+    "stage": "Сценарии",
+    "started_utc": "2026-11-27T09:11:14.095724+00:00",
+    "seconds": 48.99,
+    "status": "accepted"
+  },
+  "error": "Блоки 29–45: Codex CLI не завершил запрос за 480 секунд"
+}

@@ -39,7 +39,13 @@ def timing(report):
     for a in calls:
         times[a["stage"]] += a["seconds"]
 
-    result = {"commit": run["agent_version"], "started_utc": run["started_utc"],
+    legacy_medium = {"67991fe555a3", "20177ca", "26f9ad4"}
+    effort = run.get("reasoning_effort")
+    if effort is None:
+        require(any(run["agent_version"].startswith(prefix) for prefix in legacy_medium),
+                "New run does not record reasoning effort")
+        effort = "medium (pinned provider source)"
+    result = {"commit": run["agent_version"], "reasoning_effort": effort, "started_utc": run["started_utc"],
               "elapsed_s": run["elapsed_seconds"], "workers": run["max_workers"],
               "fresh": len(calls), "restored": run["restored_attempts"], "usage": run["current_usage"],
               "rejections": [{"stage": a["stage"], "status": a["status"], "reason": a.get("reason")}
