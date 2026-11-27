@@ -21,6 +21,7 @@ from uuid import uuid4
 
 from . import codex_provider
 from .input import INPUT_LIMITS
+from .openai_provider import RETRY_PROGRESS
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -85,6 +86,7 @@ SAFE_FAILURES = {
     "OpenAI API: HTTP 401": "OpenAI отклонил ключ. Администратору нужно проверить доступ к API.",
     "OpenAI API: HTTP 403": "У API-проекта нет доступа к модели OpenAI.",
     "OpenAI API: HTTP 404": "OpenAI не нашёл выбранную модель. Проверьте имя и доступ API-проекта.",
+    "OpenAI API: ответа не хватило": "Модель достигла предела длины ответа. Для полного ревью проверьте меньший раздел или измените предел на сервере.",
     "Workers AI: HTTP 429": "Исчерпана квота резервной модели. Готовые отчёты доступны.",
     "Workers AI: HTTP 401": "Резервная модель отклонила ключ. Сообщите администратору сайта.",
     "Workers AI: HTTP 403": "Резервная модель недоступна этому аккаунту. Сообщите администратору сайта.",
@@ -280,7 +282,7 @@ def execute(command, progress, failure):
                 line = chunk.decode("utf-8", errors="replace").strip()
                 if (PROGRESS.fullmatch(line) or PLAN.fullmatch(line) or line == CROSS_CHECK
                         or PROOF_PLAN.fullmatch(line) or PROOF_DONE.fullmatch(line)
-                        or line in codex_provider.FALLBACK_MESSAGES):
+                        or line in codex_provider.FALLBACK_MESSAGES or line == RETRY_PROGRESS):
                     progress(line)
                 elif not known_failure:
                     if (line.startswith(("Прогон не завершён: ", "Повторная проверка не завершена: ", "Codex CLI завершился с кодом "))

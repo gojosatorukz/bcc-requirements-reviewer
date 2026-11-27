@@ -108,8 +108,8 @@ def main():
     parser.add_argument("--model", default=codex_provider.default_model())
     parser.add_argument("--effort", choices=("medium", "low"), default="medium",
                         help="Глубина рассуждения модели. В паспорте сохраняется выбранный режим.")
-    parser.add_argument("--workers", type=int, choices=range(1, 9), default=6, metavar="1..8",
-                        help="Максимум параллельных запросов полного ревью (по умолчанию 6)")
+    parser.add_argument("--workers", type=int, choices=range(1, 9), metavar="1..8",
+                        help="Максимум параллельных запросов полного ревью. По умолчанию 1 для OpenAI API, иначе 6.")
     parser.add_argument("--partial-on-quota", action="store_true", help="Сохранить частичное ревью по локальным правилам при лимите Gemini или OpenAI")
     parser.add_argument("--conflicts-only", action="store_true", help="Быстрый поиск поведенческих конфликтов (формат v1)")
     parser.add_argument("--checkpoint-dir", type=Path, help="Папка для возобновления проверенных стадий полного прогона")
@@ -131,12 +131,15 @@ def main():
         clock = time.monotonic()
         # Non-default options are part of each stage's content-addressed checkpoint key.
         model = args.model if args.effort == "medium" else codex_provider.ModelOptions(args.model, args.effort)
+        def worker_count(selected):
+            return args.workers or (1 if codex_provider.provider_name(selected) == "openai-responses" else 6)
+
         def review(selected):
             if args.conflicts_only:
                 prompt = INSTRUCTIONS + "\n\nДокумент:\n" + json.dumps(blocks, ensure_ascii=False)
                 return review_document(prompt, selected, lines)
             from .full import analyze
-            return analyze(blocks, lines, selected, args.checkpoint_dir, digest, args.workers,
+            return analyze(blocks, lines, selected, args.checkpoint_dir, digest, worker_count(selected),
                            input_metadata.get("pdf_json_blocks", ()))
         try:
             (result, attempts), used, failover = codex_provider.with_quota_fallback(review, model)
@@ -161,7 +164,7 @@ def main():
         if failover:
             run["fallback_from"] = failover
         if not args.conflicts_only:
-            run["max_workers"] = args.workers
+            run["max_workers"] = worker_count(used)
         scope = "Проверка поведенческих противоречий" if args.conflicts_only else "Полное ревью требований"
         report = {"schema_version": 1 if args.conflicts_only else 2, "scope": scope, "run": run,
                   "http_status_policy": HTTP_STATUS_POLICY,
