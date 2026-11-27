@@ -5,12 +5,45 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from reviewer.full import AXES, analyze, check_batch, check_critical_sources, local_batches, original_id
+from reviewer.full import AXES, analyze, check_batch, check_critical_sources, local_batches, original_id, run_required
+from threading import Barrier, Event
 from reviewer import lifecycle
 from reviewer.render import render_report
 
 
 class FullReviewTest(unittest.TestCase):
+    def test_required_jobs_stop_dispatching_after_a_failure_and_keep_successes_in_input_order(self):
+        started = []
+
+        def quota():
+            started.append("first")
+            raise ValueError("quota_exhausted")
+
+        with self.assertRaisesRegex(ValueError, "quota_exhausted"):
+            run_required([quota, lambda: started.append("next")], 1)
+        self.assertEqual(started, ["first"])
+        wave = Barrier(4, timeout=2)
+
+        def unavailable():
+            wave.wait()
+            raise ValueError("quota_exhausted")
+
+        with self.assertRaisesRegex(ValueError, "quota_exhausted"):
+            run_required([unavailable] * 4 + [lambda: started.append("extra")] * 8, 4)
+        self.assertEqual(started, ["first"])
+        release = Event()
+
+        def slow_first():
+            self.assertTrue(release.wait(2))
+            return "first"
+
+        def fast_second():
+            release.set()
+            return "second"
+
+        self.assertEqual(run_required([slow_first, fast_second], 2), ["first", "second"])
+        self.assertEqual(run_required([], 2), [])
+
     def test_balancing_preserves_order_and_handles_oversize_sections(self):
         blocks = [{"start": i, "end": i} for i in range(1, 124)]
         source = {i: "x" * (4000 if i == 42 else 35) for i in range(1, 124)}

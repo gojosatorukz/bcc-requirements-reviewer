@@ -1,7 +1,8 @@
 """Build an exhaustive, source-linked review and reconcile findings across the document."""
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
+from functools import partial
 from hashlib import sha256
 import json
 import re
@@ -289,6 +290,22 @@ def local_batches(semantic, source):
         yield batch
 
 
+def run_required(tasks, workers):
+    """Keep at most one wave in flight. A failed prerequisite stops further dispatch."""
+    results = [None] * len(tasks)
+    next_task = 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        active = {}
+        while active or next_task < len(tasks):
+            while next_task < len(tasks) and len(active) < workers:
+                active[pool.submit(tasks[next_task])] = next_task
+                next_task += 1
+            done, _ = wait(active, return_when=FIRST_COMPLETED)
+            for future in done:
+                results[active.pop(future)] = future.result()
+    return results
+
+
 def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks=()):
     source = {n: text for n, text in enumerate(lines, 1) if text.strip()}
     refs, extra_refs = source_refs.references(source)
@@ -317,25 +334,25 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                           {"source": source, "assigned": assigned}, BATCH,
                           lambda result: check_batch(result, batch, source))
 
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        behavioral = pool.submit(call_stage, "Сценарии", INSTRUCTIONS, blocks, REVIEW,
-                                 lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
-                                 model, checkpoint, digest)
-        field_futures = []
-        for offset in range(0, len(choices), 6):
-            batch = choices[offset:offset + 6]
-            operations = {c["operation"]: groups[c["operation"]] for c in batch}
-            field_futures.append(pool.submit(
-                call_stage, f"Поля ответов {batch[0]['id']}–{batch[-1]['id']}", response_fields.INSTRUCTIONS,
-                {"source": source, "examples": operations, "candidates": batch}, response_fields.SCHEMA,
-                lambda r, batch=batch: response_fields.verify(r, batch, source), model, checkpoint, digest))
-        local_results = list(pool.map(local, chunks))
-        candidates, attempts = behavioral.result()
-        assessments = []
-        for future in field_futures:
-            resolved, field_attempts = future.result()
-            assessments.extend(resolved["assessments"])
-            attempts.extend(field_attempts)
+    tasks = [partial(call_stage, "Сценарии", INSTRUCTIONS, blocks, REVIEW,
+                     lambda r: validate_review(r, source, http_status_policy=HTTP_STATUS_POLICY),
+                     model, checkpoint, digest)]
+    for offset in range(0, len(choices), 6):
+        batch = choices[offset:offset + 6]
+        operations = {c["operation"]: groups[c["operation"]] for c in batch}
+        tasks.append(partial(
+            call_stage, f"Поля ответов {batch[0]['id']}–{batch[-1]['id']}", response_fields.INSTRUCTIONS,
+            {"source": source, "examples": operations, "candidates": batch}, response_fields.SCHEMA,
+            lambda r, batch=batch: response_fields.verify(r, batch, source), model, checkpoint, digest))
+    local_start = len(tasks)
+    tasks.extend(partial(local, chunk) for chunk in chunks)
+    results = run_required(tasks, workers)
+    candidates, attempts = results[0]
+    local_results = results[local_start:]
+    assessments = []
+    for resolved, field_attempts in results[1:local_start]:
+        assessments.extend(resolved["assessments"])
+        attempts.extend(field_attempts)
     fields = {"version": field_version, "candidates": response_fields.describe(choices),
               "assessments": sorted(assessments, key=lambda a: a["candidate"])}
     marks = {}
