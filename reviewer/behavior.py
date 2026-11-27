@@ -198,6 +198,7 @@ def discover(segments, source, stage):
                                   RULE_COMPARISON if pairs else SCHEMA, verify_rules)
     review = expand(rule_result, anchors, source)
     review["limit_candidates"] = []
+    review["certified"] = []
     bound_cases = count_limits.experiments(inputs["rules"])
     # The transition reader sees the occupied state, but cannot copy the limiting clause.
     bound_anchors = {c["anchor"] for c in bound_cases}
@@ -211,6 +212,18 @@ def discover(segments, source, stage):
         additions = count_limits.review(limited, bound_cases, other_rules, anchors)["conflicts"]
         review["limit_candidates"] = list(range(len(review["conflicts"]) + 1, len(review["conflicts"]) + len(additions) + 1))
         review["conflicts"].extend(additions)
+        attempts.extend(events)
+    pairs_to_check = count_limits.projected_pairs(inputs["rules"], bound_cases, review["conflicts"], anchors)
+    if pairs_to_check:
+        def confirm(result):
+            proofs = count_limits.certified(result, pairs_to_check, source, anchors)
+            validate_review({"conflicts": proofs}, source, http_status_policy=HTTP_STATUS_POLICY)
+        traces, events = stage("Совместимость количественных правил", count_limits.AUDIT_PROMPT,
+                               {"source": source, "clauses": inputs["rules"], "pairs": pairs_to_check},
+                               count_limits.AUDIT, confirm)
+        for proof in count_limits.certified(traces, pairs_to_check, source, anchors):
+            review["conflicts"].append(proof)
+            review["certified"].append(len(review["conflicts"]))
         attempts.extend(events)
     if not inputs["cases"] or not inputs["rules"]:
         return review, attempts

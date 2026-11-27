@@ -384,12 +384,14 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     candidates, attempts = results[0]
     product_ids = []
     limit_ids = []
+    proof_ids = []
     if field_start > 1:
         product, product_events = results[1]
         # Preserve independent hypotheses about the same two lines for global adjudication.
         combined = list(product["conflicts"])
         product_ids = list(range(1, len(combined) + 1))
         limit_ids = product["limit_candidates"]
+        proof_ids = product["certified"]
         combined.extend(c for c in candidates["conflicts"] if c not in product["conflicts"])
         candidates = {"conflicts": combined}
         attempts.extend(product_events)
@@ -438,6 +440,11 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                         "Если итоги различаются, покажи оба в triage.witness и задай вопрос о выборе. "
                         "Частный порядок действий сам по себе не устанавливает приоритет правила. "
                         "Для вывода о приоритете нужна явная оговорка об ограничении в исходном документе.")
+    if proof_ids:
+        payload["verified_count_witnesses"] = proof_ids
+        instruction += ("\nДля verified_count_witnesses отдельно проверены достижимость условий, сохранение "
+                        "области учёта, добавление и исключения по полному ТЗ. Отрази подтверждённые "
+                        "расхождения в findings и учти их в решениях о готовности.")
     instruction += ("\nДля обязательного параметра проверь первый вызов в исходном состоянии: "
                     "откуда клиент получает значение до первой настройки и допускает ли сценарий "
                     "такой вызов. Учитывай явно заданные значения по умолчанию.")
@@ -471,7 +478,8 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         check_critical_sources(ranked, candidates["conflicts"])
         for row in ranked["reconciled"]:
             cited = {entry["line"] for entry in row["evidence"]}
-            count_limits.check_precedence(row, set(row["candidates"]).intersection(limit_ids))
+            if not proof_ids:
+                count_limits.check_precedence(row, set(row["candidates"]).intersection(limit_ids))
             for number in set(row["candidates"]).intersection(product_ids):
                 candidate = candidates["conflicts"][number - 1]
                 required = {candidate[side]["source"]["line"] for side in ("first", "second")}
@@ -487,6 +495,10 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     print("Сверка требований · начата", file=sys.stderr, flush=True)
     response, events = anchored("Весь документ", instruction, payload, MODEL_WHOLE, verify_whole)
     whole = materialize(response)
+    if proof_ids:
+        count_limits.apply_proofs(whole, proof_ids, candidates["conflicts"], registry)
+        check_whole(whole, registry, candidates["conflicts"], source, http_status_policy=HTTP_STATUS_POLICY)
+        check_critical_sources(whole, candidates["conflicts"])
     whole["findings"].sort(key=lambda f: (priority.ORDER[f["priority"]], min(e["line"] for e in f["evidence"])))
     for i, item in enumerate(whole["findings"], 1):
         item["id"] = f"D-{i:02d}"

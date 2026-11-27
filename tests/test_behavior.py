@@ -96,3 +96,32 @@ class BehaviorTests(unittest.TestCase):
         row["evidence"].append({"quote":"This exception overrides the per-order limit."})
         count_limits.check_precedence(row,{2})
         count_limits.check_precedence({"reason":"Правила относятся к разным заказам.", "evidence":[]},{2})
+
+    def test_final_summary_cannot_retire_an_independently_confirmed_numeric_trace(self):
+        from reviewer import count_limits
+        source = {4: "At most two signed copies per box.", 9: "Send an additional copy to the same box."}
+        anchors = {n: {"line": n, "quote": s} for n, s in source.items()}
+        checked = count_limits.projected_pairs(source, count_limits.experiments(source), [], anchors)
+        trace = dict(pair=1, applicability="same_scope", retained=2, required_additions=1, explanation="2 + 1",
+                     exception_quote="", scenario="Two copies exist, a third is sent.", metric="copies in the box",
+                     title="Copy limit", owner="Publisher", question="May the third copy be added?",
+                     agreement_control="With one copy there is space.")
+        def certify(**changes):
+            return count_limits.certified({"traces": [dict(trace, **changes)]}, checked, source, anchors)
+        proof, = certify()
+        self.assertEqual(certify(retained=1), [])
+        self.assertEqual(certify(applicability="other_scope"), [])
+        with self.assertRaisesRegex(ValueError, "дословным"):
+            certify(exception_quote="unless this is a reprint")
+        gate = dict(status="можно начинать", rationale="Ready.", evidence=[anchors[4]])
+        summary = dict(findings=[], reconciled=[dict(requirements=["R-004"], candidates=[1],
+                       evidence=list(anchors.values()), reason="The rules supplement each other.")],
+                       development=dict(gate), testing=dict(gate))
+        registry = [{"id": "R-004", "evidence": anchors[4]}]
+        count_limits.apply_proofs(summary, [1], [proof], registry)
+        finding, = summary["findings"]
+        self.assertEqual((finding["priority"], finding["requirements"], finding["candidates"]),
+                         ("критический", ["R-004"], [1]))
+        self.assertEqual(summary["reconciled"], [])
+        self.assertIn("2 + 1 = 3", finding["impact"])
+        self.assertEqual(summary["testing"]["status"], "можно частично")
