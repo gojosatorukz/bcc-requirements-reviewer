@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {mkdir, mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
-import {join, resolve} from 'node:path';
+import {basename, join, resolve} from 'node:path';
 import {createInterface} from 'node:readline';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 
@@ -43,10 +43,9 @@ export async function startWorkbench(cwd, home) {
   } catch (error) { child.kill(); throw error; }
 }
 
-export async function checkForm(context, origin, receipt, output) {
+export async function checkForm(context, origin, receipt, output, file = join(here, 'bindery-' + receipt.route + '.md')) {
   const route = receipt.route;
   const endpoint = route === 'local' ? '/api/project-runs' : '/api/runs';
-  const file = join(here, 'bindery-' + route + '.md');
   const document = await readFile(file);
   const page = await context.newPage();
   receipt.origin = origin;
@@ -76,11 +75,12 @@ export async function checkForm(context, origin, receipt, output) {
   const sent = response.request();
   const posted = sent.postDataBuffer();
   if (posted?.length) assert.equal(sha(posted), receipt.upload_sha256);
-  assert.equal(decodeURIComponent(sent.headers()['x-file-name']), 'bindery-' + route + '.md');
+  assert.equal(decodeURIComponent(sent.headers()['x-file-name']), basename(file));
   assert.equal(new URL(response.url()).origin, origin);
   assert.equal(response.status(), 202, 'Задание не принято: HTTP ' + response.status());
   await page.waitForFunction(() => !document.querySelector('#run-links').hidden ||
-    !document.querySelector('#run-recovery').hidden, null, {timeout:35 * 60000});
+    document.querySelector('#brand-face')?.dataset.state === 'failed' &&
+    !document.querySelector('#status-message')?.hasAttribute('data-running'), null, {timeout:35 * 60000});
   receipt.status_text = await page.locator('#status-message').innerText();
   assert.equal(pollIds.size, 1, 'Браузер должен проверить статус одного нового задания');
   [receipt.job_id] = pollIds;
