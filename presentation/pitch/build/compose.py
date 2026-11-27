@@ -57,31 +57,19 @@ def wrap(text, f, width):
     lines.append(cur); return lines
 random.seed(4)
 sparks=[[ (random.uniform(0,2*math.pi), random.uniform(120,220)) for _ in range(7)] for _ in seg]
+CH="char"
+SPR={}
+for m_ in ("smile","small","open"):
+    for e_ in ("open","closed"):
+        im_=Image.open(f"{CH}/girl-{m_}-{e_}.png").convert("RGBA"); im_=im_.resize((int(im_.width*0.62),int(im_.height*0.62)),Image.LANCZOS); SPR[(m_,e_)]=im_
 def mascot(t, amp, si, ts):
-    S=300; im=Image.new("RGBA",(S+120,S+120),(0,0,0,0)); dr=ImageDraw.Draw(im)
-    pop = 1+0.10*math.exp(-ts*5)*math.cos(ts*14) if ts<1.2 else 1
-    bob = math.sin(t*2*math.pi*0.7)*7 - amp*6
-    cx,cy=(S+120)/2,(S+120)/2+bob
-    rw,rh=130*pop*(1+0.03*amp),124*pop*(1-0.03*amp)
-    dr.ellipse((cx-rw,cy-rh,cx+rw,cy+rh),fill=INK)
-    blink = (t % 3.7) < 0.12
-    look = -9 + 4*math.sin(t*0.9)   # looks left at the product
-    for ex in (-48,48):
-        exx,eyy=cx+ex*pop,cy-30*pop
-        if blink: dr.line((exx-26,eyy,exx+26,eyy),fill=PAPER,width=7)
-        else:
-            dr.ellipse((exx-30,eyy-34,exx+30,eyy+34),fill=PAPER)
-            px,py=exx+look,eyy+3
-            dr.ellipse((px-14,py-15,px+14,py+15),fill=INK)
-            dr.ellipse((px-9,py-12,px-3,py-6),fill=PAPER)
-    my=cy+42*pop
-    if amp>0.12:
-        h=10+38*min(amp,1); w2=26+8*min(amp,1)
-        dr.ellipse((cx-w2,my-h/2,cx+w2,my+h/2),fill=(70,28,40),outline=SMILE,width=6)
-    else:
-        dr.arc((cx-34,my-30,cx+34,my+22),start=20,end=160,fill=SMILE,width=9)
-    dr.ellipse((cx-95,cy+15,cx-65,cy+35),fill=(255,97,47,120)); dr.ellipse((cx+65,cy+15,cx+95,cy+35),fill=(255,97,47,120))
-    return im.rotate(6,resample=Image.BICUBIC)
+    pop = 1+0.06*math.exp(-ts*5)*math.cos(ts*14) if ts<1.2 else 1
+    blink = (t % 3.7) < 0.13
+    mouth = "smile" if amp<0.12 else ("small" if amp<0.5 else "open")
+    im = SPR[(mouth, "closed" if blink else "open")]
+    if pop!=1: im = im.resize((int(im.width*pop),int(im.height*pop)),Image.BICUBIC)
+    ang = math.sin(t*2*math.pi*0.35)*2.5
+    return im.rotate(ang, resample=Image.BICUBIC, expand=True)
 proc=subprocess.Popen([FF,"-y","-v","error","-i","base.mp4","-f","rawvideo","-pix_fmt","rgba","-s",f"{PW}x{PH}","-r",str(FPS),"-i","-",
     "-i","voice.wav","-filter_complex","[0:v][1:v]overlay=1430:0:shortest=1,format=yuv420p[v]","-map","[v]","-map","2:a",
     "-c:v","libx264","-crf","17","-preset","medium","-c:a","aac","-b:a","160k","-movflags","+faststart","-shortest",OUT],stdin=subprocess.PIPE)
@@ -110,7 +98,7 @@ for n in range(N):
         d.text((42,by+24+36*k),ln,font=f_text,fill=INK)
     # mascot
     amp=float(sm[n]) if n<len(sm) else 0
-    m=mascot(t,amp,si,ts); mx,my=PW-m.width+20, PH-m.height-70
+    m=mascot(t,amp,si,ts); bob=math.sin(t*2*math.pi*0.7)*6; mx,my=(PW-m.width)/2+10, PH-m.height-48+bob
     p.alpha_composite(m,(int(mx),int(my)))
     # sparks on scene change
     if ts<0.9:
