@@ -1,0 +1,11 @@
+{
+  "report_type": "partial",
+  "schema_version": 1,
+  "reason": "gemini_quota",
+  "attempted_model": "gemini-3.5-flash-lite",
+  "input_name": "rehearsal.md",
+  "input_sha256": "a0cee9550a4cb8f6692f6b661f09d33d5b380e55aae9798cac54af955121f2e7",
+  "scope": "Проверены таблицы решений, незаполненные параметры, требования о скорости и примеры JSON. Смысловые связи между требованиями требуют полного ревью.",
+  "total_findings": 0,
+  "findings": []
+}

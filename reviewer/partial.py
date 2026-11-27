@@ -4,6 +4,8 @@ from html import escape
 import re
 
 from .json_examples import inspect_examples
+from .partial_boundary import boundary_questions
+from .partial_contract import contract_questions
 from .segments import segment
 from .structure import describe_error
 
@@ -15,7 +17,9 @@ VAGUE_TIME = re.compile(r"\b(?:быстро|оперативно|своевре�
 OBLIGATION = re.compile(r"\b(?:долж(?:ен|на|но|ны)|обязан[аы]?|shall|must)\b", re.I)
 TIME_BOUND = re.compile(r"\d\s*(?:мс|с\b|сек|мин|ч\b|час|ms\b|sec|min|hour)", re.I)
 MAX_FINDINGS = 60
-SCOPE = "Проверены таблицы решений, незаполненные параметры, требования о скорости и примеры JSON. Смысловые связи между требованиями требуют полного ревью."
+SCOPE = ("Проверены таблицы решений и явно заданные числовые границы с соседними примерами, "
+         "незаполненные параметры, требования о скорости, синтаксис JSON и явное число обязательных полей в примерах успешного ответа. "
+         "Полная оценка смысла требований требует запуска модели.")
 
 
 def cells(text):
@@ -80,7 +84,13 @@ def build_partial(name, lines, digest, metadata, model):
                    f"При условиях «{context}» что ожидается: «{brief(previous)}», «{brief(output)}» или оба результата?", [first_line, n])
         observed[output] = n
 
-    for item in inspect_examples(lines, blocks)["examples"]:
+    for question in boundary_questions(lines, blocks, cells):
+        record(*question)
+
+    checks = inspect_examples(lines, blocks)
+    for question in contract_questions(lines, blocks, checks):
+        record(*question)
+    for item in checks["examples"]:
         if item["status"] == "valid":
             continue
         n = item["line"]
