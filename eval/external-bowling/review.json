@@ -1,0 +1,1397 @@
+{
+  "schema_version": 2,
+  "scope": "Полное ревью требований",
+  "run": {
+    "started_utc": "2026-11-27T03:54:09.236484+00:00",
+    "elapsed_seconds": 138.72,
+    "provider": "codex-cli",
+    "model": "gpt-6.2-astra",
+    "agent_version": "53aef0d11f34",
+    "engine_sha256": "a243b25ebbfaf65c790646dcd473126b33e949ce4392e22b633b780e2a1f2351",
+    "input_name": "bowling.md",
+    "input_sha256": "38a7d249928abfaac3e24d47222283a9bc3a6c5c599d9cea1d43bbe55eb8de1c",
+    "input_lines": 56,
+    "usage": {
+      "input_tokens": 71799,
+      "cached_input_tokens": 32512,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 7816,
+      "reasoning_output_tokens": 131
+    },
+    "current_usage": {
+      "input_tokens": 71799,
+      "cached_input_tokens": 32512,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 7816,
+      "reasoning_output_tokens": 131
+    },
+    "fresh_calls": 5,
+    "restored_attempts": 0,
+    "attempts": [
+      {
+        "stage": "Сценарии",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 13446,
+          "cached_input_tokens": 10752,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 48,
+          "reasoning_output_tokens": 31
+        },
+        "seconds": 9.61
+      },
+      {
+        "stage": "Блоки 1–24",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 13797,
+          "cached_input_tokens": 10880,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1602,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 38.75
+      },
+      {
+        "stage": "Блоки 28–56",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 13840,
+          "cached_input_tokens": 10880,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 3233,
+          "reasoning_output_tokens": 0
+        },
+        "seconds": 70.71
+      },
+      {
+        "stage": "Весь документ",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 16312,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2133,
+          "reasoning_output_tokens": 53
+        },
+        "seconds": 47.3
+      },
+      {
+        "stage": "Сценарии QA",
+        "status": "accepted",
+        "usage": {
+          "input_tokens": 14404,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 800,
+          "reasoning_output_tokens": 47
+        },
+        "seconds": 20.68
+      }
+    ],
+    "max_workers": 3
+  },
+  "http_status_policy": "explicit-http-v1",
+  "source": [
+    {
+      "line": 1,
+      "text": "# Instructions"
+    },
+    {
+      "line": 3,
+      "text": "Score a bowling game."
+    },
+    {
+      "line": 5,
+      "text": "Bowling is a game where players roll a heavy ball to knock down pins arranged in a triangle."
+    },
+    {
+      "line": 6,
+      "text": "Write code to keep track of the score of a game of bowling."
+    },
+    {
+      "line": 8,
+      "text": "## Scoring Bowling"
+    },
+    {
+      "line": 10,
+      "text": "The game consists of 10 frames."
+    },
+    {
+      "line": 11,
+      "text": "A frame is composed of one or two ball throws with 10 pins standing at frame initialization."
+    },
+    {
+      "line": 12,
+      "text": "There are three cases for the tabulation of a frame."
+    },
+    {
+      "line": 14,
+      "text": "- An open frame is where a score of less than 10 is recorded for the frame."
+    },
+    {
+      "line": 15,
+      "text": "  In this case the score for the frame is the number of pins knocked down."
+    },
+    {
+      "line": 17,
+      "text": "- A spare is where all ten pins are knocked down by the second throw."
+    },
+    {
+      "line": 18,
+      "text": "  The total value of a spare is 10 plus the number of pins knocked down in their next throw."
+    },
+    {
+      "line": 20,
+      "text": "- A strike is where all ten pins are knocked down by the first throw."
+    },
+    {
+      "line": 21,
+      "text": "  The total value of a strike is 10 plus the number of pins knocked down in the next two throws."
+    },
+    {
+      "line": 22,
+      "text": "  If a strike is immediately followed by a second strike, then the value of the first strike cannot be determined until the ball is thrown one more time."
+    },
+    {
+      "line": 24,
+      "text": "Here is a three frame example:"
+    },
+    {
+      "line": 26,
+      "text": "|  Frame 1   |  Frame 2   |     Frame 3      |"
+    },
+    {
+      "line": 27,
+      "text": "| :--------: | :--------: | :--------------: |"
+    },
+    {
+      "line": 28,
+      "text": "| X (strike) | 5/ (spare) | 9 0 (open frame) |"
+    },
+    {
+      "line": 30,
+      "text": "Frame 1 is (10 + 5 + 5) = 20"
+    },
+    {
+      "line": 32,
+      "text": "Frame 2 is (5 + 5 + 9) = 19"
+    },
+    {
+      "line": 34,
+      "text": "Frame 3 is (9 + 0) = 9"
+    },
+    {
+      "line": 36,
+      "text": "This means the current running total is 48."
+    },
+    {
+      "line": 38,
+      "text": "The tenth frame in the game is a special case."
+    },
+    {
+      "line": 39,
+      "text": "If someone throws a spare or a strike then they get one or two fill balls respectively."
+    },
+    {
+      "line": 40,
+      "text": "Fill balls exist to calculate the total of the 10th frame."
+    },
+    {
+      "line": 41,
+      "text": "Scoring a strike or spare on the fill ball does not give the player more fill balls."
+    },
+    {
+      "line": 42,
+      "text": "The total value of the 10th frame is the total number of pins knocked down."
+    },
+    {
+      "line": 44,
+      "text": "For a tenth frame of X1/ (strike and a spare), the total value is 20."
+    },
+    {
+      "line": 46,
+      "text": "For a tenth frame of XXX (three strikes), the total value is 30."
+    },
+    {
+      "line": 48,
+      "text": "## Requirements"
+    },
+    {
+      "line": 50,
+      "text": "Write code to keep track of the score of a game of bowling."
+    },
+    {
+      "line": 51,
+      "text": "It should support two operations:"
+    },
+    {
+      "line": 53,
+      "text": "- `roll(pins : int)` is called each time the player rolls a ball."
+    },
+    {
+      "line": 54,
+      "text": "  The argument is the number of pins knocked down."
+    },
+    {
+      "line": 55,
+      "text": "- `score() : int` is called only at the very end of the game."
+    },
+    {
+      "line": 56,
+      "text": "  It returns the total score for that game."
+    }
+  ],
+  "segments": [
+    {
+      "start": 1,
+      "end": 1,
+      "kind": "заголовок",
+      "section": "Instructions",
+      "note": "Заголовок документа.",
+      "requirements": []
+    },
+    {
+      "start": 3,
+      "end": 3,
+      "kind": "текст",
+      "section": "Instructions",
+      "note": "Цель задачи.",
+      "requirements": [
+        "R-001"
+      ]
+    },
+    {
+      "start": 5,
+      "end": 5,
+      "kind": "текст",
+      "section": "Instructions",
+      "note": "Описание физической игры поясняет, что игрок сбивает кегли броском шара.",
+      "requirements": []
+    },
+    {
+      "start": 6,
+      "end": 6,
+      "kind": "текст",
+      "section": "Instructions",
+      "note": "Назначение программы.",
+      "requirements": [
+        "R-002"
+      ]
+    },
+    {
+      "start": 8,
+      "end": 8,
+      "kind": "заголовок",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Заголовок раздела о подсчёте очков.",
+      "requirements": []
+    },
+    {
+      "start": 10,
+      "end": 10,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Длина партии.",
+      "requirements": [
+        "R-003"
+      ]
+    },
+    {
+      "start": 11,
+      "end": 11,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Число бросков и начальная расстановка кеглей.",
+      "requirements": [
+        "R-004",
+        "R-005"
+      ]
+    },
+    {
+      "start": 12,
+      "end": 12,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Число вариантов расчёта фрейма.",
+      "requirements": [
+        "R-006"
+      ]
+    },
+    {
+      "start": 14,
+      "end": 14,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Признак открытого фрейма.",
+      "requirements": [
+        "R-007"
+      ]
+    },
+    {
+      "start": 15,
+      "end": 15,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Начисление очков за открытый фрейм.",
+      "requirements": [
+        "R-008"
+      ]
+    },
+    {
+      "start": 17,
+      "end": 17,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Признак спэра.",
+      "requirements": [
+        "R-009"
+      ]
+    },
+    {
+      "start": 18,
+      "end": 18,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Начисление очков за спэр.",
+      "requirements": [
+        "R-010"
+      ]
+    },
+    {
+      "start": 20,
+      "end": 20,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Признак страйка.",
+      "requirements": [
+        "R-011"
+      ]
+    },
+    {
+      "start": 21,
+      "end": 21,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Начисление очков за страйк.",
+      "requirements": [
+        "R-012"
+      ]
+    },
+    {
+      "start": 22,
+      "end": 22,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Момент определения стоимости первого из двух последовательных страйков.",
+      "requirements": [
+        "R-013"
+      ]
+    },
+    {
+      "start": 24,
+      "end": 24,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Вводная фраза к примеру расчёта трёх фреймов. Броски и ожидаемые результаты приведены далее.",
+      "requirements": []
+    },
+    {
+      "start": 26,
+      "end": 26,
+      "kind": "шапка таблицы",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Названия столбцов.",
+      "requirements": []
+    },
+    {
+      "start": 27,
+      "end": 27,
+      "kind": "разметка",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Разделитель Markdown.",
+      "requirements": []
+    },
+    {
+      "start": 28,
+      "end": 28,
+      "kind": "строка таблицы",
+      "section": "Instructions / Scoring Bowling",
+      "header": 26,
+      "note": "Строка задаёт броски и тип каждого фрейма в сквозном примере.",
+      "requirements": [
+        "R-014",
+        "R-015",
+        "R-016"
+      ]
+    },
+    {
+      "start": 30,
+      "end": 30,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Расчёт первого фрейма со страйком.",
+      "requirements": [
+        "R-017"
+      ]
+    },
+    {
+      "start": 32,
+      "end": 32,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Расчёт второго фрейма со спэром.",
+      "requirements": [
+        "R-018"
+      ]
+    },
+    {
+      "start": 34,
+      "end": 34,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Расчёт открытого третьего фрейма.",
+      "requirements": [
+        "R-019"
+      ]
+    },
+    {
+      "start": 36,
+      "end": 36,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Промежуточная сумма сквозного примера.",
+      "requirements": [
+        "R-020"
+      ]
+    },
+    {
+      "start": 38,
+      "end": 38,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Вводит правила десятого фрейма и задаёт их область действия. Конкретные условия приведены далее.",
+      "requirements": []
+    },
+    {
+      "start": 39,
+      "end": 39,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Число дополнительных бросков в десятом фрейме.",
+      "requirements": [
+        "R-021",
+        "R-022"
+      ]
+    },
+    {
+      "start": 40,
+      "end": 40,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Назначение дополнительных бросков.",
+      "requirements": [
+        "R-023"
+      ]
+    },
+    {
+      "start": 41,
+      "end": 41,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Ограничение на получение новых дополнительных бросков.",
+      "requirements": [
+        "R-024"
+      ]
+    },
+    {
+      "start": 42,
+      "end": 42,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Формула стоимости десятого фрейма.",
+      "requirements": [
+        "R-025"
+      ]
+    },
+    {
+      "start": 44,
+      "end": 44,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Пример десятого фрейма со страйком и последующим спэром.",
+      "requirements": [
+        "R-026"
+      ]
+    },
+    {
+      "start": 46,
+      "end": 46,
+      "kind": "текст",
+      "section": "Instructions / Scoring Bowling",
+      "note": "Пример десятого фрейма с тремя страйками.",
+      "requirements": [
+        "R-027"
+      ]
+    },
+    {
+      "start": 48,
+      "end": 48,
+      "kind": "заголовок",
+      "section": "Instructions / Requirements",
+      "note": "Заголовок раздела требований к реализации.",
+      "requirements": []
+    },
+    {
+      "start": 50,
+      "end": 50,
+      "kind": "текст",
+      "section": "Instructions / Requirements",
+      "note": "Общая задача реализации.",
+      "requirements": [
+        "R-028"
+      ]
+    },
+    {
+      "start": 51,
+      "end": 51,
+      "kind": "текст",
+      "section": "Instructions / Requirements",
+      "note": "Задаёт состав требуемого интерфейса.",
+      "requirements": [
+        "R-029"
+      ]
+    },
+    {
+      "start": 53,
+      "end": 53,
+      "kind": "текст",
+      "section": "Instructions / Requirements",
+      "note": "Сигнатура roll и момент вызова.",
+      "requirements": [
+        "R-030",
+        "R-031"
+      ]
+    },
+    {
+      "start": 54,
+      "end": 54,
+      "kind": "текст",
+      "section": "Instructions / Requirements",
+      "note": "Смысл аргумента pins.",
+      "requirements": [
+        "R-032"
+      ]
+    },
+    {
+      "start": 55,
+      "end": 55,
+      "kind": "текст",
+      "section": "Instructions / Requirements",
+      "note": "Сигнатура score и допустимый момент вызова.",
+      "requirements": [
+        "R-033",
+        "R-034",
+        "R-035"
+      ]
+    },
+    {
+      "start": 56,
+      "end": 56,
+      "kind": "текст",
+      "section": "Instructions / Requirements",
+      "note": "Смысл результата score.",
+      "requirements": [
+        "R-036"
+      ]
+    }
+  ],
+  "registry": [
+    {
+      "role": "требование",
+      "statement": "Рассчитать счёт партии в боулинг.",
+      "evidence": {
+        "line": 3,
+        "quote": "Score a bowling game."
+      },
+      "status": "проверяемо",
+      "assessment": "Для завершённой партии сравнить результат score() с суммой очков десяти фреймов.",
+      "id": "R-001",
+      "start": 3,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Реализовать в коде учёт счёта партии в боулинг.",
+      "evidence": {
+        "line": 6,
+        "quote": "Write code to keep track of the score of a game of bowling."
+      },
+      "status": "проверяемо",
+      "assessment": "Передать броски полной партии через roll(pins) и проверить итог вызовом score() после последнего броска.",
+      "id": "R-002",
+      "start": 6,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Партия состоит из десяти фреймов.",
+      "evidence": {
+        "line": 10,
+        "quote": "The game consists of 10 frames."
+      },
+      "status": "проверяемо",
+      "assessment": "В партии из двенадцати страйков проверить расчёт по десяти фреймам. Последние два броска дополняют десятый фрейм.",
+      "id": "R-003",
+      "start": 10,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "На фрейм приходится один или два основных броска. Для десятого фрейма отдельно предусмотрены дополнительные броски.",
+      "evidence": {
+        "line": 11,
+        "quote": "A frame is composed of one or two ball throws"
+      },
+      "status": "проверяемо",
+      "assessment": "В первых девяти фреймах проверить переход к следующему фрейму после одного броска при страйке и после двух в остальных случаях.",
+      "id": "R-004",
+      "start": 11,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "В начале каждого фрейма стоят десять кеглей.",
+      "evidence": {
+        "line": 11,
+        "quote": "10 pins standing at frame initialization"
+      },
+      "status": "проверяемо",
+      "assessment": "После открытого фрейма проверить, что первым броском нового фрейма можно сбить все десять кеглей и получить страйк.",
+      "id": "R-005",
+      "start": 11,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При подсчёте различаются три исхода фрейма — открытый фрейм, спэр и страйк.",
+      "evidence": {
+        "line": 12,
+        "quote": "There are three cases for the tabulation of a frame."
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить выбор правила на трёх сериях первого фрейма — 4 и 5 кеглей, 4 и 6 кеглей, 10 кеглей первым броском.",
+      "id": "R-006",
+      "start": 12,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Завершённый фрейм с результатом менее десяти очков считается открытым.",
+      "evidence": {
+        "line": 14,
+        "quote": "An open frame is where a score of less than 10 is recorded for the frame."
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить границу на двух бросках. При 5 и 4 кеглях фрейм открыт, при 5 и 5 засчитывается спэр.",
+      "id": "R-007",
+      "start": 14,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "В открытом фрейме число очков равно числу сбитых в нём кеглей.",
+      "evidence": {
+        "line": 15,
+        "quote": "the score for the frame is the number of pins knocked down."
+      },
+      "status": "проверяемо",
+      "assessment": "За броски на 3 и 4 кегли начислить 7 очков независимо от результата следующего броска.",
+      "id": "R-008",
+      "start": 15,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Спэр засчитывается, когда вторым броском сбиты последние из десяти кеглей фрейма.",
+      "evidence": {
+        "line": 17,
+        "quote": "A spare is where all ten pins are knocked down by the second throw."
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить спэр при бросках на 5 и 5, а также на 0 и 10 кеглей.",
+      "id": "R-009",
+      "start": 17,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "За спэр начисляются десять очков плюс число кеглей, сбитых следующим броском игрока.",
+      "evidence": {
+        "line": 18,
+        "quote": "The total value of a spare is 10 plus the number of pins knocked down in their next throw."
+      },
+      "status": "проверяемо",
+      "assessment": "При спэре 5 и 5 и следующем броске на 9 кеглей фрейм должен принести 19 очков.",
+      "id": "R-010",
+      "start": 18,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Страйк засчитывается, если первым броском фрейма сбиты все десять кеглей.",
+      "evidence": {
+        "line": 20,
+        "quote": "A strike is where all ten pins are knocked down by the first throw."
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить порог первого броска. Десять сбитых кеглей дают страйк, при девяти требуется второй бросок.",
+      "id": "R-011",
+      "start": 20,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "За страйк начисляются десять очков плюс сумма кеглей, сбитых двумя следующими бросками.",
+      "evidence": {
+        "line": 21,
+        "quote": "The total value of a strike is 10 plus the number of pins knocked down in the next two throws."
+      },
+      "status": "проверяемо",
+      "assessment": "Если вслед за страйком сбиты 5 и 5 кеглей, фрейм со страйком должен принести 20 очков.",
+      "id": "R-012",
+      "start": 21,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Если сразу после страйка следует второй страйк, стоимость первого определяется только после ещё одного броска.",
+      "evidence": {
+        "line": 22,
+        "quote": "the value of the first strike cannot be determined until the ball is thrown one more time."
+      },
+      "status": "проверяемо",
+      "assessment": "Сравнить две партии с двумя страйками подряд в начале. При третьем броске на 3 кегли первый фрейм даёт 23 очка, при броске на 7 — 27.",
+      "id": "R-013",
+      "start": 22,
+      "original_id": "—"
+    },
+    {
+      "role": "приёмочный пример",
+      "statement": "В первом фрейме все 10 кеглей сбиты первым броском. Это страйк, обозначенный X.",
+      "evidence": {
+        "line": 28,
+        "quote": "X (strike)"
+      },
+      "status": "проверяемо",
+      "assessment": "Для первого броска на 10 проверить, что фрейм засчитан как страйк.",
+      "id": "R-014",
+      "start": 28,
+      "original_id": "—"
+    },
+    {
+      "role": "приёмочный пример",
+      "statement": "Во втором фрейме после первого броска на 5 второй сбивает оставшиеся 5 кеглей. Это спэр, обозначенный 5/.",
+      "evidence": {
+        "line": 28,
+        "quote": "5/ (spare)"
+      },
+      "status": "проверяемо",
+      "assessment": "Для бросков 5 и 5 во втором фрейме проверить, что засчитан спэр.",
+      "id": "R-015",
+      "start": 28,
+      "original_id": "—"
+    },
+    {
+      "role": "приёмочный пример",
+      "statement": "В третьем фрейме первый бросок сбивает 9 кеглей, второй — 0. Фрейм открытый.",
+      "evidence": {
+        "line": 28,
+        "quote": "9 0 (open frame)"
+      },
+      "status": "проверяемо",
+      "assessment": "После двух бросков проверить, что одна кегля осталась и фрейм засчитан как открытый.",
+      "id": "R-016",
+      "start": 28,
+      "original_id": "—"
+    },
+    {
+      "role": "приёмочный пример",
+      "statement": "Если за страйком в первом фрейме следуют броски на 5 и 5, первый фрейм приносит 20 очков.",
+      "evidence": {
+        "line": 30,
+        "quote": "Frame 1 is (10 + 5 + 5) = 20"
+      },
+      "status": "проверяемо",
+      "assessment": "Прибавить к 10 результат обоих следующих бросков и сверить сумму с 20.",
+      "id": "R-017",
+      "start": 30,
+      "original_id": "—"
+    },
+    {
+      "role": "приёмочный пример",
+      "statement": "Если во втором фрейме броски на 5 и 5 дают спэр, а следующий бросок сбивает 9 кеглей, второй фрейм приносит 19 очков.",
+      "evidence": {
+        "line": 32,
+        "quote": "Frame 2 is (5 + 5 + 9) = 19"
+      },
+      "status": "проверяемо",
+      "assessment": "Прибавить 9 к сумме двух бросков второго фрейма и сверить результат с 19.",
+      "id": "R-018",
+      "start": 32,
+      "original_id": "—"
+    },
+    {
+      "role": "приёмочный пример",
+      "statement": "При бросках на 9 и 0 в третьем фрейме его стоимость равна 9 очкам.",
+      "evidence": {
+        "line": 34,
+        "quote": "Frame 3 is (9 + 0) = 9"
+      },
+      "status": "проверяемо",
+      "assessment": "Сложить результаты двух бросков открытого фрейма и сверить сумму с 9.",
+      "id": "R-019",
+      "start": 34,
+      "original_id": "—"
+    },
+    {
+      "role": "приёмочный пример",
+      "statement": "После последовательности X, 5/, 9 0 сумма очков за первые три фрейма равна 48.",
+      "evidence": {
+        "line": 36,
+        "quote": "the current running total is 48"
+      },
+      "status": "проверяемо",
+      "assessment": "Сложить рассчитанные значения фреймов 20, 19 и 9. Полученные 48 очков можно сверить как вклад в итог партии.",
+      "id": "R-020",
+      "start": 36,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "За спэр в десятом фрейме игрок получает один дополнительный бросок.",
+      "evidence": {
+        "line": 39,
+        "quote": "If someone throws a spare or a strike then they get one or two fill balls respectively."
+      },
+      "status": "проверяемо",
+      "assessment": "После бросков на 6 и 4 в десятом фрейме проверить, что игрок получает ровно один дополнительный бросок.",
+      "id": "R-021",
+      "start": 39,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "За страйк первым броском десятого фрейма игрок получает два дополнительных броска.",
+      "evidence": {
+        "line": 39,
+        "quote": "If someone throws a spare or a strike then they get one or two fill balls respectively."
+      },
+      "status": "проверяемо",
+      "assessment": "После первого броска на 10 в десятом фрейме проверить, что игрок получает ровно два дополнительных броска.",
+      "id": "R-022",
+      "start": 39,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Результаты дополнительных бросков учитываются при подсчёте очков десятого фрейма.",
+      "evidence": {
+        "line": 40,
+        "quote": "Fill balls exist to calculate the total of the 10th frame."
+      },
+      "status": "проверяемо",
+      "assessment": "При спэре на первых двух бросках десятого фрейма дополнительный бросок на 4 должен довести стоимость фрейма до 14.",
+      "id": "R-023",
+      "start": 40,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Страйк или спэр при дополнительном броске десятого фрейма не даёт новых дополнительных бросков.",
+      "evidence": {
+        "line": 41,
+        "quote": "Scoring a strike or spare on the fill ball does not give the player more fill balls."
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить окончания XXX и X1/. В обоих случаях десятый фрейм завершается после третьего броска.",
+      "id": "R-024",
+      "start": 41,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Стоимость десятого фрейма равна сумме кеглей, сбитых всеми его бросками, включая дополнительные.",
+      "evidence": {
+        "line": 42,
+        "quote": "The total value of the 10th frame is the total number of pins knocked down."
+      },
+      "status": "проверяемо",
+      "assessment": "Для открытого фрейма, спэра и страйка сравнить стоимость десятого фрейма с суммой кеглей по его броскам.",
+      "id": "R-025",
+      "start": 42,
+      "original_id": "—"
+    },
+    {
+      "role": "приёмочный пример",
+      "statement": "Если в десятом фрейме после страйка дополнительные броски сбивают 1 и оставшиеся 9 кеглей (X1/), фрейм приносит 20 очков.",
+      "evidence": {
+        "line": 44,
+        "quote": "For a tenth frame of X1/ (strike and a spare), the total value is 20."
+      },
+      "status": "проверяемо",
+      "assessment": "После девяти нулевых фреймов зарегистрировать броски 10, 1 и 9. Итог партии должен составить 20.",
+      "id": "R-026",
+      "start": 44,
+      "original_id": "—"
+    },
+    {
+      "role": "приёмочный пример",
+      "statement": "Если все три броска десятого фрейма дают страйк (XXX), фрейм приносит 30 очков.",
+      "evidence": {
+        "line": 46,
+        "quote": "For a tenth frame of XXX (three strikes), the total value is 30."
+      },
+      "status": "проверяемо",
+      "assessment": "После девяти нулевых фреймов зарегистрировать три броска по 10. Итог партии должен составить 30.",
+      "id": "R-027",
+      "start": 46,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Код должен вести счёт партии в боулинг по описанным правилам.",
+      "evidence": {
+        "line": 50,
+        "quote": "Write code to keep track of the score of a game of bowling."
+      },
+      "status": "проверяемо",
+      "assessment": "Зарегистрировать броски полной партии через roll и сравнить результат score с расчётом по десяти фреймам.",
+      "id": "R-028",
+      "start": 50,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Реализация должна поддерживать две перечисленные операции — roll для регистрации броска и score для получения итога.",
+      "evidence": {
+        "line": 51,
+        "quote": "It should support two operations:"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить, что обе операции доступны с сигнатурами из строк 53 и 55.",
+      "id": "R-029",
+      "start": 51,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Операция roll принимает один аргумент pins типа int.",
+      "evidence": {
+        "line": 53,
+        "quote": "roll(pins : int)"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить имя операции, имя параметра и его целочисленный тип с объявленной сигнатурой.",
+      "id": "R-030",
+      "start": 53,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "При каждом броске игрока вызывается roll, включая дополнительные броски десятого фрейма.",
+      "evidence": {
+        "line": 53,
+        "quote": "is called each time the player rolls a ball."
+      },
+      "status": "проверяемо",
+      "assessment": "В полной партии со страйком в начале десятого фрейма сопоставить каждому броску игрока вызов roll, включая последние два броска.",
+      "id": "R-031",
+      "start": 53,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Аргумент pins передаёт число кеглей, сбитых именно этим броском.",
+      "evidence": {
+        "line": 54,
+        "quote": "The argument is the number of pins knocked down."
+      },
+      "status": "проверяемо",
+      "assessment": "Если два броска открытого фрейма сбили 3 и 4 кегли, зарегистрировать roll(3) и roll(4) и проверить вклад фрейма в 7 очков.",
+      "id": "R-032",
+      "start": 54,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Операция score вызывается без аргументов.",
+      "evidence": {
+        "line": 55,
+        "quote": "score()"
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить вызов score() без аргументов после завершения партии.",
+      "id": "R-033",
+      "start": 55,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Возвращаемое значение score имеет тип int.",
+      "evidence": {
+        "line": 55,
+        "quote": "score() : int"
+      },
+      "status": "проверяемо",
+      "assessment": "Сверить тип результата операции с int.",
+      "id": "R-034",
+      "start": 55,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Вызывающая сторона обращается к score только в самом конце партии, после всех положенных бросков десятого фрейма.",
+      "evidence": {
+        "line": 55,
+        "quote": "is called only at the very end of the game."
+      },
+      "status": "проверяемо",
+      "assessment": "Проверить последовательность вызовов для открытого десятого фрейма, спэра и страйка. В каждом случае score() вызывается после последнего roll.",
+      "id": "R-035",
+      "start": 55,
+      "original_id": "—"
+    },
+    {
+      "role": "требование",
+      "statement": "Операция score возвращает итоговый счёт сыгранной партии.",
+      "evidence": {
+        "line": 56,
+        "quote": "It returns the total score for that game."
+      },
+      "status": "проверяемо",
+      "assessment": "Сыграть первые три фрейма по примеру X, 5/, 9 0, затем семь нулевых фреймов. В конце партии score() должен вернуть 48.",
+      "id": "R-036",
+      "start": 56,
+      "original_id": "—"
+    }
+  ],
+  "whole": {
+    "dimensions": [
+      {
+        "criterion": "полнота",
+        "assessment": "Для завершённой корректной партии заданы число фреймов, формулы очков и правила дополнительных бросков. Для реализации по последовательности вызовов roll стоит явно закрепить, какой бросок завершает обычный фрейм.",
+        "evidence": [
+          {
+            "line": 10,
+            "quote": "The game consists of 10 frames."
+          },
+          {
+            "line": 11,
+            "quote": "A frame is composed of one or two ball throws"
+          },
+          {
+            "line": 39,
+            "quote": "If someone throws a spare or a strike then they get one or two fill balls respectively."
+          },
+          {
+            "line": 53,
+            "quote": "`roll(pins : int)` is called each time the player rolls a ball."
+          }
+        ]
+      },
+      {
+        "criterion": "согласованность",
+        "assessment": "Несовместимых результатов не обнаружено. Ограничение обычного фрейма одним или двумя бросками совместимо с тремя бросками в десятом фрейме по специальному правилу. После начального страйка два дополнительных страйка дают 30 очков и завершают партию.",
+        "evidence": [
+          {
+            "line": 11,
+            "quote": "A frame is composed of one or two ball throws"
+          },
+          {
+            "line": 38,
+            "quote": "The tenth frame in the game is a special case."
+          },
+          {
+            "line": 39,
+            "quote": "If someone throws a spare or a strike then they get one or two fill balls respectively."
+          },
+          {
+            "line": 41,
+            "quote": "Scoring a strike or spare on the fill ball does not give the player more fill balls."
+          },
+          {
+            "line": 46,
+            "quote": "For a tenth frame of XXX (three strikes), the total value is 30."
+          }
+        ]
+      },
+      {
+        "criterion": "проверяемость",
+        "assessment": "Пример первых трёх фреймов можно превратить в проверку публичного интерфейса: передать через roll значения 10, 5, 5, 9, 0, затем четырнадцать нулей для оставшихся семи фреймов. Единственный вызов score в конце должен вернуть 48.",
+        "evidence": [
+          {
+            "line": 10,
+            "quote": "The game consists of 10 frames."
+          },
+          {
+            "line": 28,
+            "quote": "| X (strike) | 5/ (spare) | 9 0 (open frame) |"
+          },
+          {
+            "line": 36,
+            "quote": "This means the current running total is 48."
+          },
+          {
+            "line": 55,
+            "quote": "`score() : int` is called only at the very end of the game."
+          },
+          {
+            "line": 56,
+            "quote": "It returns the total score for that game."
+          }
+        ]
+      },
+      {
+        "criterion": "прослеживаемость",
+        "assessment": "Можно проследить, какие броски вошли в каждый бонус. Страйк первого фрейма получает оба броска второго, а спэр второго получает первый бросок третьего. Сумма стоимостей трёх фреймов, 20 + 19 + 9, совпадает с указанным промежуточным итогом.",
+        "evidence": [
+          {
+            "line": 21,
+            "quote": "The total value of a strike is 10 plus the number of pins knocked down in the next two throws."
+          },
+          {
+            "line": 18,
+            "quote": "The total value of a spare is 10 plus the number of pins knocked down in their next throw."
+          },
+          {
+            "line": 30,
+            "quote": "Frame 1 is (10 + 5 + 5) = 20"
+          },
+          {
+            "line": 32,
+            "quote": "Frame 2 is (5 + 5 + 9) = 19"
+          },
+          {
+            "line": 34,
+            "quote": "Frame 3 is (9 + 0) = 9"
+          },
+          {
+            "line": 36,
+            "quote": "This means the current running total is 48."
+          }
+        ]
+      },
+      {
+        "criterion": "границы решения",
+        "assessment": "Контракт описывает две операции для одной партии. Уже при первом вызове значение pins известно по результату фактического броска. Клиент запрашивает итог после завершения партии. Промежуточная сумма в примере объясняет расчёт. Транспорт, обработка физически невозможных бросков и реакция на досрочный запрос счёта находятся за пределами явно заданного поведения.",
+        "evidence": [
+          {
+            "line": 51,
+            "quote": "It should support two operations:"
+          },
+          {
+            "line": 53,
+            "quote": "`roll(pins : int)` is called each time the player rolls a ball."
+          },
+          {
+            "line": 54,
+            "quote": "The argument is the number of pins knocked down."
+          },
+          {
+            "line": 55,
+            "quote": "`score() : int` is called only at the very end of the game."
+          }
+        ]
+      }
+    ],
+    "findings": [
+      {
+        "title": "Условие перехода к следующему обычному фрейму задано лишь примерами",
+        "category": "открытый вопрос",
+        "criterion": "полнота контракта roll",
+        "reason": "ТЗ допускает один или два броска во фрейме. Пример показывает один бросок при страйке и второй бросок после девяти сбитых кеглей. Явного общего условия, когда второй бросок обязателен, нет. Это существенно для roll, поскольку клиент передаёт только число кеглей.",
+        "impact": "От границы фрейма зависит, какие броски образуют спэр и когда начинается десятый фрейм. Разное разбиение одного потока бросков может изменить итоговый счёт.",
+        "owner": "Автор правил подсчёта",
+        "question": "Верно ли, что в каждом из фреймов 1–9 первый бросок завершает фрейм только при страйке, а во всех остальных случаях фрейм завершается вторым броском?",
+        "action": "Зафиксировать подтверждённое условие завершения фреймов 1–9 рядом с правилом об одном или двух бросках, сохранив отдельное описание десятого фрейма.",
+        "requirements": [
+          "R-004",
+          "R-007",
+          "R-009",
+          "R-011",
+          "R-030",
+          "R-031",
+          "R-032"
+        ],
+        "candidates": [],
+        "evidence": [
+          {
+            "line": 11,
+            "quote": "A frame is composed of one or two ball throws"
+          },
+          {
+            "line": 20,
+            "quote": "A strike is where all ten pins are knocked down by the first throw."
+          },
+          {
+            "line": 28,
+            "quote": "| X (strike) | 5/ (spare) | 9 0 (open frame) |"
+          },
+          {
+            "line": 53,
+            "quote": "`roll(pins : int)` is called each time the player rolls a ball."
+          },
+          {
+            "line": 54,
+            "quote": "The argument is the number of pins knocked down."
+          }
+        ],
+        "triage": {
+          "rule": "implementation_or_contract",
+          "witness": []
+        },
+        "priority": "существенный",
+        "id": "D-01"
+      }
+    ],
+    "reconciled": [],
+    "development": {
+      "status": "можно начинать",
+      "rationale": "Можно реализовать регистрацию бросков, бонусы и итоговый score. Для перехода между фреймами 1–9 рабочее допущение следует из примера: страйк занимает один бросок, после первого броска с оставшимися кеглями следует второй. Подтверждение этого условия закроет вопрос о соответствии реализации на всех допустимых последовательностях.",
+      "evidence": [
+        {
+          "line": 28,
+          "quote": "| X (strike) | 5/ (spare) | 9 0 (open frame) |"
+        },
+        {
+          "line": 21,
+          "quote": "The total value of a strike is 10 plus the number of pins knocked down in the next two throws."
+        },
+        {
+          "line": 42,
+          "quote": "The total value of the 10th frame is the total number of pins knocked down."
+        },
+        {
+          "line": 56,
+          "quote": "It returns the total score for that game."
+        }
+      ]
+    },
+    "testing": {
+      "status": "можно начинать",
+      "rationale": "Можно проверять итог через score на полных партиях. Например, после девяти нулевых фреймов окончания X1/ и XXX должны дать соответственно 20 и 30. Для полной приёмки разбиения потока бросков нужен согласованный критерий завершения обычного фрейма.",
+      "evidence": [
+        {
+          "line": 11,
+          "quote": "A frame is composed of one or two ball throws"
+        },
+        {
+          "line": 15,
+          "quote": "In this case the score for the frame is the number of pins knocked down."
+        },
+        {
+          "line": 44,
+          "quote": "For a tenth frame of X1/ (strike and a spare), the total value is 20."
+        },
+        {
+          "line": 46,
+          "quote": "For a tenth frame of XXX (three strikes), the total value is 30."
+        },
+        {
+          "line": 55,
+          "quote": "`score() : int` is called only at the very end of the game."
+        }
+      ]
+    }
+  },
+  "json_checks": {
+    "version": 1,
+    "examples": []
+  },
+  "priority_policy": "impact-v1",
+  "lifecycle_checks": {
+    "version": 1,
+    "checks": [
+      {
+        "axis": "initial_action",
+        "status": "specified",
+        "situation": "Новая игра. В первом фрейме стоят 10 кеглей, бросков ещё не было.",
+        "action": "Первым броском сбить все 10 кеглей и сразу вызвать `roll(10)`, передав фактическое число сбитых кеглей.",
+        "observation": "Первый фрейм завершён страйком после одного броска. Следующий бросок относится ко второму фрейму.",
+        "question": "",
+        "evidence": [
+          {
+            "line": 11,
+            "quote": "10 pins standing at frame initialization"
+          },
+          {
+            "line": 53,
+            "quote": "`roll(pins : int)` is called each time the player rolls a ball."
+          },
+          {
+            "line": 54,
+            "quote": "The argument is the number of pins knocked down."
+          },
+          {
+            "line": 20,
+            "quote": "A strike is where all ten pins are knocked down by the first throw."
+          },
+          {
+            "line": 28,
+            "quote": "| X (strike) | 5/ (spare) | 9 0 (open frame) |"
+          }
+        ]
+      },
+      {
+        "axis": "boundary",
+        "status": "specified",
+        "situation": "В двух независимых примерах начинается второй фрейм. Перед первым броском стоят 10 кеглей. Вход `roll` измеряется целыми кеглями, граница страйка — 10 кеглей за первый бросок.",
+        "action": "В первом примере сбить 9 кеглей и вызвать `roll(9)`. Во втором сбить 10 кеглей и вызвать `roll(10)`.",
+        "observation": "При 9 кеглях одна кегля остаётся стоять, и игроку предстоит второй бросок того же фрейма. При 10 кеглях засчитывается страйк, и второй фрейм завершается первым броском.",
+        "question": "",
+        "evidence": [
+          {
+            "line": 11,
+            "quote": "A frame is composed of one or two ball throws with 10 pins standing at frame initialization."
+          },
+          {
+            "line": 20,
+            "quote": "A strike is where all ten pins are knocked down by the first throw."
+          },
+          {
+            "line": 28,
+            "quote": "| X (strike) | 5/ (spare) | 9 0 (open frame) |"
+          },
+          {
+            "line": 53,
+            "quote": "`roll(pins : int)`"
+          },
+          {
+            "line": 54,
+            "quote": "The argument is the number of pins knocked down."
+          }
+        ]
+      }
+    ],
+    "skipped": [
+      {
+        "axis": "retry_effect",
+        "reason": "`roll` принимает число сбитых кеглей. Идентификатор броска, повторная обработка по нему и отдельный внешний эффект не описаны."
+      },
+      {
+        "axis": "reentry",
+        "reason": "Операции игры позволяют зарегистрировать очередной бросок и получить итоговый счёт. Обратного перехода для уже зарегистрированного броска не задано."
+      },
+      {
+        "axis": "isolation",
+        "reason": "Спецификация описывает подсчёт одной игры. Правила для независимых эффектов нескольких объектов в общем периоде или контексте не заданы."
+      }
+    ]
+  },
+  "conflicts": [],
+  "executables": {
+    "version": "witness-v3",
+    "items": []
+  }
+}
