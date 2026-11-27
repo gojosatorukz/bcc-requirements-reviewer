@@ -446,6 +446,10 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                         "сколько новых требует конкретная строка. Если добавлено ноль, сохранение или отображение "
                         "существующего объекта не предписывает его создание. Не добавляй выдачу сверх предела "
                         "к предусловию. Объедини подтверждённые варианты одного числового расхождения по двум нормам.")
+    if gemini and product["agreements"]:
+        payload["agreed_examples"] = product["agreements"]
+        instruction += ("\nУ agreed_examples проверяемая величина совпадает с независимо предсказанным итогом. "
+                        "Две разные формулировки одного результата не образуют нарушение.")
     if proof_ids:
         payload["verified_count_witnesses"] = proof_ids
         instruction += ("\nДля verified_count_witnesses отдельно проверены достижимость условий, сохранение "
@@ -511,6 +515,18 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         count_limits.apply_proofs(whole, proof_ids, candidates["conflicts"], registry)
     if gemini and product["count_checks"]:
         count_limits.retire_unreachable_counts(whole, product["count_checks"])
+    if gemini:
+        disputed = behavior.disputed_examples(whole, product["agreements"])
+        if disputed:
+            try:
+                verdict, more = gemini_stage("Перепроверка исходов", behavior.RECONCILE,
+                    {"source": source, "disputed": disputed}, behavior.VERDICTS,
+                    lambda r: behavior.agreed_dispositions(r, disputed))
+            except InvalidStageResult as error:
+                more = error.attempts
+            else:
+                behavior.resolve_agreements(whole, behavior.agreed_dispositions(verdict, disputed))
+            events.extend(more)
         check_whole(whole, registry, candidates["conflicts"], source, http_status_policy=HTTP_STATUS_POLICY)
         check_critical_sources(whole, candidates["conflicts"])
     whole["findings"].sort(key=lambda f: (priority.ORDER[f["priority"]], min(e["line"] for e in f["evidence"])))

@@ -62,6 +62,27 @@ class BehaviorTests(unittest.TestCase):
         inputs, _ = behavior.table_cases(segment(lines), source, reading, anchors)
         self.assertNotIn("Hidden output", str(inputs))
 
+    def test_a_global_claim_about_an_agreeing_example_requires_two_distinct_observable_values(self):
+        refs = [{"line": 8, "quote": "Retain the uploader."}, {"line": 26, "quote": "The uploader still owns it."}]
+        witness = {"scenario": "Upload and transfer.", "first": {"source": refs[0], "outcome": "Owned by A"},
+                   "second": {"source": refs[1], "outcome": "A retains ownership"}}
+        f = {"triage": {"witness": [witness]}, "evidence": refs, "candidates": [1], "requirements": ["R-2"],
+             "question": "Who owns it?"}
+        gate = dict(status="заблокировано", rationale="Owner unknown.", evidence=refs)
+        whole = {"findings": [f], "reconciled": [], "development": dict(gate), "testing": dict(gate)}
+        disputed = behavior.disputed_examples(whole, [{"example": 26, "rule_lines": [8]}])
+        ruling = {"finding": 0, "observable": "owner", "covered": True, "values": ["A"],
+                  "rule_value": 1, "example_value": 1, "explanation": "Both retain A."}
+        def decide(**changes):
+            return behavior.agreed_dispositions({"comparisons": [dict(ruling, **changes)]}, disputed)
+        self.assertEqual(decide(covered=False), {})
+        self.assertEqual(decide(values=["A", "B"], example_value=2), {})
+        with self.assertRaises(ValueError):
+            decide(example_value=2)
+        behavior.resolve_agreements(whole, decide())
+        self.assertEqual(whole["findings"], [])
+        self.assertEqual(whole["reconciled"][0]["evidence"], refs)
+
     def test_addressed_contract_keeps_same_status_examples_independent(self):
         from reviewer import response_fields
         c = {"id":7, "field":"receipt", "errors":{40:409, 46:409, 58:422}}

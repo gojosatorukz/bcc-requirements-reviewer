@@ -211,6 +211,7 @@ def discover(segments, source, stage):
     review["limit_candidates"] = []
     review["certified"] = []
     review["count_checks"] = []
+    review["agreements"] = []
     # The transition reader sees the occupied state, but cannot copy the limiting clause.
     bound_anchors = {c["anchor"] for c in bound_cases}
     other_rules = {n: text for n, text in inputs["rules"].items() if n not in bound_anchors}
@@ -266,4 +267,65 @@ def discover(segments, source, stage):
     compared, events = stage("Сверка примеров", COMPARE, {"samples": samples, "source": reading_input["source"]},
                              COMPARISON, verify_examples)
     review["conflicts"].extend(c for c in expand(compared, anchors, source)["conflicts"] if c not in review["conflicts"])
+    bases = {p["example"]: sorted({anchors[n]["line"] for n in p["bases"]}) for p in predictions}
+    review["agreements"] = [dict(check, rule_lines=bases[check["example"]]) for check in compared["checks"]
+                            if check["verdict"] == "agrees" and bases[check["example"]]]
     return review, attempts + events
+
+
+VERDICTS = record(comparisons={"type": "array", "items": record(finding=NUMBER, observable=TEXT,
+    covered={"type": "boolean"}, values={"type": "array", "items": TEXT},
+    rule_value=NUMBER, example_value=NUMBER, explanation=TEXT)})
+
+RECONCILE = """Проверь конкретные финальные замечания по первоисточнику. В каждом дан сценарий
+и строки правила и приёмочного примера. Назови наблюдаемый эффект, который замечание считает
+спорным. Для одного и того же входа независимо прочитай норму и показанный в таблице результат.
+В values создай список различных конечных значений одного показателя со сквозной нумерацией от 1.
+Эквивалентные состояния запиши один раз; синонимы и лишнее описание не создают второе значение.
+Выбери индексы rule_value и example_value. Для разных получателей, периодов, сумм или состояний
+используй разные индексы. covered=true только если эти значения исчерпывают именно заявленное
+противоречие. Если входы различаются, часть вывода неизвестна или замечание описывает также иной
+независимый эффект, верни covered=false. Опирайся на строки ТЗ, ответь по-русски."""
+
+
+def disputed_examples(whole, agreements):
+    disputed = []
+    for i, finding in enumerate(whole["findings"]):
+        for witness in finding["triage"]["witness"]:
+            lines = {witness[s]["source"]["line"] for s in ("first", "second")}
+            for a in agreements:
+                if a["example"] in lines and len(lines) == 2 and (lines - {a["example"]}) <= set(a["rule_lines"]):
+                    disputed.append({"finding": i, "example_line": a["example"], "rule_line": next(iter(lines - {a["example"]})),
+                                     "scenario": witness["scenario"], "claimed_outcomes": [witness[s]["outcome"]
+                                     for s in ("first", "second")], "question": finding["question"]})
+                    break
+    return disputed
+
+
+def agreed_dispositions(result, disputed):
+    if sorted(c["finding"] for c in result["comparisons"]) != sorted(d["finding"] for d in disputed):
+        raise ValueError("Проверь каждое переданное замечание ровно один раз")
+    decisions = {}
+    for c in result["comparisons"]:
+        values = [v.strip().casefold() for v in c["values"]]
+        if (type(c["covered"]) is not bool or len(set(values)) != len(values) or
+            not all(1 <= c[k] <= len(values) for k in ("rule_value", "example_value"))):
+            raise ValueError("Используй разные значения и существующие номера от 1 до длины values.")
+        if c["covered"] and c["rule_value"] == c["example_value"]:
+            decisions[c["finding"]] = c["explanation"]
+    return decisions
+
+
+def resolve_agreements(whole, decisions):
+    resolved = set()
+    for index in sorted(decisions, reverse=True):
+        finding = whole["findings"].pop(index)
+        resolved.update(e["line"] for e in finding["evidence"])
+        whole["reconciled"].append({k: finding[k] for k in ("candidates", "requirements", "evidence")} |
+                                  {"reason": decisions[index]})
+    if resolved and not whole["findings"]:
+        for name in ("development", "testing"):
+            gate = whole[name]
+            if {e["line"] for e in gate["evidence"]} <= resolved:
+                gate.update(status="можно начинать", rationale="Норма и приёмочный пример задают одинаковый результат. "
+                            "В итоговой проверке документа открытых замечаний нет.")
