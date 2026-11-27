@@ -167,13 +167,14 @@ a{color:var(--accent);text-underline-offset:.18em}
 </style>
 <link rel="stylesheet" href="/reviewer/guided.css">
 <link rel="stylesheet" href="/reviewer/execution.css">
+<link rel="stylesheet" href="/reviewer/assistant.css">
 </head>
 <body>
 <header class="masthead">
   <a class="skip-work" href="#workspace">Перейти к работе с документом</a>
   <div class="inner">
     <a class="brand" href="/"><span class="brand-mark" id="brand-face" data-state="idle" aria-hidden="true"><span class="brand-eyes"></span><span class="brand-mouth"></span></span>Разбор ТЗ</a>
-    <nav aria-label="Разделы"><a id="active-report-link" href="#demo-heading">Отчёт</a><a id="active-json-link" href="/reports/demo/review.json?download=1" download="review.json" aria-label="Скачать JSON текущего отчёта" hidden>JSON ↓</a><a class="nav-start" href="#upload-heading">Проверить ТЗ</a></nav>
+    <nav aria-label="Разделы"><button class="assistant-launch" id="assistant-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel"><span class="chat-glyph" aria-hidden="true"></span>Спросить по ТЗ</button><a id="active-report-link" href="#demo-heading">Отчёт</a><a id="active-json-link" href="/reports/demo/review.json?download=1" download="review.json" aria-label="Скачать JSON текущего отчёта" hidden>JSON ↓</a><a class="nav-start" href="#upload-heading">Проверить ТЗ</a></nav>
   </div>
 </header>
 <main>
@@ -189,6 +190,7 @@ a{color:var(--accent);text-underline-offset:.18em}
         <div id="qa-picker"><label for="qa-select">Сценарий</label><select id="qa-select"></select></div>
         <div id="qa-content" aria-live="polite" aria-atomic="true"></div>
         <a id="qa-full-link" target="_blank" rel="noopener">Открыть этот сценарий в отчёте ↗</a>
+        <button id="assistant-qa-open" class="assistant-qa-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel">Спросить об этом сценарии</button>
         <p id="qa-skip-row" hidden><a id="qa-skip-link" target="_blank" rel="noopener"></a></p>
       </details>
       <section id="guided-review" aria-label="Согласование" hidden></section>
@@ -258,6 +260,7 @@ a{color:var(--accent);text-underline-offset:.18em}
           <h3 id="recheck-result-title">Результат перепроверки</h3>
           <p role="status" id="recheck-result-state"></p>
           <div id="recheck-summary"></div>
+          <button class="assistant-launch" id="assistant-recheck-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel" hidden>Спросить о перепроверке</button>
         </section>
         <div class="actions" id="run-links" hidden>
           <a class="action" id="run-html" target="_blank" rel="noopener">Открыть HTML-отчёт</a>
@@ -309,6 +312,29 @@ a{color:var(--accent);text-underline-offset:.18em}
     </div>
   </div>
 </main>
+<dialog id="assistant-panel" aria-labelledby="assistant-title" aria-describedby="assistant-document">
+  <div class="assistant-shell">
+    <header class="assistant-head">
+      <span class="desk-face" aria-hidden="true"><i></i></span>
+      <div><h2 id="assistant-title">Помощница по ТЗ</h2><p id="assistant-document">Документ ещё не открыт</p></div>
+      <button id="assistant-close" class="assistant-close" type="button" aria-label="Закрыть помощницу">×</button>
+    </header>
+    <div class="assistant-scope" id="assistant-scope" hidden>
+      <label for="assistant-focus">Обсуждаем</label><select id="assistant-focus"></select>
+    </div>
+    <div id="assistant-scroll" class="assistant-scroll">
+      <div id="assistant-empty" class="assistant-empty"><span class="chat-glyph" aria-hidden="true"></span><p>Откройте полный отчёт, чтобы задать вопрос.</p></div>
+      <div id="assistant-log" role="log" aria-label="Переписка по открытому отчёту" aria-live="off"></div>
+    </div>
+    <form id="assistant-form" class="assistant-form">
+      <label class="assistant-sr" for="assistant-input">Вопрос по открытому отчёту</label>
+      <textarea id="assistant-input" rows="2" maxlength="1600" placeholder="Спросите о требовании или выводе…" disabled></textarea>
+      <div class="assistant-compose"><span id="assistant-status" role="status" aria-live="polite" aria-atomic="true"></span><button id="assistant-send" disabled>Отправить <span aria-hidden="true">↑</span></button></div>
+      <button id="assistant-restart" type="button" hidden>Задать как новый вопрос</button>
+    </form>
+  </div>
+</dialog>
+<script src="/reviewer/assistant.js"></script>
 <script src="/reviewer/explorer.js"></script>
 <script src="/reviewer/guided.js"></script>
 <script>
@@ -943,8 +969,9 @@ async function loadRecheck(run, reportUrl) {
   const status = get('recheck-result-state');
   panel.hidden = false;
   status.textContent = 'Загружаем выводы…';
+  get('assistant-recheck-open').hidden = true;
   try {
-    const report = await request('/reports/' + run.id + '/review.json', {signal: controller.signal});
+    const {value:report, sha} = await request('/reports/' + run.id + '/review.json', {signal: controller.signal}, true);
     if (recheckLoad !== controller || session.last?.id !== run.id) return;
     if (report.report_type !== 'recheck' || !Array.isArray(report.checks) || !report.run ||
         typeof report.scope !== 'string' || (run.findings?.length &&
@@ -963,6 +990,11 @@ async function loadRecheck(run, reportUrl) {
       }
     }
     renderRecheck(report, reportUrl);
+    if (reportHash.test(sha)) {
+      const detail = {report, key:run.id + ':' + sha, reportUrl};
+      window.dispatchEvent(new CustomEvent('review:recheck-assistant', {detail}));
+      get('assistant-recheck-open').hidden = false;
+    }
     status.textContent = (report.selection === 'critical' ? 'Проверено критических замечаний: ' :
       'Проверено замечаний: ') + report.checks.length + '.';
   } catch {
@@ -1268,7 +1300,7 @@ function publishReport(report, id, sha) {
   activeLink.target = '_blank';
   activeLink.rel = 'noopener';
   const download = get('active-json-link');
-  download.href = '/reports/' + id + '/review.json?download=1';
+  download.href = '/reports/' + id + '/review.json?download=1' + (reportHash.test(sha) ? '&sha256=' + sha : '');
   download.hidden = false;
   activeLink.setAttribute('aria-label', 'Открыть ' + (id === 'demo' ? 'демо-отчёт' : 'текущий отчёт') + ' в новой вкладке');
   const name = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
