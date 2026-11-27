@@ -340,6 +340,7 @@ a{color:var(--accent);text-underline-offset:.18em}
         <h2 id="review-title" tabindex="-1">Проверка требований</h2>
         <p id="review-document">Загрузите документ или откройте демо-отчёт.</p>
         <small id="review-origin" hidden></small>
+        <a id="active-jira-export" download="review-issues.csv" hidden>Скачать задачи для Jira (CSV)</a>
       </div>
       <details id="active-qa" class="active-qa" hidden>
         <summary id="qa-summary">Сценарии для QA</summary>
@@ -1570,6 +1571,10 @@ function publishReport(report, id, sha) {
   const download = get('active-json-link');
   download.href = '/reports/' + id + '/review.json?download=1' + (reportHash.test(sha) ? '&sha256=' + sha : '');
   download.hidden = false;
+  const jira = get('active-jira-export');
+  jira.hidden = !report.whole.findings.length || !reportHash.test(sha);
+  if (jira.hidden) jira.removeAttribute('href');
+  else jira.href = '/reports/' + id + '/issues.csv?sha256=' + sha;
   activeLink.setAttribute('aria-label', 'Открыть ' + (id === 'demo' ? 'демо-отчёт' : 'текущий отчёт') + ' в новой вкладке');
   const name = report.segments?.find(block => block.kind === 'заголовок')?.section || report.run?.input_name;
   get('review-document').textContent = [id === 'demo' ? 'Сохранённый пример банка' : 'Полное ревью', name].filter(Boolean).join(' · ');

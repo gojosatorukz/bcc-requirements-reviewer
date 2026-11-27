@@ -826,26 +826,32 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 path = app.reports("demo") / "owner" / (sample[1] + ".html")
                 self.reply(HTTPStatus.OK, path.read_bytes(), REPORT_FILES["review.html"])
                 return
-            report = re.fullmatch(rf"/reports/(demo|{JOB_ID})/(review\.(?:html|json))", route.path)
+            report = re.fullmatch(rf"/reports/(demo|{JOB_ID})/(review\.(?:html|json)|issues\.csv)", route.path)
             if report:
                 name = report[2]
-                directory = app.reports(report[1])
+                directory = app.reports(report[1], baseline=name == "issues.csv")
                 params = parse_qs(route.query, keep_blank_values=True)
+                derived = name == "issues.csv" or "sha256" in params
+                body = (directory / ("review.json" if derived else name)).read_bytes()
                 if "sha256" in params:
                     expected = params["sha256"]
                     if len(expected) != 1 or not re.fullmatch(r"[0-9a-f]{64}", expected[0]):
                         raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Некорректная версия отчёта.")
-                    body = (directory / "review.json").read_bytes()
                     if sha256(body).hexdigest() != expected[0]:
                         raise WorkbenchError(HTTPStatus.CONFLICT, "Эта ссылка относится к другой версии отчёта.")
-                    if name == "review.html":
+                if derived and name != "review.json":
+                    try:
+                        if name == "issues.csv":
+                            from .full_render import validate_report
+                            from .jira_export import issues_csv
+                            value = json.loads(body)
+                            validate_report(value)
+                            self.reply(HTTPStatus.OK, issues_csv(value), "text/csv; charset=utf-8", "review-issues.csv")
+                            return
                         from .render import render_report
-                        try:
-                            body = render_report(json.loads(body)).encode("utf-8")
-                        except (KeyError, TypeError, ValueError) as exc:
-                            raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Не удалось открыть эту версию отчёта.") from exc
-                else:
-                    body = (directory / name).read_bytes()
+                        body = render_report(json.loads(body)).encode("utf-8")
+                    except (KeyError, TypeError, ValueError) as exc:
+                        raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Не удалось открыть эту версию отчёта.") from exc
                 download = name if params.get("download") == ["1"] else None
                 self.reply(HTTPStatus.OK, body, REPORT_FILES[name], download, report_digest=name == "review.json")
                 return

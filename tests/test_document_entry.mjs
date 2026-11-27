@@ -103,6 +103,15 @@ test('a jury visitor can read the saved example, keep their text after a quota e
     await page.locator('#review-origin').filter({hasText:'Из JSON'}).waitFor();
     const active = await page.locator('#active-report-link').getAttribute('href');
     assert.match(active, /^\/reports\/[a-f0-9]{32}\/review\.html$/);
+    const exportLink = page.getByRole('link', {name:'Скачать задачи для Jira (CSV)'});
+    assert.ok((await exportLink.getAttribute('href')).startsWith(active.replace('review.html', 'issues.csv?sha256=')));
+    const csvPromise = page.waitForEvent('download');
+    await exportLink.click();
+    const csv = await csvPromise;
+    assert.equal(csv.suggestedFilename(), 'review-issues.csv');
+    const body = readFileSync(await csv.path(), 'utf8');
+    assert.match(body, /Summary,Issue Type,Priority,Description/);
+    assert.ok(body.includes(JSON.parse(readFileSync(other, 'utf8')).run.input_sha256));
     assert.equal(await report.getAttribute('href'), '/reports/demo/review.html');
     await page.getByRole('link', {name:'К разбору своего ТЗ'}).click();
     assert.equal(await page.locator('#active-report-link').getAttribute('href'), active);

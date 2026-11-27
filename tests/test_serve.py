@@ -83,6 +83,22 @@ class WorkbenchTest(unittest.TestCase):
                 self.fail(f"Run did not finish: {result}")
             time.sleep(0.01)
 
+    def test_jira_download_uses_the_selected_full_report_and_rejects_a_stale_digest(self):
+        from reviewer.jira_export import issues_csv
+
+        original = (ROOT / "runs/bcc-release/review.json").read_bytes()
+        (self.demo / "review.json").write_bytes(original)
+        imported = (ROOT / "eval/gemini/behavior/museum-release.json").read_bytes()
+        identifier = self.app.import_report(imported)["id"]
+        for report_id, raw in (("demo", original), (identifier, imported)):
+            endpoint = f"/reports/{report_id}/issues.csv"
+            status, body, headers = self.request("GET", endpoint + "?sha256=" + sha256(raw).hexdigest())
+            self.assertEqual(status, 200)
+            self.assertEqual(body, issues_csv(json.loads(raw)))
+            self.assertIn("text/csv", headers["Content-Type"])
+            self.assertIn("attachment", headers["Content-Disposition"])
+            self.assertEqual(self.request("GET", endpoint + "?sha256=" + "f" * 64)[0], 409)
+
     def test_home_names_the_selected_model_before_submission(self):
         (self.root / "reviewer" / "workbench.html").write_text((ROOT / "reviewer" / "workbench.html").read_text())
         self.app.model = "Model A & B"

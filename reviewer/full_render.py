@@ -12,6 +12,7 @@ from .executable import unexecuted_message
 from .execution_view import first_step_comparisons, quantity, render_executions
 from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
 from .json_examples import check_findings, verify_saved_checks
+from .jira_export import issues_csv
 from .example_shapes import object_shapes
 from . import priority
 from .render import render_conflict, render_passport, render_source, safe
@@ -414,6 +415,11 @@ def render_full(report):
     findings = []
     executions = render_executions(report, lines)
     execution_items = {item["finding_id"]: item for item in report.get("executables", {}).get("items", [])}
+    jira_link = ""
+    if whole["findings"]:
+        payload = b64encode(issues_csv(report)).decode("ascii")
+        jira_link = (f'<a class="jira-export" download="review-issues.csv" '
+                     f'href="data:text/csv;charset=utf-8;base64,{payload}">Скачать задачи для Jira (CSV)</a>')
     page_by_line = {n: page["page"] for page in run.get("pages", [])
                     for n in range(page["start"], page["end"] + 1)}
     for f in whole["findings"]:
@@ -557,7 +563,7 @@ def render_full(report):
 <main class="full" id="report"><small class="report-meta">{safe(run['input_name'])} · {safe(run['started_utc'][:10])} UTC · {safe(run['model'])}</small>
 <h1>{safe(title)}</h1>
 <div class="report-toolbar"><nav aria-label="Разделы отчёта"><details><summary>Разделы отчёта</summary>{nav}</details></nav>
-<button id="print-report" type="button" hidden>Печать / сохранить PDF</button></div>
+{jira_link}<button id="print-report" type="button" hidden>Печать / сохранить PDF</button></div>
 <section aria-labelledby="readiness-title"><h2 id="readiness-title">Можно ли начинать работу</h2><div class="gates">{''.join(verdicts)}</div></section>
 <div class="metrics"><div><strong>{len(registry)}</strong>пунктов в реестре</div><div><strong>{len(defects)}</strong>нарушений, включая {len(critical)} критических</div><div><strong>{questions}</strong>открытых вопросов</div></div>
 <p>{summary}.</p>{decision_brief(report)}{qa_shortcut}
