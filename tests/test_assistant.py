@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from reviewer.assistant import MAX_QUESTION, READ_ONLY, UNKNOWN, passages, respond
 from reviewer.full import InvalidStageResult
-from reviewer.serve import ROOT, Run, Workbench, WorkbenchError
+from reviewer.serve import QUOTA_MESSAGE, ROOT, Run, Workbench, WorkbenchError
 
 
 BASE = ROOT / "eval/external-bowling/review.json"
@@ -78,11 +78,14 @@ class AssistantTest(TestCase):
             self.assertNotIn("provider-secret-text", str(error.exception))
 
     def test_provider_limits_and_model_changes_do_not_leak_details(self):
-        for detail, status in (("429 usage limit internal-account-tag", 429), ("model_not_found internal-account-tag", 502)):
+        for detail, status in (("429 usage limit internal-account-tag", 429), ("quota_exhausted", 429),
+                               ("model_not_found internal-account-tag", 502)):
             with patch("reviewer.codex_provider.complete", side_effect=ValueError(detail)), self.assertRaises(WorkbenchError) as error:
                 self.app.ask_assistant("demo", self.sha, self.query)
             self.assertEqual(error.exception.code, status)
             self.assertNotIn("internal-account-tag", str(error.exception))
+            if status == 429:
+                self.assertEqual(str(error.exception), QUOTA_MESSAGE)
         with patch("reviewer.codex_provider.complete", return_value=(self.reply, {})):
             first = self.app.ask_assistant("demo", self.sha, self.query)
             self.app.model = "other"

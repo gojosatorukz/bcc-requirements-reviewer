@@ -48,6 +48,12 @@ PROOF_PLAN = re.compile(r"План расчётов · примеров: ([0-9]{
 PROOF_DONE = re.compile(rf"Исполняемый пример ({FINDING_ID}) · (?:подтверждён|не подтверждён|модель недоступна)")
 PLAN = re.compile(r"План проверки · групп строк: ([0-9]{1,6})")
 CROSS_CHECK = "Сверка требований · начата"
+QUOTA_MESSAGE = "Достигнут лимит запросов к модели. Откройте сохранённый пример или повторите запрос позже."
+QUOTA_DETAIL = re.compile(
+    r"\b(?:quota_exhausted|insufficient_quota|rate_limit_exceeded|usage_limit_reached|"
+    r"usage limit|rate limit(?:ed)?|too many requests)\b|"
+    r"\b(?:http(?:/\d(?:\.\d)?)?|status(?: code)?)\s*[:=]?\s*429\b", re.I)
+PROVIDER_FAILURE = re.compile(r"Codex CLI завершился с кодом -?\d+\.\s*(.*)$")
 SAFE_FAILURES = {
     "DOCX содержит": "В Word-файле есть элементы, которые требуют экспорта в PDF с текстовым слоем.",
     "DOCX повреждён": "Word-файл повреждён или защищён паролем.",
@@ -188,6 +194,11 @@ def upload_name(header):
     return name
 
 
+def provider_quota(detail):
+    """Classify provider diagnostics; callers establish their origin before matching."""
+    return QUOTA_MESSAGE if QUOTA_DETAIL.search(detail) else None
+
+
 def execute(command, progress, failure):
     """Display only fixed CLI progress markers and a curated set of failure messages."""
     env = dict(os.environ, PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")
@@ -203,6 +214,11 @@ def execute(command, progress, failure):
                         or PROOF_PLAN.fullmatch(line) or PROOF_DONE.fullmatch(line)):
                     progress(line)
                 elif not known_failure:
+                    if (line.startswith(("Прогон не завершён: ", "Повторная проверка не завершена: ", "Codex CLI завершился с кодом "))
+                            and (diagnostic := PROVIDER_FAILURE.search(line))
+                            and (message := provider_quota(diagnostic[1]))):
+                        known_failure.append(message)
+                        continue
                     for fragment, message in SAFE_FAILURES.items():
                         if fragment in line:
                             known_failure.append(message)
@@ -372,8 +388,8 @@ class Workbench:
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Выбранный фрагмент отсутствует в отчёте.") from exc
             except StageProviderError as exc:
                 detail = str(exc).lower()
-                if any(k in detail for k in ("usage limit", "rate limit", "insufficient_quota", "too many requests", "429")):
-                    raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, "Провайдер временно ограничил запросы. Повторите вопрос позже.") from exc
+                if hint := provider_quota(detail):
+                    raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, hint) from exc
                 if "model_not_found" in detail or ("model" in detail and "not supported" in detail):
                     raise WorkbenchError(HTTPStatus.BAD_GATEWAY, "Выбранная модель недоступна. Проверьте --model или REVIEW_MODEL на сервере.") from exc
                 hint = next((v for k, v in SAFE_FAILURES.items() if k.lower() in detail), None)

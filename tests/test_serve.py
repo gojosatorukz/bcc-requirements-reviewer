@@ -469,6 +469,20 @@ class CliOutputTest(unittest.TestCase):
         run.record("Исполняемый пример D-01 · подтверждён")
         self.assertEqual((len(run.checked_proofs), run.proof_total, run.phase), (3, 3, "render"))
 
+    def test_provider_quota_requires_a_cli_diagnostic_and_keeps_a_saved_demo_available(self):
+        from reviewer.serve import QUOTA_MESSAGE, SafeWorkerError
+
+        cases = [
+            ("Прогон не завершён: Весь документ: Codex CLI завершился с кодом 1. quota_exhausted: private-account", QUOTA_MESSAGE),
+            ("Повторная проверка не завершена: Codex CLI завершился с кодом 1. HTTP 429 Too Many Requests", QUOTA_MESSAGE),
+            ("Прогон не завершён: Схема ответа: в строке 41 упоминается HTTP 429", "Ошибка"),
+            ("ТЗ: проверяется ситуация quota_exhausted и HTTP 429", "Ошибка"),
+        ]
+        for line, expected in cases:
+            with self.subTest(line=line), self.assertRaises(SafeWorkerError) as failure:
+                execute([sys.executable, "-c", "import sys; print(sys.argv[1]); sys.exit(1)", line], lambda _: None, "Ошибка")
+            self.assertEqual(str(failure.exception), expected)
+
     def test_only_fixed_cli_output_can_reach_client(self):
         progress = []
         command = [sys.executable, "-c",
