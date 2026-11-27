@@ -1,5 +1,6 @@
 """Render a validated two-rule execution in the workbench and offline report."""
 
+from .executable import unexecuted_message
 from .render import safe
 
 
@@ -109,9 +110,10 @@ def explain_simulation(report, finding_id, case, trace):
 
 def render_execution(item, explanation=None):
     fid = safe(item["finding_id"])
-    if item["status"] == "unsupported":
+    if item["status"] != "executed":
+        title, reason = unexecuted_message(item)
         return (f'<div id="execution-{fid}" class="execution execution-unavailable">'
-                f'<h4>Расчёт не подтверждён</h4><p>{safe(item["reason"])}</p></div>')
+                f'<h4>{safe(title)}</h4><p>{safe(reason)}</p></div>')
     program, result = item["program"], item["result"]
     states = {s["key"]: s for s in program["states"]}
     inputs = {s["key"]: s for s in program["inputs"]}

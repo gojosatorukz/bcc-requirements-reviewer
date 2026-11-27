@@ -18,8 +18,7 @@
     const result = [];
     for (const finding of report.whole?.findings ?? []) {
       const critical = finding.priority === "критический";
-      const executed = executions.get(finding.id)?.status === 'executed';
-      if (finding.category !== "нарушение" || (!critical && !executed)) continue;
+      if (finding.category !== "нарушение" || (!critical && !executions.has(finding.id))) continue;
       const cited = new Set(finding.evidence.map(item => item.line));
       const witnesses = critical && finding.triage ? (finding.triage.witness ?? []) :
         (finding.candidates ?? []).map(n => report.conflicts?.[n - 1]);

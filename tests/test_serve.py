@@ -434,13 +434,15 @@ class CliOutputTest(unittest.TestCase):
 
     def test_proof_phase_counts_completed_checks_and_explicit_abstentions_once(self):
         run = Run("example", "full", Path("unused"))
-        run.record("План расчётов · примеров: 2")
+        run.record("План расчётов · примеров: 3")
         self.assertEqual(run.phase, "executables")
         run.record("Исполняемый пример D-02 · не подтверждён")
         run.record("Исполняемый пример D-02 · не подтверждён")
         self.assertEqual((len(run.checked_proofs), run.phase), (1, "executables"))
+        run.record("Исполняемый пример D-03 · модель недоступна")
+        self.assertEqual((len(run.checked_proofs), run.phase), (2, "executables"))
         run.record("Исполняемый пример D-01 · подтверждён")
-        self.assertEqual((len(run.checked_proofs), run.proof_total, run.phase), (2, 2, "render"))
+        self.assertEqual((len(run.checked_proofs), run.proof_total, run.phase), (3, 3, "render"))
 
     def test_only_fixed_cli_output_can_reach_client(self):
         progress = []

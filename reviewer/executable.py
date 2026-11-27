@@ -17,6 +17,10 @@ from .full import InvalidStageResult, StageProviderError, array, call_stage, cho
 
 LEGACY_VERSION = "witness-v1"
 VERSION = "witness-v2"
+PROVIDER_FAILURES = {
+    "proposal": "Модель не завершила построение правил. Повторите расчёт, когда доступ к модели восстановится.",
+    "audit": "Правила построены, но модель не завершила их сверку с ТЗ. Повторите расчёт, когда доступ к модели восстановится.",
+}
 PROPOSAL = record(programs=array(witness_vm.PROGRAM), reason=TEXT)
 AUDIT = record(verdict=choice("accepted", "rejected"), first_rule=TEXT, second_rule=TEXT,
                scenario=TEXT, control=TEXT, evidence=array(EVIDENCE))
@@ -109,6 +113,7 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, proposal_model
             witness_vm.execute(proposal["programs"][0], source, witness)
 
     for _ in range(2):
+        stage = "proposal"
         try:
             proposal, events = call_stage("Построение примера " + fid, DESIGN + "\n" + witness_vm.LANGUAGE,
                                           payload, PROPOSAL, verify_proposal, proposal_model or model, checkpoint, digest)
@@ -119,6 +124,7 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, proposal_model
             program, = proposal["programs"]
             result = witness_vm.execute(program, source, witness)
             audit_input = {"source": source, "witness": witness, "program": program, "computed": result}
+            stage = "audit"
             audit, events = call_stage("Проверка смысла " + fid, AUDITOR, audit_input, AUDIT,
                                        lambda item: check_audit(item, witness, source), model, checkpoint, digest)
             attempts.extend(events)
@@ -128,8 +134,7 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, proposal_model
             return unsupported()
         except StageProviderError as exc:
             attempts.extend(exc.attempts)
-            reason = "Модель не завершила построение или проверку примера. Расчёт можно повторить."
-            return unsupported()
+            return {"finding_id": fid, "status": "provider_unavailable", "stage": stage}, attempts
         if audit["verdict"] == "accepted":
             return {"finding_id": fid, "status": "executed", "program": program, "result": result, "audit": audit}, attempts
         payload = {**payload, "previous_program": program, "audit_feedback": audit}
@@ -146,7 +151,8 @@ def build(report, lines, model, checkpoint, digest, workers):
     def construct(item):
         fid, witness = item
         result, events = build_one(fid, witness, lines, model, checkpoint, digest)
-        status = "подтверждён" if result["status"] == "executed" else "не подтверждён"
+        status = {"executed": "подтверждён", "unsupported": "не подтверждён",
+                  "provider_unavailable": "модель недоступна"}[result["status"]]
         print(f"Исполняемый пример {fid} · {status}", file=sys.stderr, flush=True)
         return result, events
 
@@ -156,6 +162,12 @@ def build(report, lines, model, checkpoint, digest, workers):
                 items.append(item)
                 attempts.extend(events)
     return {"version": VERSION, "items": items}, attempts
+
+
+def unexecuted_message(item):
+    if item["status"] == "provider_unavailable":
+        return "Модель недоступна", PROVIDER_FAILURES[item["stage"]]
+    return "Расчёт не подтверждён", item["reason"]
 
 
 def validate_saved(report, lines):
@@ -170,6 +182,10 @@ def validate_saved(report, lines):
         fid = row["finding_id"]
         if row.get("status") == "unsupported":
             validate_shape(row, record(finding_id=TEXT, status=choice("unsupported"), reason=TEXT), fid)
+            continue
+        if row.get("status") == "provider_unavailable" and section["version"] == VERSION:
+            validate_shape(row, record(finding_id=TEXT, status=choice("provider_unavailable"),
+                                       stage=choice(*PROVIDER_FAILURES)), fid)
             continue
         if set(row) != {"finding_id", "status", "program", "result", "audit"} or row["status"] != "executed":
             raise ValueError(f"{fid}: неполные данные исполняемого примера")
@@ -207,6 +223,8 @@ def verify_source(report, path):
         raise ValueError("Извлечённые строки оригинального ТЗ расходятся с источником отчёта")
     if any(run.get(key) != metadata.get(key) for key in ("page_count", "pages", "locations")):
         raise ValueError("Привязка исходных страниц или абзацев отчёта отличается от оригинального ТЗ")
+    if "pdf_json_blocks" in run and run["pdf_json_blocks"] != metadata.get("pdf_json_blocks"):
+        raise ValueError("Адреса печатных примеров JSON отличаются от оригинального PDF")
     return digest
 
 
@@ -265,7 +283,8 @@ def main():
         validate_saved(report, lines)
         for row in report["executables"]["items"]:
             if row["status"] != "executed":
-                print(f"{row['finding_id']} · вычисление не подтверждено · {row['reason']}")
+                title, reason = unexecuted_message(row)
+                print(f"{row['finding_id']} · {title} · {reason}")
                 continue
             divergence = row["result"]["scenario"]["first_difference"]
             label = next(s for s in row["program"]["states"] if s["key"] == divergence["field"])

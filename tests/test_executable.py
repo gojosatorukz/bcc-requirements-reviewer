@@ -6,6 +6,8 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from reviewer import executable
+from reviewer.execution_view import render_execution
+from reviewer.full_render import execution_markdown
 
 
 LINES = {1: "Начислить баллы за все покупки.", 2: "За день можно начислить до 60 баллов."}
@@ -80,10 +82,24 @@ class ExecutableStageTests(TestCase):
         self.assertNotIn("result", section["items"][0])
         executable.validate_saved({**BASE, "executables": section}, LINES)
 
-    def test_failed_optional_call_preserves_the_review_and_reports_actual_attempt(self):
-        section, attempts = self.run_stage([ValueError("offline")])
-        self.assertEqual([(e["status"], e["usage"]) for e in attempts], [("failed", None)])
-        self.assertEqual(section["items"][0]["status"], "unsupported")
+    def test_provider_outages_distinguish_proposal_and_audit_without_saving_diagnostics(self):
+        diagnostic = "private provider diagnostic"
+        for stage, earlier in (("proposal", []), ("audit", [(PROPOSAL, {})])):
+            with self.subTest(stage=stage):
+                section, attempts = self.run_stage([*earlier, ValueError(diagnostic)])
+                row, = section["items"]
+                self.assertEqual(row, {"finding_id": "D-01", "status": "provider_unavailable", "stage": stage})
+                self.assertEqual((attempts[-1]["status"], attempts[-1]["usage"]), ("failed", None))
+                self.assertNotIn(diagnostic, str(attempts))
+                executable.validate_saved({**BASE, "executables": section}, LINES)
+                for rendered in (render_execution(row), execution_markdown(row)):
+                    self.assertIn("Модель недоступна", rendered)
+                    self.assertIn(executable.PROVIDER_FAILURES[stage], rendered)
+                    self.assertNotIn(diagnostic, rendered)
+                for edit in ({"stage": "unknown"}, {"reason": diagnostic}, {"result": {}}):
+                    forged = {**section, "items": [{**row, **edit}]}
+                    with self.assertRaises(ValueError):
+                        executable.validate_saved({**BASE, "executables": forged}, LINES)
 
     def test_fully_aligned_review_generates_no_claim_or_model_call(self):
         report = {"whole": {"findings": []}}

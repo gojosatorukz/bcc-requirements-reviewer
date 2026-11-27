@@ -43,7 +43,7 @@ DIALOGUE_ROUTE = rf"/api/clarifications/(demo|{JOB_ID})/([0-9a-f]{{64}})"
 PROGRESS = re.compile(r"(?:Сценарии|Блоки [0-9]+–[0-9]+|Весь документ|Повторная проверка) · "
                       r"(?:проверено|проверена сохранённая стадия)")
 PROOF_PLAN = re.compile(r"План расчётов · примеров: ([0-9]{1,6})")
-PROOF_DONE = re.compile(rf"Исполняемый пример ({FINDING_ID}) · (?:подтверждён|не подтверждён)")
+PROOF_DONE = re.compile(rf"Исполняемый пример ({FINDING_ID}) · (?:подтверждён|не подтверждён|модель недоступна)")
 PLAN = re.compile(r"План проверки · групп строк: ([0-9]{1,6})")
 CROSS_CHECK = "Сверка требований · начата"
 SAFE_FAILURES = {

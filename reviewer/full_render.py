@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from .contract import source_lines, validate_review, validate_shape
+from .executable import unexecuted_message
 from .execution_view import quantity, render_executions
 from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
 from .json_examples import check_findings, verify_saved_checks
@@ -84,8 +85,9 @@ def markdown_text(text):
 
 
 def execution_markdown(item):
-    if item["status"] == "unsupported":
-        return "## Расчёт не подтверждён\n\n" + markdown_text(item["reason"])
+    if item["status"] != "executed":
+        title, reason = unexecuted_message(item)
+        return f"## {title}\n\n" + markdown_text(reason)
 
     program, result = item["program"], item["result"]
     fields = {f["key"]: f for f in program["states"] + program["inputs"]}
