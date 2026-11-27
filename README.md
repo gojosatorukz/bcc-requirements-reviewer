@@ -17,7 +17,7 @@
 | Повторить расчёт без ключа и модели | `python -m reviewer.executable replay runs/bcc-jury/review.json --source requirements.md` |
 | Попробовать без установки | [razbor-tz.onrender.com](https://razbor-tz.onrender.com/): загрузите PDF, DOCX, MD или TXT |
 | Архитектура | [Как устроен агент](#как-устроен-агент) · [подробно](docs/architecture-and-evaluation.md) |
-| Бизнес-модель и питч | [Бизнес-модель](#бизнес-модель) · [питч, 14 слайдов](presentation/pitch/razbor-tz-pitch.pdf) |
+| Бизнес-модель и питч | [Бизнес-модель](#бизнес-модель) · [питч и слайд для вопросов](presentation/pitch/razbor-tz-pitch.pdf) |
 
 **Соответствие требованиям к репозиторию (§7 ТЗ):** код агента и [`requirements.txt`](requirements.txt) · README с ключом, конфигом, командой и местом отчёта · запуск одной командой с путями входа и выхода · [`.env.example`](.env.example) без ключа, `.env` в `.gitignore` · вход PDF, DOCX, MD, TXT · модель указана в паспорте отчёта.
 
