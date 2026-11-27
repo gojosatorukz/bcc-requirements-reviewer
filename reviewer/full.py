@@ -15,6 +15,7 @@ from .contract import (
     record, source_http_statuses, validate_review, validate_shape, validate_witness_http,
 )
 from .json_examples import check_findings, inspect_examples
+from .example_shapes import object_shapes
 from .segments import segment
 
 
@@ -277,6 +278,7 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     source = {n: text for n, text in enumerate(lines, 1) if text.strip()}
     segments = segment(lines, pdf_json_blocks)
     json_checks = inspect_examples(lines, segments)
+    shapes = object_shapes(lines, segments, json_checks)
     semantic = [b for b in segments if b["kind"] not in {"разметка", "шапка таблицы"}]
     chunks = list(local_batches(semantic, source))
     print(f"План проверки · групп строк: {len(chunks)}", file=sys.stderr, flush=True)
@@ -316,6 +318,18 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                "local_flags": flags, "candidates": [dict(c, id=i) for i, c in enumerate(candidates["conflicts"], 1)]}
     invalid_examples = [e for e in json_checks["examples"] if e["status"] == "invalid"]
     instruction = GLOBAL + priority.INSTRUCTIONS + HTTP_STATUS_INSTRUCTIONS
+    instruction += ("\nДля обязательного параметра проверь первый вызов в исходном состоянии: "
+                    "откуда клиент получает значение до первой настройки и допускает ли сценарий "
+                    "такой вызов. Учитывай явно заданные значения по умолчанию.")
+    if shapes:
+        payload["observed_json_object_keys"] = shapes
+        instruction += ("\nДля каждой операции отдельно сопоставь назначение полей в схеме и ключи "
+                        "реальных тел ответов. У одного статуса могут быть разные исходы. Если клиенту "
+                        "неясно, на каком исходе гарантировано конкретное поле, задай владельцу "
+                        "вопрос об этом поле и процитируй схему и пример. Различай обязательность "
+                        "поля и его присутствие в одном примере. Учитывай явно описанные варианты, "
+                        "условную схему и данные из других разделов. В списке показаны первые "
+                        "32 верхнеуровневых ключа каждого объекта; key_count — их полное число.")
     if invalid_examples:
         payload["invalid_json_examples"] = invalid_examples
         instruction += ("\nПарсер отклонил перечисленные JSON-примеры. Для каждого отрази нарушение "
@@ -343,6 +357,8 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
     from .executable import build
     result = {"segments": segments, "registry": registry, "whole": whole, "json_checks": json_checks,
               "priority_policy": priority.POLICY, **candidates}
+    if shapes:
+        result["example_shapes"] = shapes
     result["executables"], execution_attempts = build(result, source, model, checkpoint, digest, workers)
     return result, attempts + events + execution_attempts
 

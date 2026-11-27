@@ -1,5 +1,6 @@
 """Self-contained Russian report for full-document review results (schema 2)."""
 
+import json
 import re
 from base64 import b64encode
 from collections import Counter, defaultdict
@@ -10,6 +11,7 @@ from .executable import unexecuted_message
 from .execution_view import quantity, render_executions
 from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
 from .json_examples import check_findings, verify_saved_checks
+from .example_shapes import object_shapes
 from . import priority
 from .render import render_conflict, render_passport, render_source, safe
 from .segments import segment
@@ -23,6 +25,11 @@ def validate_report(report):
     if "json_checks" in report:
         checks = verify_saved_checks(report["json_checks"], raw_lines, expected)
         check_findings(checks, whole["findings"])
+    if "example_shapes" in report:
+        if ("json_checks" not in report or
+                json.dumps(report["example_shapes"], sort_keys=True) !=
+                json.dumps(object_shapes(raw_lines, expected, checks), sort_keys=True)):
+            raise ValueError("Поля JSON-примеров расходятся с исходным документом")
     if len(segments) != len(expected):
         raise ValueError("Число исходных блоков изменилось")
     records = {r["id"]: r for r in registry}
@@ -194,22 +201,28 @@ def decision_brief(report):
             + '</p>' + "".join(cards) + '</section>')
 
 
-def render_json_checks(checks, lines):
+def render_json_checks(checks, lines, shapes=()):
     examples = checks.get("examples", [])
     if not examples:
         return ""
     rows = []
+    by_start = {entry["start"]: entry for entry in shapes}
     for item in examples:
         status = {"valid": "Корректный JSON", "invalid": "Ошибка синтаксиса",
                   "unchecked": "Проверка не завершена"}[item["status"]]
         detail = ""
+        shape = by_start.get(item["start"])
+        if shape:
+            keys = ", ".join(f"<code>{safe(k)}</code>" for k in shape["keys"])
+            extra = shape["key_count"] - len(shape["keys"])
+            detail = " · " + (keys or "Пустой объект") + (f" · ещё {extra}" if extra else "")
         if item["status"] != "valid":
             n = item["line"]
             position = line_link(n) if n in lines else f'позиция парсера, строка {n}'
             detail = f' · {safe(item["diagnostic"])} · {position}'
         rows.append(f'<li>{line_link(item["start"])} · <strong>{status}</strong>{detail}</li>')
     return ('<section id="json-syntax"><h2>Синтаксис JSON-примеров</h2>'
-            '<p>Парсер проверяет каждый блок с меткой JSON. Поля, типы и поведение API оцениваются в реестре требований.</p>'
+            '<p>Парсер проверяет распознанные примеры. Условия обязательности полей и поведение API оцениваются в реестре требований.</p>'
             '<ul>' + "".join(rows) + '</ul></section>')
 
 
@@ -397,7 +410,7 @@ def render_full(report):
 <section id="actions"><h2>Что исправить в первую очередь</h2><p>Замечания в порядке приоритета. У каждого есть адресат, основание и предлагаемое изменение.</p>
 {''.join(findings) or '<p>Замечаний не выявлено.</p>'}</section>
 <section id="quality"><h2>Качество набора требований</h2>{axes}</section>
-{render_json_checks(report.get("json_checks", {}), lines)}
+{render_json_checks(report.get("json_checks", {}), lines, report.get("example_shapes", ()))}
 <section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
 <table class="registry"><thead><tr><th>ID отчёта / исходника</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
 <section><h2>Проверка альтернативных прочтений</h2><p>Сценариев-кандидатов: {len(scenario_parts)}. У каждого указано решение итогового ревью.</p>
