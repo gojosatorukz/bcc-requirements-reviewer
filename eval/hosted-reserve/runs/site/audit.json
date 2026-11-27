@@ -1,0 +1,24 @@
+{
+  "delivery_passed": true,
+  "input_sha256": "ae8fb9194865549f33a06e213b6b421c4f94ddfef1fb83c5e35b14daa24b2295",
+  "model": "@cf/openai/gpt-oss-120b",
+  "provider": "cloudflare-workers-ai",
+  "fallback_from": {
+    "provider": "gemini-api",
+    "model": "gemini-3.5-flash-lite",
+    "reason": "HTTP 429"
+  },
+  "fresh_calls": 9,
+  "quality": {
+    "matched": [
+      {
+        "id": "D-01",
+        "question": "Какое значение должно выводиться терминалом при толщине корешка 18 мм?",
+        "names_threshold": true
+      }
+    ],
+    "other_candidates_for_manual_review": [],
+    "false_on_aligned_row": [],
+    "passed": true
+  }
+}
