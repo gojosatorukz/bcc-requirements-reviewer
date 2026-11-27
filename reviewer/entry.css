@@ -144,7 +144,7 @@ body {font-family: Rubik, system-ui, sans-serif}
 .brand-mark[data-phase="queued"] .brand-eyes, .brand-mark[data-phase="reconnect"] .brand-eyes {top: .66rem}
 .brand-mark[data-phase="done"] .brand-mouth {width: .66rem; height: .33rem; background: #ffe148}
 @media(prefers-reduced-motion:no-preference) {
-  .brand-mark[data-phase="groups"] .brand-eyes {animation: read-lines 1.65s linear infinite}
+  .brand-mark[data-phase="groups"] .brand-eyes, .brand-mark[data-phase="scenarios"] .brand-eyes {animation: read-lines 1.65s linear infinite}
   .brand-mark[data-phase="whole"] .brand-eyes {animation: compare-sides 1.8s ease-in-out infinite}
   .brand-mark[data-phase="executables"] {animation: count-steps 1.05s ease-in-out infinite}
   .brand-mark[data-phase="render"] .brand-eyes {animation: brand-blink 2.6s ease-in-out infinite}

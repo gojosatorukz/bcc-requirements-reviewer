@@ -123,10 +123,19 @@ test('a jury visitor can read the saved example, keep their text after a quota e
     await page.getByRole('link', {name:'К разбору своего ТЗ'}).click();
     assert.equal(await page.locator('#active-report-link').getAttribute('href'), active);
 
+    // The stored workshop review has source evidence but no confirmed calculation.
+    const workshop = fileURLToPath(new URL('../eval/hosted-reserve/runs/site/review.json', import.meta.url));
+    await page.locator('#import-file').setInputFiles(workshop);
+    const findingLink = page.getByRole('link', {name:'Открыть замечание ↗',exact:true});
+    await findingLink.waitFor();
+    const workshopUrl = new URL(await findingLink.getAttribute('href'));
+    assert.equal(workshopUrl.hash, '#D-01');
+    assert.notEqual(workshopUrl.pathname, active);
+
     // A corrected specification has no calculated divergence to open.
     const corrected = fileURLToPath(new URL('../eval/jury-fallback/runs/astra-v2.json', import.meta.url));
     await page.locator('#import-file').setInputFiles(corrected);
-    await page.waitForFunction(old => document.querySelector('#active-report-link').getAttribute('href') !== old, active);
+    await page.waitForFunction(old => document.querySelector('#active-report-link').getAttribute('href') !== old, workshopUrl.pathname);
     assert.equal(await page.locator('#active-difference').isVisible(), false);
     assert.equal(await page.locator('#active-difference').getAttribute('href'), null);
   } finally {

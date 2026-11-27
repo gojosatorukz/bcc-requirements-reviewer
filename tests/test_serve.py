@@ -117,7 +117,8 @@ class WorkbenchTest(unittest.TestCase):
 
     def test_project_review_is_a_separate_explicit_run_with_normal_local_artifacts(self):
         (self.root / "reviewer" / "workbench.html").write_text((ROOT / "reviewer/workbench.html").read_text())
-        def project_worker(mode, document, baseline, json_report, html_report, model, progress):
+        def project_worker(mode, document, baseline, json_report, html_report, model, progress, *, on_coverage):
+            on_coverage({"phase": "executables", "checked": 2, "total": 2})
             self.assertEqual(document.read_bytes(), b"submitted")
             json_report.write_text('{"source":"remote"}')
             html_report.write_text("Remote full review")
@@ -135,6 +136,7 @@ class WorkbenchTest(unittest.TestCase):
             identifier = json.loads(response)["id"]
             status = self.wait_until_done(identifier)
             self.assertEqual((status["execution"], status["mode"], status["state"]), ("project", "full", "done"))
+            self.assertEqual(status["coverage"], {"phase": "executables", "checked": 2, "total": 2})
             self.assertEqual(self.request("GET", f"/reports/{identifier}/review.html")[:2], (200, b"Remote full review"))
             self.assertEqual(self.request("GET", f"/reports/{identifier}/review.json")[:2], (200, b'{"source":"remote"}'))
             self.assertFalse(self.calls)
@@ -565,6 +567,10 @@ class CliOutputTest(unittest.TestCase):
         run.record(CROSS_CHECK)
         self.assertEqual(run.phase, "whole")
         run.record("Весь документ · проверено")
+        self.assertEqual(run.phase, "scenarios")
+        run.record("План расчётов · примеров: 0")
+        self.assertEqual(run.phase, "scenarios")
+        run.record("Отчёт JSON сохранён")
         self.assertEqual(run.phase, "render")
 
     def test_proof_phase_counts_completed_checks_and_explicit_abstentions_once(self):
@@ -577,7 +583,9 @@ class CliOutputTest(unittest.TestCase):
         run.record("Исполняемый пример D-03 · модель недоступна")
         self.assertEqual((len(run.checked_proofs), run.phase), (2, "executables"))
         run.record("Исполняемый пример D-01 · подтверждён")
-        self.assertEqual((len(run.checked_proofs), run.proof_total, run.phase), (3, 3, "render"))
+        self.assertEqual((len(run.checked_proofs), run.proof_total, run.phase), (3, 3, "executables"))
+        run.record("Отчёт JSON сохранён")
+        self.assertEqual(run.phase, "render")
 
     def test_provider_quota_requires_a_cli_diagnostic_and_keeps_a_saved_demo_available(self):
         from reviewer.serve import QUOTA_MESSAGE, SafeWorkerError

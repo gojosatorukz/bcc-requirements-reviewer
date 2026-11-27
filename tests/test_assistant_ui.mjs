@@ -142,7 +142,7 @@ test('the companion restores the actual elapsed clock and keeps questions on the
     assert.match(await page.locator('#assistant-document').innerText(), /Полное ревью/);
     assert.match(await page.locator('#assistant-run-note').innerText(), /Свой документ\.md · Сверка требований/);
     assert.equal(await page.locator('#run-face').getAttribute('data-phase'), 'whole');
-    for (const next of ['executables', 'render']) {
+    for (const next of ['scenarios', 'executables', 'render']) {
       phase = next;
       await page.waitForFunction(expected => document.querySelector('#brand-face').dataset.phase === expected, next);
       assert.equal(await page.locator('#run-face').getAttribute('data-phase'), next);

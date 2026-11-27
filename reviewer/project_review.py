@@ -64,7 +64,7 @@ def request(client, path, *, deadline, limit, mime, data=None, headers=None):
         sleep(min(3 * (attempt + 1), max(0, deadline - monotonic())))
 
 
-def project_worker(mode, document, baseline, json_report, html_report, model, progress):
+def project_worker(mode, document, baseline, json_report, html_report, model, progress, *, on_coverage=None):
     deadline = monotonic() + TIME_LIMIT
     client = build_opener(ProxyHandler({}), NoRedirect(), HTTPCookieProcessor(CookieJar()))
     progress("Подключаемся к серверу проекта")
@@ -89,6 +89,17 @@ def project_worker(mode, document, baseline, json_report, html_report, model, pr
             error = status.get("error")
             message = " ".join(error.split())[:400] if isinstance(error, str) else ""
             raise SafeWorkerError("Проверка на сервере проекта завершилась с ошибкой. " + message)
+        if on_coverage:
+            coverage = status.get("coverage")
+            if isinstance(coverage, dict) and coverage.get("phase") in ("groups", "whole", "scenarios", "executables", "render"):
+                snapshot = {"phase": coverage["phase"]}
+                for key in ("checked", "total", "proofs_checked", "proofs_total"):
+                    value = coverage.get(key)
+                    if type(value) is int and 0 <= value <= 999999:
+                        snapshot[key] = value
+                on_coverage(snapshot)
+            else:
+                on_coverage(None)
         for line in status.get("progress", []):
             if isinstance(line, str) and 0 < len(line) <= 180 and line.isprintable() and line not in seen and len(seen) < 200:
                 progress(line)

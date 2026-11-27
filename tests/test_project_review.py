@@ -23,6 +23,7 @@ class ProjectService(HTTPSHandler):
         self.identifier = "a" * 32
         self.submission_status = 202
         self.job_state = "done"
+        self.coverage = None
 
     def https_open(self, req):
         self.calls.append((req.full_url, dict(req.header_items()), req.data))
@@ -38,7 +39,7 @@ class ProjectService(HTTPSHandler):
             if code == 307:
                 headers["Location"] = "https://other.example/new"
         elif path == "/api/status/" + self.identifier:
-            raw = json.dumps({"mode": "full", "state": self.job_state, "progress": [], "error": "Квота модели."}).encode()
+            raw = json.dumps({"mode": "full", "state": self.job_state, "coverage": self.coverage, "progress": [], "error": "Квота модели."}).encode()
             mime = "application/json"
         elif path == "/reports/" + self.identifier + "/review.json":
             mime, raw = "application/json", self.report
@@ -62,10 +63,10 @@ class ProjectReviewTests(TestCase):
         factory.start()
         self.addCleanup(factory.stop)
 
-    def review(self, name, source=None):
+    def review(self, name, source=None, **options):
         out = self.root / name
         out.mkdir()
-        project_worker("full", source or self.source, None, out / "review.json", out / "review.html", None, lambda m: None)
+        project_worker("full", source or self.source, None, out / "review.json", out / "review.html", None, lambda m: None, **options)
         return out
 
     def test_posts_original_bytes_to_fixed_host_and_never_reuses_a_visit(self):
@@ -88,6 +89,14 @@ class ProjectReviewTests(TestCase):
             self.assertNotIn("Authorization", submitted)
             self.assertEqual((out / "review.json").read_bytes(), self.service.report)
             self.assertIn("33 Вт·ч", (out / "review.html").read_text())
+
+    def test_forwards_only_known_coverage_fields_and_resets_missing_progress(self):
+        snapshots = []
+        self.service.coverage = {"phase": "scenarios", "checked": 1, "total": 1, "unused": "private"}
+        self.review("with-progress", on_coverage=snapshots.append)
+        self.service.coverage = None
+        self.review("without-progress", on_coverage=snapshots.append)
+        self.assertEqual(snapshots, [{"phase": "scenarios", "checked": 1, "total": 1}, None])
 
     def test_refuses_other_input_incomplete_review_and_wrong_name_before_publishing(self):
         original = json.loads(self.service.report)

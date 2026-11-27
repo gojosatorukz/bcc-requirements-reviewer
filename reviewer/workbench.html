@@ -1215,7 +1215,7 @@ async function poll(run) {
       modeLabels[status.mode] || modeLabels[run.mode];
     showProgress(Array.isArray(status.progress) ? status.progress : []);
     showCoverage(status.coverage);
-    const phase = {groups:'Проверка строк и сценариев', whole:'Сверка требований', executables:'Расчёт примеров',
+    const phase = {groups:'Проверка строк и сценариев', whole:'Сверка требований', scenarios:'Проверка сценариев', executables:'Расчёт примеров',
       render:'Сборка отчёта'}[status.coverage?.phase];
     const description = status.state === 'running' && phase ? phase : stateLabels[status.state] || 'Ожидаем статус';
     const inProgress = status.state === 'queued' || status.state === 'running';
@@ -1598,15 +1598,18 @@ function publishReport(report, id, sha) {
   // The demo receipt always names the bank. These links belong to the selected document.
   const divergence = report.executables?.items?.find(item =>
     item.status === 'executed' && item.result?.scenario?.first_difference);
-  const difference = get('active-difference');
-  difference.hidden = !divergence;
-  if (divergence) difference.href = activeLink.href + '#execution-' + divergence.finding_id;
-  else difference.removeAttribute('href');
-  if (session.last?.id === id) {
-    const runDifference = get('run-difference');
-    runDifference.hidden = !divergence;
-    if (divergence) runDifference.href = difference.href;
-    else runDifference.removeAttribute('href');
+  const finding = report.whole.findings.find(item => item.category === 'нарушение' && item.evidence?.length);
+  const anchor = divergence ? 'execution-' + divergence.finding_id : finding?.id;
+  const shortcuts = [get('active-difference')];
+  if (session.last?.id === id) shortcuts.push(get('run-difference'));
+  for (const shortcut of shortcuts) {
+    shortcut.hidden = !anchor;
+    if (anchor) {
+      shortcut.href = activeLink.href + '#' + anchor;
+      shortcut.textContent = divergence ? 'Посмотреть расхождение ↗' : 'Открыть замечание ↗';
+    } else {
+      shortcut.removeAttribute('href');
+    }
   }
   activeLink.target = '_blank';
   activeLink.rel = 'noopener';

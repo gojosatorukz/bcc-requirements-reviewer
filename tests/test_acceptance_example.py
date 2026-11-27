@@ -107,4 +107,6 @@ class FixedAcceptanceTests(unittest.TestCase):
         self.assertEqual(run.phase, "executables")
         run.record("Исполняемый пример D-02 · подтверждён")
         self.assertEqual(run.checked_proofs, {"D-01", "D-02"})
+        self.assertEqual(run.phase, "executables")
+        run.record("Отчёт JSON сохранён")
         self.assertEqual(run.phase, "render")

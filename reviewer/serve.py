@@ -193,6 +193,7 @@ class Run:
     checked_proofs: set = field(default_factory=set)
     imported: bool = False
     project_run: bool = False
+    remote_coverage: dict | None = None
 
     def record(self, line):
         if line == codex_provider.FALLBACK_PROGRESS:
@@ -207,13 +208,11 @@ class Run:
         proof_plan = PROOF_PLAN.fullmatch(line)
         if proof_plan:
             self.proof_total = int(proof_plan[1])
-            self.phase = "executables" if self.proof_total else "render"
+            self.phase = "executables" if self.proof_total else "scenarios"
             return
         proof = PROOF_DONE.fullmatch(line)
         if proof:
             self.checked_proofs.add(proof[1])
-            if len(self.checked_proofs) == self.proof_total:
-                self.phase = "render"
         if line == CROSS_CHECK:
             self.phase = "whole"
             return
@@ -221,6 +220,8 @@ class Run:
         if stage.startswith("Блоки "):
             self.checked_groups.add(stage)
         elif stage == "Весь документ":
+            self.phase = "scenarios"
+        elif line == "Отчёт JSON сохранён":
             self.phase = "render"
         self.progress.append(line)
         del self.progress[:-100]
@@ -547,7 +548,9 @@ class Workbench:
                 status["imported"] = True
             if run.project_run:
                 status["execution"] = "project"
-            if run.group_total is not None:
+            if run.remote_coverage is not None:
+                status["coverage"] = dict(run.remote_coverage)
+            elif run.group_total is not None:
                 status["coverage"] = {"checked": len(run.checked_groups), "total": run.group_total, "phase": run.phase}
                 if run.proof_total is not None:
                     status["coverage"].update(proofs_checked=len(run.checked_proofs), proofs_total=run.proof_total)
@@ -670,6 +673,10 @@ class Workbench:
             with self.lock:
                 run.record(line)
 
+        def on_remote_coverage(coverage):
+            with self.lock:
+                run.remote_coverage = coverage
+
         json_report = run.directory / "review.json"
         html_report = run.directory / "review.html"
         with self.lock:
@@ -682,6 +689,7 @@ class Workbench:
             if run.project_run:
                 from .project_review import project_worker
                 worker = project_worker
+                options["on_coverage"] = on_remote_coverage
             if run.mode == "full" and worker is cli_worker:
                 resume_key = (document.suffix.lower(), sha256(document.read_bytes()).digest())
                 checkpoint = self.interrupted_reviews.get(resume_key, run.directory / "checkpoints")
