@@ -297,7 +297,7 @@ a{color:var(--accent);text-underline-offset:.18em}
       </details>
       <details id="local-review" class="local-help">
         <summary>Проверить ТЗ на своём компьютере</summary>
-        <p>Понадобится доступ к исходникам проекта и своя модель. Настройте Codex CLI или свой ключ Gemini по <a href="https://github.com/gojosatorukz/bcc-requirements-reviewer#локальный-запуск" target="_blank" rel="noopener">инструкции запуска</a>. Для полного ревью выполните команду из папки проекта, подставив имя своего файла.</p>
+        <p>Откройте папку с выданной вам копией проекта. В разделе «Локальный запуск» файла README.md описано, как установить зависимости и подключить свой ключ Gemini или Codex CLI. Затем подставьте имя своего файла в команду полного ревью.</p>
         <pre><code>python -m reviewer "Моё ТЗ.md" review.json</code></pre>
         <p>Подходят MD, TXT, DOCX и текстовый PDF. Когда проверка завершится, <a href="#restore-review" data-open-details="restore-review">импортируйте review.json</a>.</p>
       </details>
