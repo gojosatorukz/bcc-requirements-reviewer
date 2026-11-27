@@ -21,6 +21,14 @@ docker run --rm --network none razbor-tz:local python -m reviewer.executable rep
 
 ## Проверить новый документ
 
+Для профиля Gemini укажите в локальном файле `.env` переменные `REVIEW_PROVIDER=gemini`, `REVIEW_MODEL=gemini-3.5-flash-lite` и `GEMINI_API_KEY`. Docker прочитает их при старте.
+
+```sh
+docker run --rm --init --env-file .env -p 127.0.0.1:8765:8765 razbor-tz:local python -m cloud.runtime
+```
+
+### Профиль Astra
+
 Понадобится собственный доступ к модели. Следующая команда принимает личный ключ OpenAI из переменной окружения в вашей оболочке через стандартный ввод. Codex хранит его в отдельном Docker-томе. Копировать авторизацию с другого компьютера не нужно.
 
 ```sh
@@ -40,4 +48,4 @@ docker run --rm --init -v razbor-codex-auth:/home/reviewer/.codex \
   razbor-tz:local python -m reviewer /input/requirements.md /output/review.json
 ```
 
-Штатный сервер по умолчанию слушает loopback внутри контейнера. Модуль `cloud.runtime` включают только для локального проброса порта, показанного выше. Полная рабочая область рассчитана на одного владельца. Публичный доступ к ней потребует изоляции пользовательских документов и модельных учётных данных.
+Штатный сервер по умолчанию слушает loopback внутри контейнера. Модуль `cloud.runtime` включают только для локального проброса порта, показанного выше. Для сайта с отдельной сессией для каждого посетителя используйте облачную точку входа `python -m cloud.public` за HTTPS-прокси. [Публикация для жюри](hosting.md)
