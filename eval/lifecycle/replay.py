@@ -23,11 +23,30 @@ INPUT_SHA = {
 BASELINE = "b6243ba64e7b3f120418be8464379f54b00d0f5753f8dde11873445c7edb729b"
 
 
+def check_bcc_outcomes(pairs):
+    for anchors, item in pairs:
+        if anchors not in ({38, 64}, {39, 40}):
+            continue
+        program, result = item["program"], item["result"]
+        if anchors == {38, 64}:
+            field, = [s for s in program["states"] if s["key"] in program["observe"] and "феврал" in s["label"].lower()]
+            factor = {"₸": 1, "тенге": 1, "тиын": 100}[field["unit"]]
+            expected, control = (0, 4000 * factor), (4000 * factor, 4000 * factor)
+        else:
+            field, = [s for s in program["states"] if s["key"] == result["scenario"]["first_difference"]["field"]]
+            require(any(term in field["label"].lower() for term in ("push", "уведомлен")), "BCC: неверный счётчик push")
+            expected, control = (1, 2), (1, 1)
+        for case, values in (("scenario", expected), ("control", control)):
+            actual = tuple(result[case]["final"][side][field["key"]] for side in ("first", "second"))
+            require(actual == values, f"BCC: {anchors}/{case} ожидалось {values}, получено {actual}")
+
+
 def inspect(path, case, source):
     require(sha256(source.read_bytes()).hexdigest() == INPUT_SHA[case], f"Wrong source for {case}")
     review, pairs, citations = verify(case, path, source)
     if case == "official":
         check_protocol(case, review, pairs)
+        check_bcc_outcomes(pairs)
     findings = review["whole"]["findings"]
     summary = {"report_sha256": sha256(path.read_bytes()).hexdigest(), "input_sha256": INPUT_SHA[case],
                "agent": review["run"]["agent_version"], "seconds": review["run"]["elapsed_seconds"],
@@ -55,7 +74,7 @@ def inspect(path, case, source):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("official", type=Path, help="Original requirements.md from the organizer")
-    parser.add_argument("cohorts", nargs="*", default=["before", "after"], help="Folders under runs/")
+    parser.add_argument("cohorts", nargs="*", default=["before", "release"], help="Folders under runs/")
     args = parser.parse_args()
     result = {}
     for cohort in args.cohorts:
