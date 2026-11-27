@@ -26,6 +26,7 @@ _PROGRAM_FIELDS = dict(states=_list(FIELD), inputs=_list(FIELD), observe=_list(T
                        second=SIDE, scenario=CASE, control=CASE)
 _OLD_PROGRAM = record(**_PROGRAM_FIELDS)
 PROGRAM = record(domains=_list(DOMAIN), **_PROGRAM_FIELDS)
+_CITED_PROGRAM = record(case_scope={"type": "string", "enum": ["cited_inputs"]}, **PROGRAM["properties"])
 VERSION = "witness-v1"
 
 LANGUAGE = """Составь общую исполняемую модель двух прочтений. Все обозначения и поля нужны для
@@ -445,6 +446,8 @@ def _run(case, sides, observe, explanation=None, point=None):
 
 def _evaluate(program, lines, witness, sample, explanation=None, point=None):
     schema = PROGRAM if isinstance(program, dict) and "domains" in program else _OLD_PROGRAM
+    if isinstance(program, dict) and "case_scope" in program:
+        schema = _CITED_PROGRAM
     validate_shape(program, schema, "Исполняемый пример")
     domains = _domains(program["domains"], lines) if "domains" in program else None
     states = _fields(program["states"], "Состояния", 1, domains)
@@ -490,7 +493,13 @@ def _evaluate(program, lines, witness, sample, explanation=None, point=None):
     if sample is not None:
         if [event["kind"] for event in sample["events"]] != [event[0] for event in scenario[1]]:
             raise ValueError("При повторном исполнении нужны прежние виды событий в том же порядке")
-        return _run(_case(sample, states, inputs, event_fields), sides, observe, explanation, point)
+        parsed = _case(sample, states, inputs, event_fields)
+        if "case_scope" in program:
+            def inputs_of(case):
+                return case[0], [(kind, values) for kind, _, values in case[1]]
+            if inputs_of(parsed) not in (inputs_of(scenario), inputs_of(control)):
+                raise ValueError("Для этого входа в приёмке нет подтверждённого результата. Выберите один из двух исходных примеров.")
+        return _run(parsed, sides, observe, explanation, point)
     return replay
 
 

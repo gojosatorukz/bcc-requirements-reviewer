@@ -262,6 +262,8 @@ def render_execution(item, explanation=None, boundary=None):
     return (f'<div class="execution" id="execution-{fid}">'
             '<p class="execution-caption">Исполняемый пример</p>'
             + "".join(comparisons)
+            + ('<p>Для обеих трактовок проверены два измерения из приёмки. '
+               'Для других входов потребуется уточнить ожидаемый результат.</p>' if "route_proof" in item else "")
             + f'<p class="execution-break"><b>Первое расхождение · шаг {step["step"]}</b>'
             f'<span>{safe(step["label"])}</span></p>'
             + (f'<dl class="execution-values execution-shared" aria-label="Общий вход этого шага">{event_inputs}</dl>'

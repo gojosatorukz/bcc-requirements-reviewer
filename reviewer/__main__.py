@@ -120,7 +120,7 @@ def main():
         revision = version()
         digest = engine_digest("input.py", "word_input.py") if args.conflicts_only else engine_digest(
             "input.py", "word_input.py", "segments.py", "json_examples.py", "example_shapes.py",
-            "full.py", "behavior.py", "count_limits.py", "source_refs.py", "lifecycle.py", "priority.py", "response_fields.py", "executable.py", "acceptance_example.py", "witness_vm.py")
+            "full.py", "behavior.py", "count_limits.py", "source_refs.py", "lifecycle.py", "priority.py", "response_fields.py", "executable.py", "acceptance_example.py", "label_routes.py", "witness_vm.py")
         started = datetime.now(timezone.utc).isoformat()
         clock = time.monotonic()
         # Non-default options are part of each stage's content-addressed checkpoint key.

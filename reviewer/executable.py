@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 import time
 
-from . import acceptance_example, codex_provider, gemini_provider, witness_vm
+from . import acceptance_example, codex_provider, gemini_provider, label_routes, witness_vm
 from .contract import EVIDENCE, TEXT, record, validate_shape
 from .full import InvalidStageResult, StageProviderError, array, call_stage, choice, citations
 
@@ -172,7 +172,7 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, finding, propo
         if proposal["programs"]:
             witness_vm.execute(proposal["programs"][0], source, witness)
 
-    for _ in range(2):
+    for round_index in range(2):
         stage = "scope"
         try:
             if finding["priority"] == "существенный" and not scope:
@@ -186,6 +186,17 @@ def build_one(fid, witness, source, model, checkpoint, digest, *, finding, propo
                     return unsupported()
                 payload.update(scope)
             stage = "proposal"
+            if round_index == 0 and label_routes.eligible(witness, source):
+                context = dict(payload)
+                if audit_actions is not None:
+                    context["unresolved_actions"] = audit_actions()
+                try:
+                    routed = label_routes.build(fid, witness, source, context, model, checkpoint, digest, attempts)
+                except InvalidStageResult as exc:
+                    attempts.extend(exc.attempts)
+                    routed = None
+                if routed is not None:
+                    return {**routed, **scope}, attempts
             proposal, events = call_stage("Построение примера " + fid, DESIGN + OPERATION_CONTEXT + witness_vm.LANGUAGE,
                                           payload, PROPOSAL, verify_proposal, proposal_model or model, checkpoint, digest)
             attempts.extend(events)
@@ -300,6 +311,19 @@ def validate_saved(report, lines):
             validate_shape(row, record(finding_id=TEXT, status=choice("provider_unavailable"),
                                        stage=choice(*stages)), fid)
             continue
+        if "route_proof" in row:
+            proof = row["route_proof"]
+            if not isinstance(proof, dict) or set(proof) != {"rule", "readings"}:
+                raise ValueError(f"{fid}: неполная независимая сверка исходов")
+            program = label_routes.compile_rule(proof["rule"], expected[fid], lines)
+            if program != row.get("program"):
+                raise ValueError(f"{fid}: программа отличается от исходных правил выбора")
+            verified = witness_vm.execute(program, lines, expected[fid])
+            if label_routes.confirm(proof["rule"], proof["readings"], verified, expected[fid], lines) != row.get("audit"):
+                raise ValueError(f"{fid}: вывод проверки отличается от четырёх исходов")
+            row = {k: v for k, v in row.items() if k != "route_proof"}
+        elif isinstance(row.get("program"), dict) and "case_scope" in row["program"]:
+            raise ValueError(f"{fid}: отсутствует независимая сверка четырёх исходов")
         if set(row) != {"finding_id", "status", "program", "result", "audit"} or row["status"] != "executed":
             raise ValueError(f"{fid}: неполные данные исполняемого примера")
         reproduced = witness_vm.execute(row["program"], lines, expected[fid])
@@ -382,7 +406,7 @@ def main():
                 raise ValueError("Укажите отдельный выходной файл JSON")
             clock = time.monotonic()
             started = datetime.now(timezone.utc).isoformat()
-            digest = engine_digest("executable.py", "acceptance_example.py", "witness_vm.py", "full.py", "priority.py")
+            digest = engine_digest("executable.py", "acceptance_example.py", "label_routes.py", "witness_vm.py", "full.py", "priority.py")
             section, attempts = build(report, lines, args.model, args.checkpoint_dir, digest, args.workers)
             report["executables"] = section
             report["execution_run"] = {"started_utc": started, "elapsed_seconds": round(time.monotonic() - clock, 2),
