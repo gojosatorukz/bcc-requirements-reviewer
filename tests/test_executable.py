@@ -1,6 +1,9 @@
 from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+import json
+from threading import Event, Lock
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
@@ -43,6 +46,54 @@ class ExecutableStageTests(TestCase):
     def run_stage(self, responses):
         with patch("reviewer.full.codex_provider.complete", side_effect=responses):
             return executable.build(BASE, LINES, "test", None, "digest", 1)
+
+    def test_parallel_drafts_finish_in_reverse_order_but_publish_in_source_order_after_qa(self):
+        findings = [dict(BASE["whole"]["findings"][0], id=f"D-{i:02d}") for i in (1, 2, 3)]
+        pending = {"status": "needs_decision", "action": "Отменить начисление", "question": "В этот день?",
+                   "evidence": REFS[:1]}
+        checks = {"checks": [pending]}
+        report = {"whole": {"findings": findings}, "lifecycle_checks": checks}
+        responses = {"programs": PROPOSAL, "verdict": AUDIT}
+
+        def run(parallel):
+            finished = [Event() for _ in findings]
+            after_qa = Event()
+            lock = Lock()
+            completed = []
+
+            def provider(prompt, model, schema):
+                body = json.loads(prompt.rsplit("\n", 1)[-1])
+                field = next(iter(schema["properties"]))
+                slot = int(body["final_finding"]["id"][2:]) - 1
+                if field == "programs" and parallel:
+                    self.assertNotIn("unresolved_actions", body)
+                    if slot + 1 < len(finished):
+                        self.assertTrue(finished[slot + 1].wait(5), "Следующий черновик не стартовал")
+                    with lock:
+                        completed.append(slot)
+                    finished[slot].set()
+                else:
+                    self.assertEqual(body["unresolved_actions"][0]["question"], pending["question"])
+                    if parallel:
+                        self.assertTrue(after_qa.is_set(), "Аудит стартовал до QA")
+                return deepcopy(responses[field]), {}
+
+            def qa():
+                self.assertTrue(finished[0].wait(5))
+                after_qa.set()
+                return checks
+
+            with patch("reviewer.full.codex_provider.complete", side_effect=provider):
+                if parallel:
+                    with ThreadPoolExecutor(max_workers=1) as pool:
+                        job = pool.submit(qa)
+                        result, _ = executable.build(report, LINES, "test", None, "d", 3, qa_checks=job.result)
+                    self.assertEqual(completed, [2, 1, 0])
+                else:
+                    result, _ = executable.build(report, LINES, "test", None, "d", 1)
+            return result
+
+        self.assertEqual(run(False), run(True))
 
     def test_material_contract_conflict_needs_two_cited_sides_and_adjudication(self):
         finding = {"id": "D-02", "priority": "существенный", "category": "нарушение",
