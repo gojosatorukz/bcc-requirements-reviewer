@@ -1,0 +1,11 @@
+{
+  "report_type": "partial",
+  "schema_version": 1,
+  "reason": "gemini_quota",
+  "attempted_model": "gemini-3.5-flash-lite",
+  "input_name": "rehearsal-fixed.md",
+  "input_sha256": "47322554e3a4cb0bd8df280332e493dac79d8a8b14a2454cd51abdb1d547aa88",
+  "scope": "Проверены таблицы решений и явно заданные числовые границы с соседними примерами, незаполненные параметры, требования о скорости, синтаксис JSON и явное число обязательных полей в примерах успешного ответа. Полная оценка смысла требований требует запуска модели.",
+  "total_findings": 0,
+  "findings": []
+}
