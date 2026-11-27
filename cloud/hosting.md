@@ -43,6 +43,8 @@ GitHub хранит исходный код и историю изменений
 
 На Workers Free доступно 10 000 вычислительных единиц (neurons) в сутки на аккаунт. Один отчёт включает несколько обращений, расход зависит от длины ТЗ и ответа. После исчерпания квоты запросы останавливаются. [Тариф Workers AI](https://developers.cloudflare.com/workers-ai/platform/pricing/) · [Настройка доступа Cloudflare](https://developers.cloudflare.com/workers-ai/get-started/rest-api/)
 
+Чтобы отключить резерв после результатов, удалите `REVIEW_FALLBACK_MODEL`, `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID` из **Environment** на Render и примените изменения через **Deploy**. В разделе **API Tokens** своего аккаунта Cloudflare отзовите `razbor-tz Render fallback`. Проверьте, что публичная форма показывает только Gemini. Для отключения резерва достаточно этих действий.
+
 ## Как посетитель пользуется сайтом
 
 Откройте [публичное рабочее место](https://razbor-tz.onrender.com/) или перейдите сразу к [отчёту по официальному ТЗ](https://razbor-tz.onrender.com/reports/demo/review.html). Оба адреса доступны в новой браузерной сессии. На бесплатном Render после простоя запуск контейнера может задержать открытие первой страницы.
