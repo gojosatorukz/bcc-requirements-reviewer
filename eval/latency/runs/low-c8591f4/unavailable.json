@@ -1,0 +1,21 @@
+{
+  "agent_version": "c8591f4",
+  "model": "gpt-6.2-astra",
+  "reasoning_effort": "low",
+  "provider": "codex-cli",
+  "attempts": [
+    {
+      "name": "official",
+      "input_sha256": "e7dae55e5453a250d93e335f5ff9c7f775f4457ccddd333f4a67e47b20d74381",
+      "workers": 6,
+      "start_utc_approximate_to_minute": "2026-11-27T09:13Z",
+      "end_utc_approximate_to_minute": "2026-11-27T09:29Z",
+      "exit_code": 1,
+      "checkpoint_empty_at_start": true,
+      "accepted_checkpoints_at_exit": 0,
+      "report_written": false,
+      "cli_error": "Блоки 1–28: Codex CLI не завершил запрос за 480 секунд"
+    }
+  ],
+  "not_started": ["planetarium", "planetarium-aligned"]
+}
