@@ -4,6 +4,8 @@
 !reviewer/*.py
 !reviewer/workbench.html
 !reviewer/*.css
+!reviewer/fonts/Rubik.ttf
+!reviewer/fonts/OFL.txt
 !reviewer/*.js
 !cloud/runtime.py
 !cloud/public.py

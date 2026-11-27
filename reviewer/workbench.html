@@ -164,22 +164,6 @@ a{color:var(--accent);text-underline-offset:.18em}
 .result-evidence li{padding:.5rem .7rem;background:var(--paper);border-left:2px solid #ec9978;overflow-wrap:anywhere}
 .result-evidence a{display:inline-block;margin-bottom:.15rem;font-weight:690}
 .result-evidence blockquote{white-space:pre-wrap;margin:0}
-.entry{background:#ff895c;border-bottom:2px solid var(--ink)}
-.entry-grid{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(1.2rem,5vw,5rem);padding-block:clamp(1.4rem,3.4vw,3rem)}
-.entry-copy{min-width:0;align-self:center}
-.entry-copy .example-origin{margin:0 0 .9rem;font-size:.875rem;font-weight:730}
-.entry-copy h1{margin:0;max-width:16ch;font-size:clamp(2.45rem,4.5vw,4rem);line-height:1.04;letter-spacing:-.042em;font-weight:770;text-wrap:balance}
-.entry-copy .scenario{max-width:39ch;margin:.95rem 0 1.2rem;font-size:clamp(1rem,1.55vw,1.18rem)}
-.example-outcomes{max-width:27rem;margin:0 0 1.35rem}
-.example-outcomes figcaption{font-size:.875rem;font-weight:690}
-.example-outcomes dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:.4rem 0 0;border-block:1px solid #733c30}
-.example-outcomes dl div{padding:.55rem .6rem .65rem 0}
-.example-outcomes dl div+div{padding-left:.9rem;border-left:1px solid #733c30}
-.example-outcomes dt{font-size:.875rem}.example-outcomes dd{margin:.16rem 0 0;font-size:clamp(1.7rem,3vw,2.55rem);font-weight:760;line-height:1.1;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
-.entry-copy .entry-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem 1rem}
-.entry-actions a{padding:.55rem 0;color:var(--ink);font-size:.9375rem;font-weight:690}
-.entry-actions .report-action{display:inline-flex;align-items:center;min-height:2.85rem;padding:.6rem 1.15rem;border:2px solid var(--ink);border-radius:2rem;background:var(--ink);color:var(--panel);font-size:1rem;text-decoration:none}
-.report-action:hover{background:#49334e}.entry-actions a:focus-visible{outline-color:var(--ink)}
 .local-help{margin-top:.85rem}.local-help summary{width:fit-content;cursor:pointer;font-weight:660}
 .local-help p,.workspace .local-help pre{margin:.55rem 0}.local-help pre{padding:.6rem .75rem;border-left:3px solid var(--field);background:var(--soft);white-space:pre-wrap;overflow-wrap:anywhere;font-size:.9rem}
 .recovery{margin:.75rem 0;padding:.8rem .9rem;background:#fff0c9;border:1px solid #99753e;border-radius:.6rem}
@@ -197,58 +181,51 @@ a{color:var(--accent);text-underline-offset:.18em}
 .source-options input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}.source-options :disabled+span{opacity:.6}
 #pasted-text{display:block;margin:.3rem 0;width:100%;min-height:5rem;resize:vertical;border:1px solid var(--line);border-radius:.55rem;padding:.6rem .7rem;font:inherit;background:var(--panel);color:var(--ink)}
 .report-workspace{display:block}.report-workspace .aside-cards{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
-@media(max-width:49rem){.entry-grid,.report-workspace .aside-cards{grid-template-columns:minmax(0,1fr)}.entry-copy h1{max-width:20ch}.entry-grid{gap:1.4rem}.entry-copy .scenario{max-width:48ch}}
+@media(max-width:49rem){.report-workspace .aside-cards{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:27rem){.source-options span{padding-inline:.6rem}}
 </style>
 <link rel="stylesheet" href="/reviewer/guided.css">
 <link rel="stylesheet" href="/reviewer/execution.css">
 <link rel="stylesheet" href="/reviewer/assistant.css">
+<link rel="stylesheet" href="/reviewer/entry.css">
 </head>
 <body>
 <header class="masthead">
   <a class="skip-work" href="#workspace">Перейти к работе с документом</a>
   <div class="inner">
-    <a class="brand" href="/">Разбор ТЗ</a>
-    <nav aria-label="Разделы"><button class="assistant-launch" id="assistant-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel"><span class="brand-mark" id="brand-face" data-state="idle" aria-hidden="true"><span class="brand-eyes"></span><span class="brand-mouth"></span></span><span class="companion-copy"><strong>Спросить по ТЗ</strong><small id="companion-context">Помощница</small><small id="companion-run" hidden><span id="companion-stage"></span><span id="companion-time" aria-hidden="true"></span></small></span></button><a id="active-report-link" href="#demo-heading">Отчёт</a><a id="active-json-link" href="/reports/demo/review.json?download=1" download="review.json" aria-label="Скачать JSON текущего отчёта" hidden>JSON ↓</a><a class="nav-start" href="#upload-heading">Проверить ТЗ</a></nav>
+    <a class="brand" href="/"><span class="brand-emblem" aria-hidden="true">≠</span>Разбор ТЗ</a>
+    <nav aria-label="Разделы"><button class="assistant-launch" id="assistant-open" type="button" aria-haspopup="dialog" aria-controls="assistant-panel"><span class="brand-mark" id="brand-face" data-state="idle" aria-hidden="true"><span class="brand-eyes"></span><span class="brand-mouth"></span></span><span class="companion-copy"><strong>Спросить по ТЗ</strong><small id="companion-context">Помощница</small><small id="companion-run" hidden><span id="companion-stage"></span><span id="companion-time" aria-hidden="true"></span></small></span></button><a id="saved-report-link" href="/reports/demo/review.html#execution-D-01" target="_blank" rel="noopener">Пример расхождения ↗</a><a class="nav-start" href="#upload-heading">Проверить ТЗ</a></nav>
   </div>
 </header>
 <main>
   <div class="entry">
   <div class="workspace entry-grid" id="workspace" tabindex="-1">
-    <div class="entry-copy">
-      <p class="example-origin">Сохранённый пример · BCC-HUB × MNU</p>
-      <h1>К какому месяцу отнести покупку?</h1>
-      <p class="scenario">Клиент заплатил 31 января, банк провёл платёж 1 февраля. Два пункта ТЗ дают разные расходы за февраль.</p>
-      <figure class="example-outcomes">
-        <figcaption>Изменение февральского счётчика</figcaption>
-        <dl><div><dt>По дате покупки</dt><dd>0 ₸</dd></div><div><dt>По дате проведения</dt><dd>4 000 ₸</dd></div></dl>
-      </figure>
-      <div class="entry-actions">
-        <a class="report-action" id="saved-report-link" href="/reports/demo/review.html" target="_blank" rel="noopener" aria-label="Открыть готовый отчёт по примеру в новой вкладке">Открыть готовый отчёт</a>
-        <a href="#review-title" id="open-worked-example">Разобрать пример из банка</a>
-      </div>
+    <div class="entry-head">
+      <h1 id="upload-heading" tabindex="-1">Проверить ТЗ<span>.</span></h1>
+      <p>Где два пункта дают разный результат?</p>
     </div>
-    <section class="card" aria-labelledby="upload-heading">
-      <h2 id="upload-heading" tabindex="-1">Проверить своё ТЗ</h2>
+    <section class="card upload-card" aria-label="Проверить своё ТЗ">
       <form id="upload-form">
         <fieldset id="input-sources">
           <legend>Источник документа</legend>
           <div class="source-options">
-            <label><input type="radio" name="source" value="text" checked><span>Вставить текст</span></label>
-            <label><input type="radio" name="source" value="file"><span>Загрузить файл</span></label>
+            <label><input type="radio" name="source" value="file" checked><span>Загрузить файл</span></label>
+            <label><input type="radio" name="source" value="text"><span>Вставить текст</span></label>
           </div>
         </fieldset>
-        <div id="paste-panel">
+        <div id="paste-panel" hidden>
           <label for="pasted-text">Текст требований</label>
           <textarea id="pasted-text" rows="4" aria-describedby="paste-help" placeholder="Вставьте разделы ТЗ, таблицы или примеры API…"></textarea>
           <small id="paste-help" class="muted">Текст или Markdown · до 120 000 байт в UTF-8</small>
         </div>
-        <div class="drop" id="drop" hidden>
-          <label for="file">Документ</label>
+        <div class="drop" id="drop">
+          <span class="upload-symbol" aria-hidden="true">↑</span>
+          <label for="file">Выберите файл <span>или перетащите сюда</span></label>
           <input id="file" type="file" accept=".md,.txt,.pdf,.docx" aria-describedby="file-help file-name">
-          <small id="file-help">Выберите или перетащите один файл MD, TXT, DOCX или PDF. Для PDF нужен текстовый слой.</small>
+          <small id="file-help">PDF с текстом, DOCX, MD, TXT</small>
           <p id="file-name" aria-live="polite" hidden></p>
         </div>
+        <details id="review-options" class="review-options"><summary>Сравнить с прошлой версией</summary>
         <fieldset id="modes">
           <legend>Режим проверки</legend>
           <div class="radio-options">
@@ -271,17 +248,18 @@ a{color:var(--accent);text-underline-offset:.18em}
             <label id="use-owner-decisions-label" hidden><input id="use-owner-decisions" type="checkbox" checked> Учитывать зафиксированные решения</label>
           </div>
         </div>
+        </details>
         <div class="reuse-report" id="reuse-report" hidden>
           <p id="reuse-report-match" role="status"></p>
           <a id="reuse-report-link">Открыть сохранённый отчёт</a>
           <p id="reuse-report-meta"></p>
         </div>
-        <p class="notice">Для ревью требований текст получит модель <strong><!--review-model-->этого сервера</strong>. Проверку структуры выполняет сам сервер.</p>
+        <p class="notice">Для полного ревью ТЗ получит модель <strong><!--review-model-->этого сервера</strong>.</p>
         <p id="upload-error" class="error" role="alert" hidden></p>
         <div class="check-actions"><button id="submit" type="submit">Запустить проверку</button>
           <button id="structure-check" class="text-action" type="button" aria-controls="structure-result">Проверить структуру без ИИ</button></div>
         <!--project-button--><section id="project-review" class="local-help" aria-labelledby="project-submit">
-          <p id="project-hint">Для полного ревью без своего ключа можно отправить документ на <strong>razbor-tz.onrender.com</strong>. После нажатия сервер проекта передаст текст модели Google Gemini, а при исчерпании квоты — Cloudflare Workers AI. Готовый отчёт откроется здесь.</p>
+          <p id="project-hint">Без своего ключа отправьте ТЗ на <strong>razbor-tz.onrender.com</strong>. Его получит Gemini или резервная Cloudflare Workers AI.</p>
           <button type="submit" class="text-action" id="project-submit" aria-describedby="project-hint">Проверить через сервер проекта</button>
         </section><!--/project-button-->
       </form>
@@ -339,6 +317,22 @@ a{color:var(--accent);text-underline-offset:.18em}
         </div>
       </div>
     </section>
+    <aside class="receipt-scene" aria-labelledby="receipt-name">
+      <div class="receipt">
+        <p class="receipt-source"><strong>BCC-HUB × MNU</strong><span>Банковский пример</span></p>
+        <h2 id="receipt-name">Одна покупка.<br>Два итога.</h2>
+        <dl class="receipt-dates">
+          <div><dt>Покупка</dt><dd>31 января</dd></div><div><dt>Проведение</dt><dd>1 февраля</dd></div>
+        </dl>
+        <h3>Расходы за февраль</h3>
+        <dl class="receipt-totals">
+          <div><dt>По покупке</dt><dd>0 <small>₸</small></dd></div>
+          <div><dt>По проведению</dt><dd>4 000 <small>₸</small></dd></div>
+        </dl>
+        <a class="receipt-link" id="receipt-report-link" href="/reports/demo/review.html#execution-D-01" target="_blank" rel="noopener">Посмотреть расхождение <span aria-hidden="true">↗</span></a>
+      </div>
+      <a href="#review-title" id="open-worked-example">Разобрать пример из банка</a>
+    </aside>
   </div>
   </div>
   <div class="intro">
@@ -347,6 +341,7 @@ a{color:var(--accent);text-underline-offset:.18em}
         <h2 id="review-title" tabindex="-1">Проверка требований</h2>
         <p id="review-document">Загрузите документ или откройте демо-отчёт.</p>
         <small id="review-origin" hidden></small>
+        <a id="active-report-link" href="#demo-heading">Отчёт</a><a id="active-json-link" href="/reports/demo/review.json?download=1" download="review.json" aria-label="Скачать JSON текущего отчёта" hidden>JSON ↓</a>
         <a id="active-jira-export" download="review-issues.csv" hidden>Скачать задачи для Jira (CSV)</a>
       </div>
       <details id="active-qa" class="active-qa" hidden>
@@ -1072,6 +1067,7 @@ get('discussion-recheck').addEventListener('click', async () => {
   if (busy || !discussion) return;
   const {baseline:id} = discussion;
   const fid = get('discussion-finding').value;
+  get('review-options').open = true;
   form.elements.mode.value = 'recheck';
   baseline.value = id;
   await loadFindings(id);
@@ -1583,7 +1579,8 @@ function publishReport(report, id, sha) {
   if (id === 'demo' && reportHash.test(sha)) {
     const rendered = reportUrl + '?sha256=' + sha;
     activeLink.href = rendered;
-    get('saved-report-link').href = rendered;
+    get('saved-report-link').href = rendered + '#execution-D-01';
+    get('receipt-report-link').href = get('saved-report-link').href;
   }
   activeLink.target = '_blank';
   activeLink.rel = 'noopener';

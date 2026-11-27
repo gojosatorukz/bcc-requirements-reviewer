@@ -60,12 +60,16 @@ test('a jury visitor can read the saved example, keep their text after a quota e
     const popup = await popupPromise;
     await popup.waitForLoadState();
     assert.equal(new URL(popup.url()).pathname, '/reports/demo/review.html');
+    assert.equal(new URL(popup.url()).hash, '#execution-D-01');
+    assert.equal(await popup.locator('#execution-D-01').count(), 1);
     assert.match(await popup.locator('body').innerText(), /Уведомление о расходах по карте/);
     await popup.close();
     assert.equal(jobs.length, 0);
 
     const draft = '  Реквизиты заказа\nКомиссия банка — 0 ₸.\n';
     await page.locator('.nav-start').click();
+    assert.equal(await page.locator('#file').isVisible(), true);
+    await page.getByText('Вставить текст', {exact:true}).click();
     const invalidJson = ['# ТЗ', '| Поле |', '| --- |', '| id |', '```json', '{"id":}', '```'].join('\n');
     await page.locator('#pasted-text').fill(invalidJson);
     async function inspect(button) {
@@ -112,7 +116,7 @@ test('a jury visitor can read the saved example, keep their text after a quota e
     const body = readFileSync(await csv.path(), 'utf8');
     assert.match(body, /Summary,Issue Type,Priority,Description/);
     assert.ok(body.includes(JSON.parse(readFileSync(other, 'utf8')).run.input_sha256));
-    assert.match(await report.getAttribute('href'), /^\/reports\/demo\/review\.html\?sha256=[a-f0-9]{64}$/);
+    assert.match(await report.getAttribute('href'), /^\/reports\/demo\/review\.html\?sha256=[a-f0-9]{64}#execution-D-01$/);
     await page.getByRole('link', {name:'К разбору своего ТЗ'}).click();
     assert.equal(await page.locator('#active-report-link').getAttribute('href'), active);
   } finally {

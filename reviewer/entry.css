@@ -1,0 +1,135 @@
+@font-face {
+  font-family: Rubik;
+  src: url("/reviewer/fonts/Rubik.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+}
+
+:root {
+  --orange: #ff612f;
+  --paper: #fff8e9;
+  --panel: #fffcf4;
+  --ink: #19161d;
+  --indigo: #4036bd;
+}
+
+body {font-family: Rubik, system-ui, sans-serif}
+.masthead {background: var(--orange); border: 0; box-shadow: 0 1px 0 #19161d40}
+.masthead .brand {font-weight: 820; gap: .45rem}
+.brand-emblem {
+  display: grid; place-items: center; width: 1.38em; height: 1.38em;
+  border-radius: .38em; transform: rotate(-6deg); background: var(--ink);
+  color: var(--orange); font-size: .85em; line-height: 1;
+}
+.masthead nav {gap: 1.1rem}
+.masthead nav a {font-size: .91rem; font-weight: 620}
+#assistant-open {background: var(--panel); box-shadow: none}
+.entry {background: var(--orange); position: relative; isolation: isolate; overflow: clip; border-bottom: 2px solid var(--ink)}
+.entry::after {
+  content: ""; position: absolute; z-index: -1; width: clamp(24rem,54vw,57rem); aspect-ratio: 1;
+  right: -17%; bottom: -62%; border-radius: 50%; background: #ffe148; pointer-events: none;
+}
+.entry-grid {
+  grid-template-columns: minmax(0,1.06fr) minmax(0,.94fr);
+  grid-template-areas: "title sample" "upload sample";
+  column-gap: clamp(3rem,7vw,8rem); row-gap: 1.4rem;
+  padding-block: clamp(1.8rem,3.5vw,3.5rem) clamp(2.6rem,5vw,5rem);
+}
+.entry-head {grid-area: title}
+.entry-head h1 {
+  font: 870 clamp(3.15rem,6.7vw,5.9rem)/.98 Rubik,system-ui,sans-serif;
+  letter-spacing: -.072em; margin: 0;
+}
+.entry-head h1 span {color: var(--panel)}
+.entry-head p {font-size: clamp(1rem,1.5vw,1.22rem); line-height: 1.25; margin-top: .75rem}
+.workspace .upload-card {
+  grid-area: upload; padding: clamp(1rem,1.7vw,1.55rem); border: 2px solid var(--ink);
+  border-radius: 1.25rem; box-shadow: 3px 5px 0 var(--ink);
+}
+#upload-form {gap: .72rem}
+#input-sources legend {position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%)}
+.source-options {background: #f1ece2; border: 0; padding: .22rem}
+.source-options span {font-size: .9rem; padding: .47rem .82rem}
+#drop {
+  display: grid; position: relative; justify-items: center; align-content: center;
+  gap: .22rem; min-height: 8.2rem; padding: .82rem; border: 1.5px dashed #9d8874;
+  border-radius: .7rem; background: #fff7e7; text-align: center;
+}
+#drop:hover, #drop.drag, #drop:focus-within {background: #ffedc2; border-color: var(--ink)}
+#drop:focus-within {outline: 3px solid var(--indigo); outline-offset: 2px}
+#drop #file {position: absolute; inset: 0; opacity: 0; margin: 0; height: 100%; cursor: pointer}
+#drop #file:disabled {cursor: default}
+#drop label {line-height: 1.25; font-weight: 690}
+#drop label span {font-weight: 430}
+#drop small {font-size: .78rem}
+.upload-symbol {
+  display: grid; place-items: center; width: 1.8rem; height: 2rem; margin: .1rem 0 .3rem;
+  border: 1.8px solid var(--ink); border-radius: .32rem; box-shadow: -3px 2px 0 var(--orange);
+  background: white; font-size: 1.35rem; line-height: 1;
+}
+#drop #file-name {max-width: 100%; color: var(--indigo); font-size: .85rem}
+#review-options summary, .upload-card details>summary {width: fit-content; cursor: pointer; font-size: .85rem; font-weight: 550}
+#review-options[open] #modes, #baseline-field {margin-top: .6rem}
+#review-options:has([value="recheck"]:checked) summary {color: var(--indigo); font-weight: 720}
+#upload-form .notice {padding: 0; border: 0; font-size: .76rem; line-height: 1.35}
+#upload-form .notice strong {font-weight: 550}
+#submit {background: var(--ink); color: var(--panel); border-radius: .7rem; box-shadow: none; padding: .58rem 1.1rem; font-weight: 650}
+#submit:not(:disabled):hover {background: #3a3037; box-shadow: 0 2px 0 var(--ink)}
+#structure-check {font-size: .83rem; color: #4b4051; font-weight: 520}
+.upload-card .restore-review {margin-top: .75rem; padding-top: .65rem}
+.upload-card .local-help {margin-top: .35rem}
+#project-review {border-top: 1px solid var(--line); padding-top: .6rem; font-size: .81rem}
+#project-review p {margin: 0 0 .25rem}
+.receipt-scene {grid-area: sample; width: 100%; max-width: 28rem; justify-self: center; align-self: center; padding: 1rem .4rem}
+.receipt {
+  position: relative; transform: rotate(2deg); padding: clamp(1.3rem,2.4vw,2.3rem);
+  color: var(--ink); background: var(--panel); border: 2px solid var(--ink);
+  border-radius: 1.35rem 1.35rem .75rem .75rem; box-shadow: .26rem .52rem 0 var(--ink);
+}
+.receipt::after {
+  content: ""; position: absolute; left: 1.3rem; right: 1.3rem; bottom: -.44rem; height: .72rem;
+  background: radial-gradient(circle at 50% 0, var(--panel) .31rem, transparent .34rem) left top / .87rem .72rem repeat-x;
+}
+.receipt-source {display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem .6rem; font-size: .78rem}
+.receipt-source strong {font-size: .77rem; letter-spacing: .07em}
+.receipt h2 {margin-block: 1.45rem 1.1rem; font-size: clamp(2.35rem,4vw,3.8rem); line-height: .99; font-weight: 825; letter-spacing: -.064em}
+.receipt dl {margin: 0}
+.receipt-dates {display: grid; gap: .18rem; padding-bottom: 1rem; border-bottom: 2px dashed #b7a99d}
+.receipt-dates div {display: flex; align-items: baseline; justify-content: space-between; gap: .4rem}
+.receipt-dates dd {margin: 0; font-weight: 600}
+.receipt h3 {font-size: 1rem; margin-top: 1rem}
+.receipt-totals {display: grid; grid-template-columns: 1fr 1.32fr; gap: .65rem; padding-block: .6rem 1.2rem}
+.receipt-totals div+div {padding-left: .75rem; border-left: 1px solid #c9bdb0}
+.receipt-totals dt {font-size: .81rem}
+.receipt-totals dd {margin: .25rem 0 0; font-weight: 760; font-size: clamp(1.6rem,3.35vw,3rem); letter-spacing: -.06em; line-height: 1; white-space: nowrap}
+.receipt-totals small {font-size: .6em}
+.receipt-link {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  padding: .8rem 1rem; background: var(--indigo); color: white; border-radius: .55rem;
+  font-weight: 620; text-decoration: none;
+}
+.receipt-link span {font-size: 1.3em; line-height: 1}
+.receipt-link:hover {background: #302891}
+#open-worked-example {display: block; width: fit-content; margin: 1.15rem auto 0; font-size: .84rem; color: var(--ink); text-underline-offset: .2em}
+.intro {background: var(--paper)}
+.intro::before {display: none}
+.intro-copy a {color: var(--ink); font-size: .86rem; font-weight: 580}
+@media(max-width: 49rem) {
+  .entry-grid {grid-template-columns: 1fr; grid-template-areas: "title" "upload" "sample"; row-gap: 1rem; max-width: 38rem}
+  .entry::after {bottom: -9%; right: -43%}
+  .receipt-scene {margin-top: .8rem}
+}
+@media(max-width: 32rem) {
+  .masthead .inner {display: grid; grid-template-columns: 1fr auto; gap: .15rem .5rem; padding-block: .4rem}
+  .masthead .brand {grid-area: 1/1; font-size: 1.13rem}
+  .masthead #assistant-open {grid-area: 1/2; justify-self: end}
+  .masthead #saved-report-link {grid-area: 2/1; justify-self: start; font-size: .8rem}
+  .masthead .nav-start {grid-area: 2/2; justify-self: end; padding: .26rem .7rem; font-size: .79rem}
+  .entry-grid {padding-block: 1.4rem 2.5rem}
+  .entry-head h1 {font-size: clamp(2.65rem,10.6vw,3.4rem)}
+  .entry-head p {margin-top: .5rem; font-size: .98rem}
+  #drop label span {display: block; font-size: .88rem}
+  .receipt-dates {font-size: .91rem}
+  .receipt-source {font-size: .72rem}
+}

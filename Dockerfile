@@ -19,6 +19,7 @@ RUN if [ -n "$VCS_REF" ]; then \
 COPY requirements.txt .
 RUN pip install --no-cache-dir --requirement requirements.txt
 COPY reviewer/*.py reviewer/*.css reviewer/*.js reviewer/workbench.html reviewer/
+COPY reviewer/fonts/ reviewer/fonts/
 COPY design/concepts/gallery.css design/concepts/case.js design/concepts/gallery.js design/concepts/index.html design/concepts/
 COPY runs/bcc-final/review.json runs/bcc-final/review.html runs/bcc-final/
 COPY runs/bcc-release/review.json runs/bcc-release/review.html runs/bcc-release/review.pdf runs/bcc-release/

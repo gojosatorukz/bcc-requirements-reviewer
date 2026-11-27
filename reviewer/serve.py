@@ -40,6 +40,8 @@ SAVED_EXAMPLES = {
     for ext in ("html", "json")
 }
 STATIC_FILES = {
+    "/reviewer/entry.css": "text/css; charset=utf-8",
+    "/reviewer/fonts/Rubik.ttf": "font/ttf",
     "/reviewer/guided.css": "text/css; charset=utf-8",
     "/reviewer/guided.js": "text/javascript; charset=utf-8",
     "/reviewer/execution.css": "text/css; charset=utf-8",
