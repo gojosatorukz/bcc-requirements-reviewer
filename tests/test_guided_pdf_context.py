@@ -21,7 +21,7 @@ const sandbox = {
   window: { dispatchEvent() {}, addEventListener(name, listener) {
     if (name === 'review:loaded') {
       const report = JSON.parse(fs.readFileSync(0, 'utf-8'));
-      listener({ detail: { report, reportUrl: '/review.html' } });
+      listener({ detail: { report, reportUrl: '/review.html', key:process.argv[2] } });
     }
   } },
 };
@@ -32,7 +32,7 @@ process.stdout.write(root.innerHTML);
 
 @unittest.skipUnless(shutil.which("node"), "Node.js is required to render guided evidence")
 class GuidedPdfContextTests(unittest.TestCase):
-    def render(self, pages=None, question="Как обработать заявку?"):
+    def render(self, pages=None, question="Как обработать заявку?", key=""):
         source = {
             1: "Начало длинного условия",
             2: "Досрочный выход < 60 дней считается нарушением.",
@@ -64,7 +64,7 @@ class GuidedPdfContextTests(unittest.TestCase):
             "conflicts": [witness],
         }
         html = subprocess.run(
-            ["node", "-e", HARNESS, str(GUIDED)],
+            ["node", "-e", HARNESS, str(GUIDED), key],
             input=json.dumps(report), check=True, capture_output=True, text=True,
         ).stdout
         return ElementTree.fromstring(html)
@@ -111,6 +111,12 @@ class GuidedPdfContextTests(unittest.TestCase):
         self.assertIsNone(first.find("details"))
         self.assertIsNone(second.find("details"))
         self.assertEqual(len(second.findall("dl/dd")), 2)
+
+    def test_links_from_guided_report_open_the_exact_version_checked(self):
+        sha = "9a" * 32
+        for run in ("demo", "ab" * 16):
+            source = self.render(key=run + ":" + sha).find(".//figure/figcaption/a")
+            self.assertEqual(source.get("href"), f"/reports/{run}/review.html?sha256={sha}#source-line-2")
 
 
 if __name__ == "__main__":

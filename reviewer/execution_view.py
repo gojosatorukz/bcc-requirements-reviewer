@@ -21,8 +21,73 @@ def render_executions(report, lines):
 def quantity(value, unit):
     if isinstance(value, str):
         return safe(value)
-    digits = f"{value:,}".replace(",", "\u202f").replace("-", "−")
-    return digits if unit == "1" else f"{digits} {safe(unit)}"
+    return safe(numeric_quantity(value, unit))
+
+
+def numeric_quantity(value, unit):
+    digits = format(value, ",").replace(",", "\u202f").replace("-", "−")
+    return digits if unit == "1" else f"{digits} {unit}"
+
+
+def acceptance_trace(example):
+    """Ordered explanations with the exact sources of inputs and arithmetic, as plain text."""
+    program, result = example["program"], example["result"]
+    unit = result["unit"]
+    yield "Условия примера", program["scope"]
+    yield f"Начальное значение · {numeric_quantity(result['initial'], unit)}", [program["initial"]["source"]]
+    for number, (step, instruction) in enumerate(zip(result["steps"], program["steps"]), 1):
+        before, after = (numeric_quantity(step[k], unit) for k in ("before", "after"))
+        operation = instruction["operation"]
+        refs = [step["source"]]
+        if operation == "keep":
+            calculation = f"{before} → {after} (без изменения)"
+        else:
+            operand = instruction["operands"][0]["source"]
+            if operand not in refs:
+                refs.append(operand)
+            delta = numeric_quantity(abs(step["after"] - step["before"]), unit)
+            sign = "+" if operation == "add" else "−"
+            calculation = f"{before} {sign} {delta} = {after}"
+        yield f"Шаг {number}. {step['label']} · {calculation}", refs
+
+
+def acceptance_lines(item):
+    """Portable acceptance check for the finding's Jira and Markdown handoffs."""
+    example = item["acceptance_example"]
+    result = example["result"]
+    yield f"Сверка на фиксированном входе · {result['metric']}"
+    yield f"Расчёт по правилам ТЗ · {numeric_quantity(result['computed'], result['unit'])}"
+    yield f"Ожидание из приёмки · {numeric_quantity(result['expected'], result['unit'])}"
+    expected = result["expected_source"]
+    yield f"Строка {expected['line']} · {expected['quote']}"
+    for label, refs in acceptance_trace(example):
+        yield label
+        for ref in refs:
+            yield f"Строка {ref['line']} · {ref['quote']}"
+    yield "Расчёт двух трактовок не подтверждён. " + item["reason"]
+
+
+def render_acceptance(item):
+    example = item["acceptance_example"]
+    result = example["result"]
+    unit, metric = result["unit"], safe(result["metric"])
+    def citation(ref):
+        line = ref["line"]
+        return (f'<blockquote><span><a href="#source-line-{line}">Строка {line}</a></span>'
+                f'{safe(ref["quote"])}</blockquote>')
+    rows = "".join(f'<p class="execution-step-title">{safe(label)}</p>' + "".join(map(citation, refs))
+                   for label, refs in acceptance_trace(example))
+    return (f'<div class="execution" id="execution-{safe(item["finding_id"])}" data-kind="fixed-acceptance">'
+            '<p class="execution-caption">Сверка на фиксированном входе</p>'
+            f'<h4>{metric}</h4><dl class="execution-comparison" aria-label="{metric}">'
+            '<div class="execution-side"><dt>Расчёт по правилам ТЗ</dt>'
+            f'<dd>{quantity(result["computed"], unit)}</dd></div>'
+            '<div class="execution-side"><dt>Ожидание из приёмки</dt>'
+            f'<dd>{quantity(result["expected"], unit)}</dd></div></dl>'
+            f'<div class="execution-sources">{citation(result["expected_source"])}</div>'
+            f'<details class="execution-sources" open="open"><summary>Как получен результат</summary>{rows}</details>'
+            '<details><summary>Почему расчёт двух трактовок не подтверждён</summary>'
+            f'<p>{safe(item["reason"])}</p></details></div>')
 
 
 def first_step_comparisons(trace):
@@ -153,6 +218,8 @@ def render_boundary(boundary, states, inputs):
 def render_execution(item, explanation=None, boundary=None):
     fid = safe(item["finding_id"])
     if item["status"] != "executed":
+        if item.get("acceptance_example"):
+            return render_acceptance(item)
         title, reason = unexecuted_message(item)
         return (f'<div id="execution-{fid}" class="execution execution-unavailable">'
                 f'<h4>{safe(title)}</h4><p>{safe(reason)}</p></div>')

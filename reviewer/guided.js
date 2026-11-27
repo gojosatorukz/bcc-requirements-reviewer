@@ -3,6 +3,7 @@
   const root = document.getElementById("guided-review");
   if (!root) return;
   const stages = ["Ситуация", "Решение", "Критерий QA"];
+  const versionKey = /^(demo|[0-9a-f]{32}):([0-9a-f]{64})$/;
   const escape = value => String(value ?? "").replace(/[&<>"']/g, char =>
     ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"})[char]);
   function questionMarkup(text) {
@@ -92,7 +93,7 @@
   }
 
   async function loadPanels(key) {
-    const match = /^(demo|[0-9a-f]{32}):([0-9a-f]{64})$/.exec(key ?? '');
+    const match = versionKey.exec(key ?? '');
     if (!match) {
       panelError = 'Для проверки расчёта нужен полный отчёт с идентификатором версии.';
       displayPanel();
@@ -142,6 +143,7 @@
     const source = outcomes[side]?.source;
     const execution = executions.get(finding.id);
     const calculated = execution?.status === 'executed';
+    const fixed = Boolean(execution?.acceptance_example);
     const hasDialogue = conversationIds.has(finding.id);
     const saved = hasDialogue ? null : decisions[finding.id];
     const current = side === 0 ? "first" : "second";
@@ -173,8 +175,9 @@
     if (decisionKey) {
       body += `<button type="button" class="guide-back" data-act="answer">${hasDialogue ? "Открыть переписку с владельцем" : "Ответить своими словами"}</button>`;
     }
-    if (calculated && stage > 0) {
-      body += `<a class="guide-back" href="${escape(reportUrl)}#execution-${escape(finding.id)}" target="_blank" rel="noopener">Открыть расчёт</a>`;
+    if ((calculated || fixed) && stage > 0) {
+      const title = fixed ? 'Открыть сверку с приёмкой' : 'Открыть расчёт';
+      body += `<a class="guide-back" href="${escape(reportUrl)}#execution-${escape(finding.id)}" target="_blank" rel="noopener">${title}</a>`;
     }
     root.innerHTML = `<div class="guide-wrap"><div class="guide-bar"><ol aria-label="Шаги согласования">${stages.map((label,i) =>
       `<li ${i === stage ? 'aria-current="step"' : ""} class="${i <= stage ? "reached" : ""}"><span>${label}</span></li>`).join("")}</ol>${selector}</div>
@@ -226,7 +229,8 @@
     const identity = key || [url, report.run?.input_sha256, report.run?.started_utc].join("|");
     if (identity === reportIdentity) return;
     reportIdentity = identity;
-    reportUrl = url;
+    const version = versionKey.exec(key ?? '');
+    reportUrl = version ? '/reports/' + version[1] + '/review.html?sha256=' + version[2] : url;
     decisionKey = key;
     panelRequest?.abort();
     panelRequest = null;

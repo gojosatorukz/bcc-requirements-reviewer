@@ -5,7 +5,7 @@ from io import StringIO
 import re
 
 from .executable import unexecuted_message
-from .execution_view import first_step_comparisons
+from .execution_view import acceptance_lines, first_step_comparisons
 
 
 PRIORITIES = {"критический": "Highest", "существенный": "Medium", "редакционный": "Low"}
@@ -37,6 +37,8 @@ def description(finding, run, pages, execution):
             control = execution["result"]["control"]["final"]["first"][key]
             lines.append(f"{field['label']} · А = {first}{unit}, Б = {second}{unit}. "
                          f"В контрольном примере обе трактовки дают {control}{unit} в конце.")
+    elif execution and execution.get("acceptance_example"):
+        lines.extend(acceptance_lines(execution))
     elif execution:
         title, reason = unexecuted_message(execution)
         lines.append(f"{title}. {reason}")

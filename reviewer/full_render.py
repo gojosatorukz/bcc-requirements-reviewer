@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .contract import source_lines, validate_review, validate_shape
 from .executable import unexecuted_message
-from .execution_view import first_step_comparisons, quantity, render_executions
+from .execution_view import acceptance_lines, first_step_comparisons, quantity, render_executions
 from .full import BATCH, RANKED_WHOLE, WHOLE, check_batch, check_critical_sources, check_whole
 from .json_examples import check_findings, verify_saved_checks
 from .jira_export import issues_csv
@@ -154,6 +154,9 @@ def markdown_text(text):
 
 def execution_markdown(item):
     if item["status"] != "executed":
+        if item.get("acceptance_example"):
+            lines = iter(acceptance_lines(item))
+            return "## " + markdown_text(next(lines)) + "\n\n" + "\n\n".join(map(markdown_text, lines))
         title, reason = unexecuted_message(item)
         return f"## {title}\n\n" + markdown_text(reason)
 
@@ -230,8 +233,7 @@ def finding_download(finding, run, page_by_line, execution=None):
 
 
 def decision_brief(report):
-    items = {row["finding_id"]: row for row in report.get("executables", {}).get("items", [])
-             if row["status"] == "executed"}
+    items = {row["finding_id"]: row for row in report.get("executables", {}).get("items", [])}
     findings = sorted(report["whole"]["findings"], key=lambda f: priority.ORDER[f["priority"]])
     if not findings:
         return '<p class="brief-empty">По результатам этого прогона замечаний для согласования нет.</p>'
@@ -240,7 +242,7 @@ def decision_brief(report):
         fid = finding["id"]
         item = items.get(fid)
         comparisons = []
-        if item:
+        if item and item["status"] == "executed":
             program = item["program"]
             states = {s["key"]: s for s in program["states"]}
             for key, first, second in first_step_comparisons(item["result"]["scenario"]):
@@ -248,14 +250,18 @@ def decision_brief(report):
                 amounts = " или ".join(quantity(value, field["unit"]) for value in (first, second))
                 comparisons.append(f'<h3>{safe(field["label"])}</h3><strong>{amounts}</strong>')
             refs = [program[side]["source"] for side in ("first", "second")]
-        else:
-            comparisons.append(f'<h3>{safe(finding["title"])}</h3>')
-            refs = finding["evidence"]
-        if item:
             links = [f'Правило {letter} · {line_link(ref["line"])}' for letter, ref in zip(("А", "Б"), refs)]
             links.append(link("execution-" + fid, "Расчёт и контроль"))
+        elif item and item.get("acceptance_example"):
+            result = item["acceptance_example"]["result"]
+            computed, expected = (quantity(result[k], result["unit"]) for k in ("computed", "expected"))
+            comparisons.append(f'<h3>{safe(result["metric"])}</h3>'
+                               f'<strong>{computed} по правилам · {expected} в приёмке</strong>')
+            links = [link("execution-" + fid, "Сверка на фиксированном входе"),
+                     line_link(result["expected_source"]["line"])]
         else:
-            links = [line_link(n) for n in dict.fromkeys(ref["line"] for ref in refs)]
+            comparisons.append(f'<h3>{safe(finding["title"])}</h3>')
+            links = [line_link(n) for n in dict.fromkeys(ref["line"] for ref in finding["evidence"])]
         cards.append(f'<article><small>{link(fid, fid)} · {safe(finding["priority"])} · {safe(finding["owner"])}</small>'
                      f'{"".join(comparisons)}'
                      f'<p>{safe(finding["question"])}</p><p><b>Следующий шаг.</b> {safe(finding["action"])}</p>'
