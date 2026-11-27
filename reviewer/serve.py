@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from uuid import uuid4
 
 
+from . import codex_provider
 from .input import INPUT_LIMITS
 
 
@@ -55,6 +56,14 @@ QUOTA_DETAIL = re.compile(
     r"\b(?:http(?:/\d(?:\.\d)?)?|status(?: code)?)\s*[:=]?\s*429\b", re.I)
 PROVIDER_FAILURE = re.compile(r"Codex CLI завершился с кодом -?\d+\.\s*(.*)$")
 SAFE_FAILURES = {
+    "Gemini API: ключ не настроен": "Для нового прогона администратору нужно настроить доступ к Gemini API.",
+    "Gemini API: ключ отклонён": "Gemini отклонил ключ. Проверьте настройку доступа к модели.",
+    "Gemini API: HTTP 401": "Gemini отклонил ключ. Проверьте настройку доступа к модели.",
+    "Gemini API: HTTP 403": "У этого проекта нет доступа к выбранной модели Gemini.",
+    "Gemini API: HTTP 404": "Gemini не нашёл выбранную модель. Проверьте её имя.",
+    "Gemini API: HTTP 429": QUOTA_MESSAGE,
+    "Gemini API: HTTP 503": "Gemini временно недоступен. Попробуйте снова позже.",
+    "Gemini API: модель не ответила": "Gemini не ответил. Попробуйте снова позже.",
     "DOCX содержит": "В Word-файле есть элементы, которые требуют экспорта в PDF с текстовым слоем.",
     "DOCX повреждён": "Word-файл повреждён или защищён паролем.",
     "DOCX не содержит": "В Word-файле нет доступного основного текста.",
@@ -110,18 +119,33 @@ def imported_full_report(raw):
             raise ValueError("Некорректный хеш документа")
         if not isinstance(report["source"], list) or not report["source"]:
             raise ValueError("Нет текста исходного документа")
-        # PDF ranges are expanded by the renderer. Validate them before allocating line maps.
-        previous_page = previous_end = 0
-        pages = run.get("pages", [])
-        if not isinstance(pages, list) or ("page_count" in run and
-                (type(run["page_count"]) is not int or run["page_count"] < 1)):
+        # The renderer expands both PDF pages and Word addresses into per-line maps.
+        def spans(key):
+            rows = run.get(key, [])
+            if not isinstance(rows, list) or len(rows) > count:
+                raise ValueError("Некорректная карта исходных строк")
+            previous_end = 0
+            for row in rows:
+                if not isinstance(row, dict):
+                    raise ValueError("Некорректная запись карты исходных строк")
+                start, end = row["start"], row["end"]
+                if type(start) is not int or type(end) is not int or not previous_end < start <= end <= count:
+                    raise ValueError("Некорректный диапазон исходных строк")
+                previous_end = end
+                yield row
+
+        previous_page = 0
+        if "page_count" in run and (type(run["page_count"]) is not int or run["page_count"] < 1):
             raise ValueError("Некорректные страницы")
-        for page in pages:
-            number, start, end = page["page"], page["start"], page["end"]
-            if (any(type(n) is not int for n in (number, start, end)) or
-                    not previous_page < number <= run["page_count"] or not previous_end < start <= end <= count):
-                raise ValueError("Некорректные диапазоны страниц")
-            previous_page, previous_end = number, end
+        for page in spans("pages"):
+            number = page["page"]
+            if type(number) is not int or not previous_page < number <= run["page_count"]:
+                raise ValueError("Некорректный номер страницы")
+            previous_page = number
+        for location in spans("locations"):
+            label = location["label"]
+            if not isinstance(label, str) or not 1 <= len(label) <= 256 or not label.strip() or not label.isprintable():
+                raise ValueError("Некорректная подпись абзаца или строки таблицы")
         html = render_full(report).encode("utf-8")
     except (ValueError, KeyError, TypeError, AttributeError, IndexError, OverflowError, RecursionError) as exc:
         raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY,
@@ -260,7 +284,7 @@ def cli_worker(mode, document, baseline, json_report, html_report, model, progre
             command.extend(["--baseline-sha256", baseline_sha256])
     if model:
         command.extend(["--model", model])
-    execute(command, progress, "CLI завершил проверку с ошибкой. Проверьте доступность Codex и параметры модели.")
+    execute(command, progress, "Не удалось завершить проверку. Проверьте выбранную модель и повторите запуск.")
     progress("Отчёт JSON сохранён")
     execute([*python, "reviewer.render", str(json_report), str(html_report)], progress,
             "Не удалось создать HTML-отчёт.")
@@ -268,15 +292,20 @@ def cli_worker(mode, document, baseline, json_report, html_report, model, progre
 
 
 class Workbench:
-    def __init__(self, storage, root=ROOT, worker=cli_worker, model=None):
+    def __init__(self, storage, root=ROOT, worker=cli_worker, model=None, review_slots=None,
+                 admit_model_request=None, max_reports=None):
         self.storage = storage
         self.root = root
         self.worker = worker
+        self.review_slots = review_slots
+        self.admit_model_request = admit_model_request
+        self.max_reports = max_reports
         self.model = model
         self.runs = {}
         self.lock = Lock()
         self.upload_lock = Lock()
-        self.import_lock = Lock()
+        # Bounded sessions serialize both ways of creating a report to reserve the last slot.
+        self.import_lock = self.upload_lock if max_reports is not None else Lock()
         self.imported = {}
         self.active = None
         self.thread = None
@@ -287,12 +316,18 @@ class Workbench:
         self.assistant_slots = BoundedSemaphore(2)
         self.interrupted_reviews = {}
 
+    def check_capacity(self):
+        if self.max_reports is not None:
+            with self.lock:
+                if len(self.runs) >= self.max_reports:
+                    raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, "Исчерпан лимит документов этой сессии.")
+
     def import_report(self, raw):
         digest = sha256(raw).hexdigest()
-        # Only imports share this lock. Active reviews, downloads and owner answers continue.
         with self.import_lock:
             if digest in self.imported:
                 return {**self.imported[digest], "reused": True}
+            self.check_capacity()
             name, html = imported_full_report(raw)
             identifier = uuid4().hex
             directory = self.storage / identifier
@@ -369,7 +404,7 @@ class Workbench:
             raw = path.read_bytes()
             if sha256(raw).hexdigest() != sha:
                 raise WorkbenchError(HTTPStatus.CONFLICT, "Открыта другая версия отчёта. Обновите страницу.")
-            model = self.model or os.environ.get("REVIEW_MODEL", "gpt-6.2-astra")
+            model = self.model or codex_provider.default_model()
             identity = (baseline, sha, model)
             history = []
             if previous:
@@ -384,6 +419,8 @@ class Workbench:
                     registered = True
             try:
                 report = json.loads(raw)
+                if self.admit_model_request:
+                    self.admit_model_request()
                 answer, references = respond(report, sha, question, focus, history, model)
             except KeyError as exc:
                 raise WorkbenchError(HTTPStatus.UNPROCESSABLE_ENTITY, "Формат отчёта не поддерживается помощницей.") from exc
@@ -442,7 +479,9 @@ class Workbench:
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "В обсуждении уже 12 ответов.")
             self.pending_dialogues.add(key)
         try:
-            model = self.model or os.environ.get("REVIEW_MODEL", "gpt-6.2-astra")
+            model = self.model or codex_provider.default_model()
+            if self.admit_model_request:
+                self.admit_model_request()
             record = clarify(path, fid, [*answers, payload["answer"]], model, sha, prior=prior)
             self.dialogue_report(baseline, sha)
             token = uuid4().hex
@@ -497,7 +536,9 @@ class Workbench:
               dialogue_tokens=(), dialogue_snapshot=False):
         if not self.upload_lock.acquire(blocking=False):
             raise WorkbenchError(HTTPStatus.CONFLICT, "Уже загружается другой документ.")
+        reserved = False
         try:
+            self.check_capacity()
             with self.lock:
                 if self.active is not None:
                     raise WorkbenchError(HTTPStatus.CONFLICT, "Дождитесь завершения текущей проверки.")
@@ -522,11 +563,17 @@ class Workbench:
                 clarifications = [self.storage / "clarifications" / (token + ".json") for token in current.values()]
                 if clarifications:
                     baseline_sha256 = digest
+            if self.review_slots is not None:
+                reserved = self.review_slots.acquire(blocking=False)
+                if not reserved:
+                    raise WorkbenchError(HTTPStatus.TOO_MANY_REQUESTS, "Агент занят. Повторите запуск чуть позже.")
             identifier = uuid4().hex
             directory = self.storage / identifier
             payload = stream.read(length)
             if len(payload) != length:
                 raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Получен неполный файл.")
+            if self.admit_model_request:
+                self.admit_model_request()
             uploads = directory / "upload"
             uploads.mkdir(parents=True, mode=0o700)
             document = uploads / name
@@ -539,8 +586,11 @@ class Workbench:
                                      args=(run, document, baseline_report, findings, decisions, baseline_sha256, clarifications),
                                      daemon=True)
                 self.thread.start()
+                reserved = False
             return identifier
         finally:
+            if reserved:
+                self.review_slots.release()
             self.upload_lock.release()
 
     @staticmethod
@@ -618,6 +668,8 @@ class Workbench:
                         self.interrupted_reviews.pop(resume_key, None)
                 run.state, run.error = state, error
                 self.active = None
+            if self.review_slots is not None:
+                self.review_slots.release()
 
     def wait(self):
         with self.lock:
@@ -632,6 +684,10 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
     def setup(self):
         self.request.settimeout(20)
         super().setup()
+
+    @property
+    def app(self):
+        return self.server.app
 
     def log_message(self, format, *args):
         pass
@@ -688,7 +744,10 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             route = self.route()
-            app = self.server.app
+            app = self.app
+            if route.path == "/reports/demo/review.pdf":
+                self.reply(HTTPStatus.OK, (app.reports("demo") / "review.pdf").read_bytes(), "application/pdf", "review.pdf")
+                return
             if route.path in STATIC_FILES:
                 artifact = app.root / route.path[1:]
                 self.reply(HTTPStatus.OK, artifact.read_bytes(), STATIC_FILES[route.path])
@@ -767,7 +826,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 raw = self.rfile.read(length)
                 if len(raw) != length:
                     raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Получен неполный JSON-файл.")
-                result = self.server.app.import_report(raw)
+                result = self.app.import_report(raw)
                 self.json(HTTPStatus.OK if result["reused"] else HTTPStatus.CREATED, result)
                 return
             assistant = re.fullmatch(rf"/api/assistant/(demo|{JOB_ID})/([0-9a-f]{{64}})", route.path)
@@ -782,7 +841,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                     payload = json.loads(raw.decode("utf-8"))
                 except (ValueError, UnicodeError, RecursionError) as exc:
                     raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Не удалось прочитать вопрос.") from exc
-                self.json(HTTPStatus.OK, self.server.app.ask_assistant(*assistant.groups(), payload))
+                self.json(HTTPStatus.OK, self.app.ask_assistant(*assistant.groups(), payload))
                 return
             simulation = re.fullmatch(rf"/api/simulate/(demo|{JOB_ID})/([0-9a-f]{{64}})/({FINDING_ID})", route.path)
             if simulation:
@@ -791,7 +850,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                 if route.query or self.headers.get_content_type() != "application/json":
                     raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Нужен JSON с входными значениями примера.")
                 baseline, digest, fid = simulation.groups()
-                raw = (self.server.app.reports(baseline, baseline=True) / "review.json").read_bytes()
+                raw = (self.app.reports(baseline, baseline=True) / "review.json").read_bytes()
                 if sha256(raw).hexdigest() != digest:
                     raise WorkbenchError(HTTPStatus.CONFLICT, "Базовый отчёт изменился. Обновите страницу.")
                 try:
@@ -814,7 +873,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
                     payload = json.loads(raw.decode("utf-8"))
                 except (UnicodeError, ValueError, RecursionError) as exc:
                     raise WorkbenchError(HTTPStatus.BAD_REQUEST, "Не удалось прочитать ответ.") from exc
-                self.json(HTTPStatus.OK, self.server.app.answer(*dialogue.groups(), payload))
+                self.json(HTTPStatus.OK, self.app.answer(*dialogue.groups(), payload))
                 return
             if route.path != "/api/runs":
                 raise WorkbenchError(HTTPStatus.NOT_FOUND, "Страница не найдена.")
@@ -851,7 +910,7 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             size = self.body_size(INPUT_LIMITS[Path(name).suffix.lower()])
             decision_options = ({"decisions": decisions, "dialogue_tokens": tokens, "baseline_sha256": hashes[0],
                                  "dialogue_snapshot": bool(snapshot)} if hashes else {})
-            identifier = self.server.app.start(modes[0], baseline, name, size, self.rfile, findings, **decision_options)
+            identifier = self.app.start(modes[0], baseline, name, size, self.rfile, findings, **decision_options)
             self.json(HTTPStatus.ACCEPTED, {"id": identifier})
         except WorkbenchError as exc:
             self.json(exc.code, {"error": str(exc)})

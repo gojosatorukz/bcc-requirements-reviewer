@@ -3,7 +3,8 @@ RUN npm install --global --no-audit --no-fund @openai/codex@0.171.0-alpha.13.2 \
     && codex --version
 
 FROM python:3.12.14-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
-ARG VCS_REF=""
+ARG RENDER_GIT_COMMIT=""
+ARG VCS_REF=${RENDER_GIT_COMMIT}
 LABEL org.opencontainers.image.revision=${VCS_REF}
 COPY --from=codex-cli /usr/local/bin/node /usr/local/bin/node
 COPY --from=codex-cli /usr/local/lib/node_modules/@openai /usr/local/lib/node_modules/@openai
@@ -20,9 +21,9 @@ RUN pip install --no-cache-dir --requirement requirements.txt
 COPY reviewer/*.py reviewer/*.css reviewer/*.js reviewer/workbench.html reviewer/
 COPY design/concepts/gallery.css design/concepts/case.js design/concepts/gallery.js design/concepts/index.html design/concepts/
 COPY runs/bcc-final/review.json runs/bcc-final/review.html runs/bcc-final/
-COPY runs/bcc-release/review.json runs/bcc-release/review.html runs/bcc-release/
+COPY runs/bcc-release/review.json runs/bcc-release/review.html runs/bcc-release/review.pdf runs/bcc-release/
 COPY runs/bcc-release/owner/dialogue.json runs/bcc-release/owner/dialogue.html runs/bcc-release/owner/wrong-revision.html runs/bcc-release/owner/
-COPY cloud/runtime.py cloud/runtime.py
+COPY cloud/runtime.py cloud/public.py cloud/
 RUN chmod -R a+rX,go-w reviewer design runs cloud \
     && install -d -m 0700 -o reviewer -g reviewer /home/reviewer/.codex
 USER reviewer

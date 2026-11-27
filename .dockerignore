@@ -6,6 +6,7 @@
 !reviewer/*.css
 !reviewer/*.js
 !cloud/runtime.py
+!cloud/public.py
 !design/concepts/index.html
 !design/concepts/gallery.css
 !design/concepts/case.js
@@ -13,6 +14,7 @@
 !runs/bcc-final/review.html
 !runs/bcc-final/review.json
 !runs/bcc-release/review.html
+!runs/bcc-release/review.pdf
 !runs/bcc-release/review.json
 !runs/bcc-release/owner/dialogue.html
 !runs/bcc-release/owner/dialogue.json

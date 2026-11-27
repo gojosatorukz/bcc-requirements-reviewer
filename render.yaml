@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: razbor-tz
+    runtime: docker
+    plan: free
+    branch: main
+    autoDeployTrigger: "off"
+    dockerCommand: python -m cloud.public
+    healthCheckPath: /healthz
+    envVars:
+      - key: REVIEW_PROVIDER
+        value: gemini
+      - key: REVIEW_MODEL
+        value: gemini-3.5-flash-lite
+      - key: GEMINI_API_KEY
+        sync: false
