@@ -1,0 +1,29 @@
+{
+  "document": "hotel",
+  "baseline": "eval/executable/runs/hotel.json",
+  "baseline_sha256": "de5daf391965f4a8509908ccfcf0c486b95bebcc641460ede37f4e7cda23f7ab",
+  "finding_id": "D-01",
+  "commit": "534c090b283f",
+  "engine_sha256": "770fd9a440cc8a09254e02894bb6d46298f9290c33457bb846d05083fc9da6df",
+  "proposer": "gpt-6.2-astra",
+  "auditor": "gpt-6.2-astra",
+  "utc_end": "2026-11-26T20:27:21.019449+00:00",
+  "seconds": 4.48,
+  "usage": null,
+  "current_usage": null,
+  "fresh_calls": 1,
+  "restored_attempts": 0,
+  "attempts": [
+    {
+      "stage": "Построение примера D-01",
+      "status": "failed",
+      "usage": null,
+      "seconds": 4.48
+    }
+  ],
+  "item": {
+    "finding_id": "D-01",
+    "status": "unsupported",
+    "reason": "Модель не завершила построение или проверку примера. Расчёт можно повторить."
+  }
+}

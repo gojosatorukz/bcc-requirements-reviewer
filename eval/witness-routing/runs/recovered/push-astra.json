@@ -1,0 +1,402 @@
+{
+  "document": "push",
+  "baseline": "runs/bcc-executable/review.json",
+  "baseline_sha256": "44f8b82673d93b908c525df94eb3f3891641e29b78efdb6ee99d3ec1501d4b21",
+  "finding_id": "D-02",
+  "commit": "e4d3db591d1a",
+  "engine_sha256": "770fd9a440cc8a09254e02894bb6d46298f9290c33457bb846d05083fc9da6df",
+  "proposer": "gpt-6.2-astra",
+  "auditor": "gpt-6.2-astra",
+  "utc_end": "2026-11-27T03:06:06.652191+00:00",
+  "seconds": 73.26,
+  "usage": {
+    "input_tokens": 51924,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 2838,
+    "reasoning_output_tokens": 81
+  },
+  "current_usage": {
+    "input_tokens": 51924,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 2838,
+    "reasoning_output_tokens": 81
+  },
+  "fresh_calls": 3,
+  "restored_attempts": 0,
+  "attempts": [
+    {
+      "stage": "Построение примера D-02",
+      "status": "rejected",
+      "usage": {
+        "input_tokens": 17204,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1013,
+        "reasoning_output_tokens": 45
+      },
+      "seconds": 26.25,
+      "reason": "Несовместимые единицы измерения в выражении"
+    },
+    {
+      "stage": "Построение примера D-02",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 18107,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1288,
+        "reasoning_output_tokens": 36
+      },
+      "seconds": 31.22
+    },
+    {
+      "stage": "Проверка смысла D-02",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 16613,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 537,
+        "reasoning_output_tokens": 0
+      },
+      "seconds": 15.79
+    }
+  ],
+  "item": {
+    "finding_id": "D-02",
+    "status": "executed",
+    "program": {
+      "domains": [],
+      "states": [
+        {
+          "key": "spent",
+          "label": "Расходы по карте за март",
+          "unit": "тиын"
+        },
+        {
+          "key": "limit",
+          "label": "Действующий порог расходов по карте",
+          "unit": "тиын"
+        },
+        {
+          "key": "push_count",
+          "label": "Количество полученных по карте push за март",
+          "unit": "push"
+        },
+        {
+          "key": "can_notify",
+          "label": "Возможность отправить push при следующем достижении действующего порога",
+          "unit": "1"
+        }
+      ],
+      "inputs": [
+        {
+          "key": "new_limit",
+          "label": "Новый порог расходов по карте",
+          "unit": "тиын"
+        },
+        {
+          "key": "amount",
+          "label": "Сумма проведённой покупки",
+          "unit": "тиын"
+        }
+      ],
+      "observe": [
+        "push_count"
+      ],
+      "first": {
+        "source": {
+          "line": 39,
+          "quote": "На карту приходится максимум один такой push за календарный месяц."
+        },
+        "rules": [
+          {
+            "event": "raise_limit",
+            "when": "new_limit > limit and new_limit >= 100000 and new_limit <= 100000000 and new_limit % 100 == 0",
+            "updates": [
+              {
+                "target": "limit",
+                "expr": "new_limit"
+              }
+            ]
+          },
+          {
+            "event": "post_purchase",
+            "when": "True",
+            "updates": [
+              {
+                "target": "spent",
+                "expr": "spent + amount"
+              }
+            ]
+          },
+          {
+            "event": "post_purchase",
+            "when": "push_count == 0 and spent < limit and spent + amount >= limit",
+            "updates": [
+              {
+                "target": "push_count",
+                "expr": "push_count + 1"
+              },
+              {
+                "target": "can_notify",
+                "expr": "0"
+              }
+            ]
+          }
+        ]
+      },
+      "second": {
+        "source": {
+          "line": 40,
+          "quote": "Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки."
+        },
+        "rules": [
+          {
+            "event": "raise_limit",
+            "when": "new_limit > limit and new_limit >= 100000 and new_limit <= 100000000 and new_limit % 100 == 0",
+            "updates": [
+              {
+                "target": "limit",
+                "expr": "new_limit"
+              },
+              {
+                "target": "can_notify",
+                "expr": "1 if spent < new_limit else can_notify"
+              }
+            ]
+          },
+          {
+            "event": "post_purchase",
+            "when": "True",
+            "updates": [
+              {
+                "target": "spent",
+                "expr": "spent + amount"
+              }
+            ]
+          },
+          {
+            "event": "post_purchase",
+            "when": "can_notify == 1 and spent < limit and spent + amount >= limit",
+            "updates": [
+              {
+                "target": "push_count",
+                "expr": "push_count + 1"
+              },
+              {
+                "target": "can_notify",
+                "expr": "0"
+              }
+            ]
+          }
+        ]
+      },
+      "scenario": {
+        "initial": [
+          {
+            "key": "spent",
+            "value": 1000000
+          },
+          {
+            "key": "limit",
+            "value": 1000000
+          },
+          {
+            "key": "push_count",
+            "value": 1
+          },
+          {
+            "key": "can_notify",
+            "value": 0
+          }
+        ],
+        "events": [
+          {
+            "kind": "raise_limit",
+            "label": "В марте повысить порог по активной карте KZT при включённых уведомлениях",
+            "values": [
+              {
+                "key": "new_limit",
+                "value": 1500000
+              }
+            ]
+          },
+          {
+            "kind": "post_purchase",
+            "label": "Провести покупку, совершённую по той же карте в марте по времени Алматы",
+            "values": [
+              {
+                "key": "amount",
+                "value": 500000
+              }
+            ]
+          }
+        ]
+      },
+      "control": {
+        "initial": [
+          {
+            "key": "spent",
+            "value": 1000000
+          },
+          {
+            "key": "limit",
+            "value": 1000000
+          },
+          {
+            "key": "push_count",
+            "value": 1
+          },
+          {
+            "key": "can_notify",
+            "value": 0
+          }
+        ],
+        "events": [
+          {
+            "kind": "raise_limit",
+            "label": "В марте повысить порог по активной карте KZT при включённых уведомлениях",
+            "values": [
+              {
+                "key": "new_limit",
+                "value": 1500000
+              }
+            ]
+          },
+          {
+            "kind": "post_purchase",
+            "label": "Провести покупку, совершённую по той же карте в марте по времени Алматы",
+            "values": [
+              {
+                "key": "amount",
+                "value": 499999
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "result": {
+      "version": "witness-v1",
+      "scenario": {
+        "initial": {
+          "push_count": 1
+        },
+        "steps": [
+          {
+            "step": 1,
+            "kind": "raise_limit",
+            "label": "В марте повысить порог по активной карте KZT при включённых уведомлениях",
+            "inputs": {
+              "new_limit": 1500000
+            },
+            "first": {
+              "push_count": 1
+            },
+            "second": {
+              "push_count": 1
+            },
+            "different": []
+          },
+          {
+            "step": 2,
+            "kind": "post_purchase",
+            "label": "Провести покупку, совершённую по той же карте в марте по времени Алматы",
+            "inputs": {
+              "amount": 500000
+            },
+            "first": {
+              "push_count": 1
+            },
+            "second": {
+              "push_count": 2
+            },
+            "different": [
+              "push_count"
+            ]
+          }
+        ],
+        "first_difference": {
+          "step": 2,
+          "field": "push_count",
+          "first": 1,
+          "second": 2
+        },
+        "final": {
+          "first": {
+            "push_count": 1
+          },
+          "second": {
+            "push_count": 2
+          }
+        }
+      },
+      "control": {
+        "initial": {
+          "push_count": 1
+        },
+        "steps": [
+          {
+            "step": 1,
+            "kind": "raise_limit",
+            "label": "В марте повысить порог по активной карте KZT при включённых уведомлениях",
+            "inputs": {
+              "new_limit": 1500000
+            },
+            "first": {
+              "push_count": 1
+            },
+            "second": {
+              "push_count": 1
+            },
+            "different": []
+          },
+          {
+            "step": 2,
+            "kind": "post_purchase",
+            "label": "Провести покупку, совершённую по той же карте в марте по времени Алматы",
+            "inputs": {
+              "amount": 499999
+            },
+            "first": {
+              "push_count": 1
+            },
+            "second": {
+              "push_count": 1
+            },
+            "different": []
+          }
+        ],
+        "first_difference": null,
+        "final": {
+          "first": {
+            "push_count": 1
+          },
+          "second": {
+            "push_count": 1
+          }
+        }
+      }
+    },
+    "audit": {
+      "verdict": "accepted",
+      "first_rule": "Ф-3 (строка 39) ограничивает число push по одной карте одним за календарный месяц. Клиент уже получил мартовский push. Повышение порога сохраняет этот счётчик, поэтому при достижении 15 000 ₸ клиент не получает ещё один push. За март у него один push.",
+      "second_rule": "По Ф-4 (строка 40) при повышении порога накопленные 10 000 ₸ сохраняются. Они ниже нового порога в 15 000 ₸, поэтому следующее достижение вновь даёт право на push. Само изменение настройки ничего не отправляет. Покупка доводит расходы точно до порога, клиент получает второй push за март.",
+      "scenario": "Начальное состояние соответствует моменту сразу после первого push по активной карте KZT. Уведомления включены. Оба порога заданы в целых тенге и входят в разрешённый диапазон. Сначала клиент повышает порог, затем проводится покупка по той же карте, совершённая в марте по времени Алматы. В тиынах расходы переходят от 1 000 000 к 1 000 000 + 500 000 = 1 500 000. До покупки они ниже нового порога, после покупки равны ему. Различие возникает на втором событии и измеряется числом полученных клиентом push.",
+      "control": "Начальное состояние и повышение порога те же. Покупка на 499 999 тиынов доводит расходы до 1 499 999 тиынов, на один тиын ниже порога. Ограничение целыми тенге относится к порогу, а сумму покупки источник учитывает в тиынах. Достижения порога нет, поэтому по обеим трактовкам у клиента остаётся один мартовский push.",
+      "evidence": [
+        {
+          "line": 39,
+          "quote": "* **Ф-3.** Когда расходы переходят от суммы ниже порога к сумме, равной порогу или выше, клиент получает push. На карту приходится максимум один такой push за календарный месяц."
+        },
+        {
+          "line": 40,
+          "quote": "* **Ф-4.** При изменении порога накопленная сумма сохраняется. Если она ниже нового порога, следующее достижение вызывает push независимо от истории предыдущей настройки."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "document": "month",
+  "baseline": "runs/bcc-executable/review.json",
+  "baseline_sha256": "44f8b82673d93b908c525df94eb3f3891641e29b78efdb6ee99d3ec1501d4b21",
+  "finding_id": "D-01",
+  "commit": "534c090b283f",
+  "engine_sha256": "770fd9a440cc8a09254e02894bb6d46298f9290c33457bb846d05083fc9da6df",
+  "proposer": "gpt-6.2-sol",
+  "auditor": "gpt-6.2-astra",
+  "utc_end": "2026-11-26T21:25:25.276884+00:00",
+  "seconds": 4.14,
+  "usage": null,
+  "current_usage": null,
+  "fresh_calls": 1,
+  "restored_attempts": 0,
+  "attempts": [
+    {
+      "stage": "Построение примера D-01",
+      "status": "failed",
+      "usage": null,
+      "seconds": 4.14
+    }
+  ],
+  "item": {
+    "finding_id": "D-01",
+    "status": "unsupported",
+    "reason": "Модель не завершила построение или проверку примера. Расчёт можно повторить."
+  }
+}

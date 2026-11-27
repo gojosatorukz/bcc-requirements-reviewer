@@ -1,0 +1,372 @@
+{
+  "document": "hotel",
+  "baseline": "eval/executable/runs/hotel.json",
+  "baseline_sha256": "de5daf391965f4a8509908ccfcf0c486b95bebcc641460ede37f4e7cda23f7ab",
+  "finding_id": "D-01",
+  "commit": "e4d3db591d1a",
+  "engine_sha256": "770fd9a440cc8a09254e02894bb6d46298f9290c33457bb846d05083fc9da6df",
+  "proposer": "gpt-6.2-astra",
+  "auditor": "gpt-6.2-astra",
+  "utc_end": "2026-11-27T03:07:11.628086+00:00",
+  "seconds": 43.41,
+  "usage": {
+    "input_tokens": 29289,
+    "cached_input_tokens": 11392,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1662,
+    "reasoning_output_tokens": 13
+  },
+  "current_usage": {
+    "input_tokens": 29289,
+    "cached_input_tokens": 11392,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1662,
+    "reasoning_output_tokens": 13
+  },
+  "fresh_calls": 2,
+  "restored_attempts": 0,
+  "attempts": [
+    {
+      "stage": "Построение примера D-01",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 14988,
+        "cached_input_tokens": 11392,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1107,
+        "reasoning_output_tokens": 13
+      },
+      "seconds": 28.38
+    },
+    {
+      "stage": "Проверка смысла D-01",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 14301,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 555,
+        "reasoning_output_tokens": 0
+      },
+      "seconds": 15.02
+    }
+  ],
+  "item": {
+    "finding_id": "D-01",
+    "status": "executed",
+    "program": {
+      "domains": [],
+      "states": [
+        {
+          "key": "balance",
+          "label": "Учётный остаток по счёту гостя",
+          "unit": "₸"
+        },
+        {
+          "key": "held",
+          "label": "Сумма, заблокированная по авторизации",
+          "unit": "₸"
+        },
+        {
+          "key": "available",
+          "label": "Доступный остаток в приложении гостя",
+          "unit": "₸"
+        }
+      ],
+      "inputs": [
+        {
+          "key": "deposit",
+          "label": "Сумма авторизации депозита гостиницы",
+          "unit": "₸"
+        },
+        {
+          "key": "charge",
+          "label": "Фактическая стоимость проживания к списанию",
+          "unit": "₸"
+        }
+      ],
+      "observe": [
+        "available"
+      ],
+      "first": {
+        "source": {
+          "line": 12,
+          "quote": "Если списана только часть авторизации, разница продолжает блокироваться до отдельного сообщения гостиницы об отмене остатка резерва."
+        },
+        "rules": [
+          {
+            "event": "authorize",
+            "when": "held == 0 and 0 < deposit and deposit <= balance",
+            "updates": [
+              {
+                "target": "held",
+                "expr": "deposit"
+              },
+              {
+                "target": "available",
+                "expr": "balance - deposit"
+              }
+            ]
+          },
+          {
+            "event": "first_clearing",
+            "when": "0 < charge and charge <= held",
+            "updates": [
+              {
+                "target": "balance",
+                "expr": "balance - charge"
+              },
+              {
+                "target": "held",
+                "expr": "held - charge"
+              },
+              {
+                "target": "available",
+                "expr": "(balance - charge) - (held - charge)"
+              }
+            ]
+          }
+        ]
+      },
+      "second": {
+        "source": {
+          "line": 16,
+          "quote": "После этого подтверждения блокировка по авторизации целиком снята, включая неиспользованную разницу при частичной сумме."
+        },
+        "rules": [
+          {
+            "event": "authorize",
+            "when": "held == 0 and 0 < deposit and deposit <= balance",
+            "updates": [
+              {
+                "target": "held",
+                "expr": "deposit"
+              },
+              {
+                "target": "available",
+                "expr": "balance - deposit"
+              }
+            ]
+          },
+          {
+            "event": "first_clearing",
+            "when": "0 < charge and charge <= held",
+            "updates": [
+              {
+                "target": "balance",
+                "expr": "balance - charge"
+              },
+              {
+                "target": "held",
+                "expr": "0"
+              },
+              {
+                "target": "available",
+                "expr": "balance - charge"
+              }
+            ]
+          }
+        ]
+      },
+      "scenario": {
+        "initial": [
+          {
+            "key": "balance",
+            "value": 71900
+          },
+          {
+            "key": "held",
+            "value": 0
+          },
+          {
+            "key": "available",
+            "value": 71900
+          }
+        ],
+        "events": [
+          {
+            "kind": "authorize",
+            "label": "Гостиница успешно авторизует депозит на карте гостя",
+            "values": [
+              {
+                "key": "deposit",
+                "value": 28600
+              }
+            ]
+          },
+          {
+            "kind": "first_clearing",
+            "label": "Витрина получает подтверждение обработки первого клиринга по этому депозиту, и приложение сразу показывает остаток",
+            "values": [
+              {
+                "key": "charge",
+                "value": 17400
+              }
+            ]
+          }
+        ]
+      },
+      "control": {
+        "initial": [
+          {
+            "key": "balance",
+            "value": 71900
+          },
+          {
+            "key": "held",
+            "value": 0
+          },
+          {
+            "key": "available",
+            "value": 71900
+          }
+        ],
+        "events": [
+          {
+            "kind": "authorize",
+            "label": "Гостиница успешно авторизует депозит на карте гостя",
+            "values": [
+              {
+                "key": "deposit",
+                "value": 28600
+              }
+            ]
+          },
+          {
+            "kind": "first_clearing",
+            "label": "Витрина получает подтверждение обработки первого клиринга по этому депозиту, и приложение сразу показывает остаток",
+            "values": [
+              {
+                "key": "charge",
+                "value": 28600
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "result": {
+      "version": "witness-v1",
+      "scenario": {
+        "initial": {
+          "available": 71900
+        },
+        "steps": [
+          {
+            "step": 1,
+            "kind": "authorize",
+            "label": "Гостиница успешно авторизует депозит на карте гостя",
+            "inputs": {
+              "deposit": 28600
+            },
+            "first": {
+              "available": 43300
+            },
+            "second": {
+              "available": 43300
+            },
+            "different": []
+          },
+          {
+            "step": 2,
+            "kind": "first_clearing",
+            "label": "Витрина получает подтверждение обработки первого клиринга по этому депозиту, и приложение сразу показывает остаток",
+            "inputs": {
+              "charge": 17400
+            },
+            "first": {
+              "available": 43300
+            },
+            "second": {
+              "available": 54500
+            },
+            "different": [
+              "available"
+            ]
+          }
+        ],
+        "first_difference": {
+          "step": 2,
+          "field": "available",
+          "first": 43300,
+          "second": 54500
+        },
+        "final": {
+          "first": {
+            "available": 43300
+          },
+          "second": {
+            "available": 54500
+          }
+        }
+      },
+      "control": {
+        "initial": {
+          "available": 71900
+        },
+        "steps": [
+          {
+            "step": 1,
+            "kind": "authorize",
+            "label": "Гостиница успешно авторизует депозит на карте гостя",
+            "inputs": {
+              "deposit": 28600
+            },
+            "first": {
+              "available": 43300
+            },
+            "second": {
+              "available": 43300
+            },
+            "different": []
+          },
+          {
+            "step": 2,
+            "kind": "first_clearing",
+            "label": "Витрина получает подтверждение обработки первого клиринга по этому депозиту, и приложение сразу показывает остаток",
+            "inputs": {
+              "charge": 28600
+            },
+            "first": {
+              "available": 43300
+            },
+            "second": {
+              "available": 43300
+            },
+            "different": []
+          }
+        ],
+        "first_difference": null,
+        "final": {
+          "first": {
+            "available": 43300
+          },
+          "second": {
+            "available": 43300
+          }
+        }
+      }
+    },
+    "audit": {
+      "verdict": "accepted",
+      "first_rule": "По К-2 первый клиринг уменьшает учётный остаток до 71 900 − 17 400 = 54 500 ₸. Отдельной отмены не было, поэтому под блокировкой остаётся разница 28 600 − 17 400 = 11 200 ₸. Сразу после подтверждения приложение показывает доступный остаток 54 500 − 11 200 = 43 300 ₸.",
+      "second_rule": "По В-1 к моменту ответа приложения витрина уже получила подтверждение того же первого клиринга. Учётный остаток равен 54 500 ₸, а блокировка целиком снята. Гостю доступны 54 500 ₸.",
+      "scenario": "Начальные условия и порядок событий совпадают со строкой 21. До авторизации доступны все 71 900 ₸. Авторизация сохраняет учётный остаток и блокирует 28 600 ₸, поэтому обе программы дают 43 300 ₸. Второй переход учитывает списание по этой же авторизации и показывает результат сразу после подтверждения, без промежуточных операций. Все суммы выражены в целых тенге. Наблюдаемое поле available соответствует доступному остатку на экране. Первое расхождение возникает на втором шаге и следует из расчёта блокировки. Полей со словарём в примере нет.",
+      "control": "Контроль меняет только сумму первого клиринга на полную сумму авторизации — 28 600 ₸. По К-2 остаток блокировки равен 28 600 − 28 600 = 0 ₸. По В-1 подтверждение также означает полное снятие блокировки. В обоих случаях учётный и доступный остатки после списания равны 71 900 − 28 600 = 43 300 ₸.",
+      "evidence": [
+        {
+          "line": 12,
+          "quote": "Если списана только часть авторизации, разница продолжает блокироваться до отдельного сообщения гостиницы об отмене остатка резерва."
+        },
+        {
+          "line": 16,
+          "quote": "После этого подтверждения блокировка по авторизации целиком снята, включая неиспользованную разницу при частичной сумме."
+        },
+        {
+          "line": 12,
+          "quote": "Если списана полная сумма, блокировка обнуляется."
+        }
+      ]
+    }
+  }
+}

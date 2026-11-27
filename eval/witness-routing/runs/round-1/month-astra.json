@@ -1,0 +1,273 @@
+{
+  "document": "month",
+  "baseline": "runs/bcc-executable/review.json",
+  "baseline_sha256": "44f8b82673d93b908c525df94eb3f3891641e29b78efdb6ee99d3ec1501d4b21",
+  "finding_id": "D-01",
+  "commit": "534c090b283f",
+  "engine_sha256": "770fd9a440cc8a09254e02894bb6d46298f9290c33457bb846d05083fc9da6df",
+  "proposer": "gpt-6.2-astra",
+  "auditor": "gpt-6.2-astra",
+  "utc_end": "2026-11-26T20:25:35.089438+00:00",
+  "seconds": 36.05,
+  "usage": {
+    "input_tokens": 33592,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1339,
+    "reasoning_output_tokens": 23
+  },
+  "current_usage": {
+    "input_tokens": 33592,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1339,
+    "reasoning_output_tokens": 23
+  },
+  "fresh_calls": 2,
+  "restored_attempts": 0,
+  "attempts": [
+    {
+      "stage": "Построение примера D-01",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 17234,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 852,
+        "reasoning_output_tokens": 23
+      },
+      "seconds": 21.83
+    },
+    {
+      "stage": "Проверка смысла D-01",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 16358,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 487,
+        "reasoning_output_tokens": 0
+      },
+      "seconds": 14.22
+    }
+  ],
+  "item": {
+    "finding_id": "D-01",
+    "status": "executed",
+    "program": {
+      "domains": [],
+      "states": [
+        {
+          "key": "feb_spent",
+          "label": "Расходы карты за февраль",
+          "unit": "₸"
+        }
+      ],
+      "inputs": [
+        {
+          "key": "bought_at",
+          "label": "Время покупки относительно 1 февраля 00:00 по Алматы",
+          "unit": "мин"
+        },
+        {
+          "key": "posted_at",
+          "label": "Время проведения относительно 1 февраля 00:00 по Алматы",
+          "unit": "мин"
+        },
+        {
+          "key": "amount",
+          "label": "Сумма проведённой покупки",
+          "unit": "₸"
+        }
+      ],
+      "observe": [
+        "feb_spent"
+      ],
+      "first": {
+        "source": {
+          "line": 38,
+          "quote": "Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки."
+        },
+        "rules": [
+          {
+            "event": "post_purchase",
+            "when": "0 <= bought_at and bought_at <= posted_at and posted_at <= 3",
+            "updates": [
+              {
+                "target": "feb_spent",
+                "expr": "feb_spent + amount"
+              }
+            ]
+          }
+        ]
+      },
+      "second": {
+        "source": {
+          "line": 64,
+          "quote": "| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ |"
+        },
+        "rules": [
+          {
+            "event": "post_purchase",
+            "when": "(0 <= bought_at and bought_at <= posted_at and posted_at <= 3) or (bought_at == -2 and posted_at == 3 and amount == 4000)",
+            "updates": [
+              {
+                "target": "feb_spent",
+                "expr": "feb_spent + amount"
+              }
+            ]
+          }
+        ]
+      },
+      "scenario": {
+        "initial": [
+          {
+            "key": "feb_spent",
+            "value": 0
+          }
+        ],
+        "events": [
+          {
+            "kind": "post_purchase",
+            "label": "Впервые провести 1 февраля в 00:03 покупку, совершённую 31 января в 23:58 по Алматы",
+            "values": [
+              {
+                "key": "bought_at",
+                "value": -2
+              },
+              {
+                "key": "posted_at",
+                "value": 3
+              },
+              {
+                "key": "amount",
+                "value": 4000
+              }
+            ]
+          }
+        ]
+      },
+      "control": {
+        "initial": [
+          {
+            "key": "feb_spent",
+            "value": 0
+          }
+        ],
+        "events": [
+          {
+            "kind": "post_purchase",
+            "label": "Впервые провести 1 февраля в 00:03 покупку, совершённую 1 февраля в 00:00 по Алматы",
+            "values": [
+              {
+                "key": "bought_at",
+                "value": 0
+              },
+              {
+                "key": "posted_at",
+                "value": 3
+              },
+              {
+                "key": "amount",
+                "value": 4000
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "result": {
+      "version": "witness-v1",
+      "scenario": {
+        "initial": {
+          "feb_spent": 0
+        },
+        "steps": [
+          {
+            "step": 1,
+            "kind": "post_purchase",
+            "label": "Впервые провести 1 февраля в 00:03 покупку, совершённую 31 января в 23:58 по Алматы",
+            "inputs": {
+              "bought_at": -2,
+              "posted_at": 3,
+              "amount": 4000
+            },
+            "first": {
+              "feb_spent": 0
+            },
+            "second": {
+              "feb_spent": 4000
+            },
+            "different": [
+              "feb_spent"
+            ]
+          }
+        ],
+        "first_difference": {
+          "step": 1,
+          "field": "feb_spent",
+          "first": 0,
+          "second": 4000
+        },
+        "final": {
+          "first": {
+            "feb_spent": 0
+          },
+          "second": {
+            "feb_spent": 4000
+          }
+        }
+      },
+      "control": {
+        "initial": {
+          "feb_spent": 0
+        },
+        "steps": [
+          {
+            "step": 1,
+            "kind": "post_purchase",
+            "label": "Впервые провести 1 февраля в 00:03 покупку, совершённую 1 февраля в 00:00 по Алматы",
+            "inputs": {
+              "bought_at": 0,
+              "posted_at": 3,
+              "amount": 4000
+            },
+            "first": {
+              "feb_spent": 4000
+            },
+            "second": {
+              "feb_spent": 4000
+            },
+            "different": []
+          }
+        ],
+        "first_difference": null,
+        "final": {
+          "first": {
+            "feb_spent": 4000
+          },
+          "second": {
+            "feb_spent": 4000
+          }
+        }
+      }
+    },
+    "audit": {
+      "verdict": "accepted",
+      "first_rule": "По Ф-2 проведение включает покупку в расходы, а дата совершения по Алматы определяет месяц учёта. Покупка совершена в январе, поэтому при её проведении февральский счётчик остаётся равным 0 ₸. Для проверки этого показания достаточно моделировать только февральский счётчик.",
+      "second_rule": "Строка 64 задаёт результат для конкретной покупки на 4 000 ₸. Условие второй программы проверяет сумму и оба времени из этой строки, а переход прибавляет сумму покупки к счётчику. Такая трактовка не требует общего правила учёта по месяцу проведения.",
+      "scenario": "Отсчёт ведётся от 1 февраля 00:00 по Алматы. Значение −2 соответствует 31 января 23:58, а +3 — 1 февраля 00:03. При первом и единственном проведении условие первой программы ложно, а во второй срабатывает условие для случая из строки 64. Сразу после события клиент видит за февраль соответственно 0 ₸ и 0 + 4 000 = 4 000 ₸.",
+      "control": "При том же начальном нуле, сумме и времени проведения покупка совершена ровно 1 февраля в 00:00. Обе даты приходятся на февраль, и общее условие 0 ≤ 0 ≤ 3 ≤ 3 выполнено. Обе программы один раз прибавляют 4 000 ₸ и показывают клиенту 4 000 ₸. Ограничение тремя минутами охватывает оба проверяемых входа.",
+      "evidence": [
+        {
+          "line": 38,
+          "quote": "Месяц определяется по дате совершения покупки в Алматы. В расходы входят проведённые покупки."
+        },
+        {
+          "line": 64,
+          "quote": "| Покупка 31 января в 23:58 на 4 000 ₸ | Провести 1 февраля в 00:03 по Алматы | Февральский счётчик вырос на 4 000 ₸ |"
+        }
+      ]
+    }
+  }
+}

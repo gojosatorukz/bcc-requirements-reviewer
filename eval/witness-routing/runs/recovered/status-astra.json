@@ -1,0 +1,366 @@
+{
+  "document": "status",
+  "baseline": "eval/executable/runs/before-named-state.json",
+  "baseline_sha256": "957d360959b0c77e458f215202ce19a1e62ad14f8e5b3343a5391a5924129201",
+  "finding_id": "D-01",
+  "commit": "e4d3db591d1a",
+  "engine_sha256": "770fd9a440cc8a09254e02894bb6d46298f9290c33457bb846d05083fc9da6df",
+  "proposer": "gpt-6.2-astra",
+  "auditor": "gpt-6.2-astra",
+  "utc_end": "2026-11-27T03:09:27.406350+00:00",
+  "seconds": 44.28,
+  "usage": {
+    "input_tokens": 28999,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1735,
+    "reasoning_output_tokens": 0
+  },
+  "current_usage": {
+    "input_tokens": 28999,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1735,
+    "reasoning_output_tokens": 0
+  },
+  "fresh_calls": 2,
+  "restored_attempts": 0,
+  "attempts": [
+    {
+      "stage": "Построение примера D-01",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 14807,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1093,
+        "reasoning_output_tokens": 0
+      },
+      "seconds": 26.93
+    },
+    {
+      "stage": "Проверка смысла D-01",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 14192,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 642,
+        "reasoning_output_tokens": 0
+      },
+      "seconds": 17.35
+    }
+  ],
+  "item": {
+    "finding_id": "D-01",
+    "status": "executed",
+    "program": {
+      "domains": [
+        {
+          "key": "statement_status",
+          "options": [
+            {
+              "value": "QUEUED",
+              "source": {
+                "line": 8,
+                "quote": "Сразу после регистрации status равен QUEUED."
+              }
+            },
+            {
+              "value": "AWAITING_SIGNATURE",
+              "source": {
+                "line": 13,
+                "quote": "Если первая попытка завершилась результатом «сервис временно недоступен», GET возвращает status=AWAITING_SIGNATURE до следующей попытки."
+              }
+            },
+            {
+              "value": "MANUAL_REVIEW",
+              "source": {
+                "line": 22,
+                "quote": "| Заказ зарегистрирован | сервис временно недоступен | MANUAL_REVIEW |"
+              }
+            },
+            {
+              "value": "READY",
+              "source": {
+                "line": 20,
+                "quote": "| Заказ зарегистрирован | подписано | READY |"
+              }
+            },
+            {
+              "value": "REJECTED",
+              "source": {
+                "line": 21,
+                "quote": "| Заказ зарегистрирован | сертификат отклонён | REJECTED |"
+              }
+            }
+          ]
+        },
+        {
+          "key": "signature_result",
+          "options": [
+            {
+              "value": "подписано",
+              "source": {
+                "line": 20,
+                "quote": "| Заказ зарегистрирован | подписано | READY |"
+              }
+            },
+            {
+              "value": "сертификат отклонён",
+              "source": {
+                "line": 21,
+                "quote": "| Заказ зарегистрирован | сертификат отклонён | REJECTED |"
+              }
+            },
+            {
+              "value": "сервис временно недоступен",
+              "source": {
+                "line": 22,
+                "quote": "| Заказ зарегистрирован | сервис временно недоступен | MANUAL_REVIEW |"
+              }
+            }
+          ]
+        }
+      ],
+      "states": [
+        {
+          "key": "status",
+          "label": "Статус выписки, который видит клиент",
+          "unit": "enum:statement_status"
+        }
+      ],
+      "inputs": [
+        {
+          "key": "result",
+          "label": "Результат первой попытки подписания выписки",
+          "unit": "enum:signature_result"
+        }
+      ],
+      "observe": [
+        "status"
+      ],
+      "first": {
+        "source": {
+          "line": 13,
+          "quote": "Если первая попытка завершилась результатом «сервис временно недоступен», GET возвращает status=AWAITING_SIGNATURE до следующей попытки."
+        },
+        "rules": [
+          {
+            "event": "first_get",
+            "when": "result == \"сервис временно недоступен\"",
+            "updates": [
+              {
+                "target": "status",
+                "expr": "\"AWAITING_SIGNATURE\""
+              }
+            ]
+          },
+          {
+            "event": "first_get",
+            "when": "result == \"подписано\"",
+            "updates": [
+              {
+                "target": "status",
+                "expr": "\"READY\""
+              }
+            ]
+          },
+          {
+            "event": "first_get",
+            "when": "result == \"сертификат отклонён\"",
+            "updates": [
+              {
+                "target": "status",
+                "expr": "\"REJECTED\""
+              }
+            ]
+          }
+        ]
+      },
+      "second": {
+        "source": {
+          "line": 22,
+          "quote": "| Заказ зарегистрирован | сервис временно недоступен | MANUAL_REVIEW |"
+        },
+        "rules": [
+          {
+            "event": "first_get",
+            "when": "result == \"сервис временно недоступен\"",
+            "updates": [
+              {
+                "target": "status",
+                "expr": "\"MANUAL_REVIEW\""
+              }
+            ]
+          },
+          {
+            "event": "first_get",
+            "when": "result == \"подписано\"",
+            "updates": [
+              {
+                "target": "status",
+                "expr": "\"READY\""
+              }
+            ]
+          },
+          {
+            "event": "first_get",
+            "when": "result == \"сертификат отклонён\"",
+            "updates": [
+              {
+                "target": "status",
+                "expr": "\"REJECTED\""
+              }
+            ]
+          }
+        ]
+      },
+      "scenario": {
+        "initial": [
+          {
+            "key": "status",
+            "value": "QUEUED"
+          }
+        ],
+        "events": [
+          {
+            "kind": "first_get",
+            "label": "Приложение впервые запрашивает статус зарегистрированного заказа после завершения первой попытки подписания и до начала следующей",
+            "values": [
+              {
+                "key": "result",
+                "value": "сервис временно недоступен"
+              }
+            ]
+          }
+        ]
+      },
+      "control": {
+        "initial": [
+          {
+            "key": "status",
+            "value": "QUEUED"
+          }
+        ],
+        "events": [
+          {
+            "kind": "first_get",
+            "label": "Приложение впервые запрашивает статус зарегистрированного заказа после завершения первой попытки подписания и до начала следующей",
+            "values": [
+              {
+                "key": "result",
+                "value": "подписано"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "result": {
+      "version": "witness-enum-v1",
+      "scenario": {
+        "initial": {
+          "status": "QUEUED"
+        },
+        "steps": [
+          {
+            "step": 1,
+            "kind": "first_get",
+            "label": "Приложение впервые запрашивает статус зарегистрированного заказа после завершения первой попытки подписания и до начала следующей",
+            "inputs": {
+              "result": "сервис временно недоступен"
+            },
+            "first": {
+              "status": "AWAITING_SIGNATURE"
+            },
+            "second": {
+              "status": "MANUAL_REVIEW"
+            },
+            "different": [
+              "status"
+            ]
+          }
+        ],
+        "first_difference": {
+          "step": 1,
+          "field": "status",
+          "first": "AWAITING_SIGNATURE",
+          "second": "MANUAL_REVIEW"
+        },
+        "final": {
+          "first": {
+            "status": "AWAITING_SIGNATURE"
+          },
+          "second": {
+            "status": "MANUAL_REVIEW"
+          }
+        }
+      },
+      "control": {
+        "initial": {
+          "status": "QUEUED"
+        },
+        "steps": [
+          {
+            "step": 1,
+            "kind": "first_get",
+            "label": "Приложение впервые запрашивает статус зарегистрированного заказа после завершения первой попытки подписания и до начала следующей",
+            "inputs": {
+              "result": "подписано"
+            },
+            "first": {
+              "status": "READY"
+            },
+            "second": {
+              "status": "READY"
+            },
+            "different": []
+          }
+        ],
+        "first_difference": null,
+        "final": {
+          "first": {
+            "status": "READY"
+          },
+          "second": {
+            "status": "READY"
+          }
+        }
+      }
+    },
+    "audit": {
+      "verdict": "accepted",
+      "first_rule": "Строка 13 задаёт AWAITING_SIGNATURE с момента, когда первая попытка завершилась временной недоступностью сервиса, до следующей попытки. Первый последующий GET попадает в этот интервал. При двух других результатах та же программа возвращает READY для подписанной выписки и REJECTED при отклонении сертификата, как требует строка 14.",
+      "second_rule": "В строке 22 значение MANUAL_REVIEW стоит в столбце «Статус в первом последующем GET». Программа возвращает его для зарегистрированного заказа при результате «сервис временно недоступен». При смене входа доступны обе соседние строки таблицы: «подписано» даёт READY, «сертификат отклонён» даёт REJECTED. Строка 22 устанавливает значение только для указанного чтения.",
+      "scenario": "Обе программы начинают с QUEUED при регистрации. К моменту first_get первая попытка уже завершилась, а следующая ещё не началась. Вход result передаёт полученный результат подписи. В модели GET фиксирует строку status, которую клиент видит в ответе HTTP 200. При временной недоступности единственное чтение даёт AWAITING_SIGNATURE по первой программе и MANUAL_REVIEW по второй. Все пять значений status и все три значения result принадлежат своим справочникам. Арифметики, числового порядка статусов и пересчёта времени нет.",
+      "control": "Начальное состояние и момент чтения те же. Меняется только результат первой попытки на «подписано». Строка 14 и строка 20 обе задают READY для этого исхода, поэтому клиент получает одинаковый status в обеих программах.",
+      "evidence": [
+        {
+          "line": 13,
+          "quote": "Если первая попытка завершилась результатом «сервис временно недоступен», GET возвращает status=AWAITING_SIGNATURE до следующей попытки."
+        },
+        {
+          "line": 18,
+          "quote": "| Начало | Результат первой попытки | Статус в первом последующем GET |"
+        },
+        {
+          "line": 22,
+          "quote": "| Заказ зарегистрирован | сервис временно недоступен | MANUAL_REVIEW |"
+        },
+        {
+          "line": 14,
+          "quote": "При подписании GET возвращает status=READY. При отклонении сертификата GET возвращает status=REJECTED. Следующая попытка в рассматриваемом сценарии ещё не запускалась."
+        },
+        {
+          "line": 20,
+          "quote": "| Заказ зарегистрирован | подписано | READY |"
+        },
+        {
+          "line": 21,
+          "quote": "| Заказ зарегистрирован | сертификат отклонён | REJECTED |"
+        }
+      ]
+    }
+  }
+}

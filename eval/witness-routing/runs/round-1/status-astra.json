@@ -1,0 +1,29 @@
+{
+  "document": "status",
+  "baseline": "eval/executable/runs/before-named-state.json",
+  "baseline_sha256": "957d360959b0c77e458f215202ce19a1e62ad14f8e5b3343a5391a5924129201",
+  "finding_id": "D-01",
+  "commit": "534c090b283f",
+  "engine_sha256": "770fd9a440cc8a09254e02894bb6d46298f9290c33457bb846d05083fc9da6df",
+  "proposer": "gpt-6.2-astra",
+  "auditor": "gpt-6.2-astra",
+  "utc_end": "2026-11-26T20:27:29.612911+00:00",
+  "seconds": 4.21,
+  "usage": null,
+  "current_usage": null,
+  "fresh_calls": 1,
+  "restored_attempts": 0,
+  "attempts": [
+    {
+      "stage": "Построение примера D-01",
+      "status": "failed",
+      "usage": null,
+      "seconds": 4.21
+    }
+  ],
+  "item": {
+    "finding_id": "D-01",
+    "status": "unsupported",
+    "reason": "Модель не завершила построение или проверку примера. Расчёт можно повторить."
+  }
+}

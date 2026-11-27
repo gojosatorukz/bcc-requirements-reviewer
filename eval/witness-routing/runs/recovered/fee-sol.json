@@ -1,0 +1,375 @@
+{
+  "document": "fee",
+  "baseline": "eval/executable/runs/fee.json",
+  "baseline_sha256": "eb66cdb3518c7fc5704882848ac2884b948f4f591d6e978e6d1ff3b927d4a792",
+  "finding_id": "D-01",
+  "commit": "e4d3db591d1a",
+  "engine_sha256": "770fd9a440cc8a09254e02894bb6d46298f9290c33457bb846d05083fc9da6df",
+  "proposer": "gpt-6.2-sol",
+  "auditor": "gpt-6.2-astra",
+  "utc_end": "2026-11-27T03:08:43.118374+00:00",
+  "seconds": 43.33,
+  "usage": {
+    "input_tokens": 29154,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1713,
+    "reasoning_output_tokens": 116
+  },
+  "current_usage": {
+    "input_tokens": 29154,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 1713,
+    "reasoning_output_tokens": 116
+  },
+  "fresh_calls": 2,
+  "restored_attempts": 0,
+  "attempts": [
+    {
+      "stage": "Построение примера D-01",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 14970,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1079,
+        "reasoning_output_tokens": 116
+      },
+      "seconds": 26.02
+    },
+    {
+      "stage": "Проверка смысла D-01",
+      "status": "accepted",
+      "usage": {
+        "input_tokens": 14184,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 634,
+        "reasoning_output_tokens": 0
+      },
+      "seconds": 17.31
+    }
+  ],
+  "item": {
+    "finding_id": "D-01",
+    "status": "executed",
+    "program": {
+      "domains": [],
+      "states": [
+        {
+          "key": "accrued",
+          "label": "Сумма округлённых начислений комиссии",
+          "unit": "тиын"
+        },
+        {
+          "key": "turnover",
+          "label": "Сумма успешных оплат за день",
+          "unit": "тиын"
+        },
+        {
+          "key": "statement_fee",
+          "label": "Комиссия за день в выписке магазина",
+          "unit": "тиын"
+        }
+      ],
+      "inputs": [
+        {
+          "key": "amount",
+          "label": "Сумма успешной оплаты",
+          "unit": "тиын"
+        }
+      ],
+      "observe": [
+        "statement_fee"
+      ],
+      "first": {
+        "source": {
+          "line": 9,
+          "quote": "На каждую успешную оплату отдельно начислить 1,25 % от её суммы и округлить начисление вниз до целого тиына. В момент закрытия дня выставить в выписке магазина комиссию, равную сумме уже округлённых начислений."
+        },
+        "rules": [
+          {
+            "event": "payment",
+            "when": "True",
+            "updates": [
+              {
+                "target": "accrued",
+                "expr": "accrued + (amount // 80)"
+              }
+            ]
+          },
+          {
+            "event": "close_day",
+            "when": "True",
+            "updates": [
+              {
+                "target": "statement_fee",
+                "expr": "accrued"
+              }
+            ]
+          }
+        ]
+      },
+      "second": {
+        "source": {
+          "line": 13,
+          "quote": "На том же закрытии того же дня сложить исходные суммы всех успешных оплат, применить 1,25 % один раз к общей сумме и округлить вниз до целого тиына. Записать это значение в единственное поле комиссии за день в выписке этого магазина."
+        },
+        "rules": [
+          {
+            "event": "payment",
+            "when": "True",
+            "updates": [
+              {
+                "target": "turnover",
+                "expr": "turnover + amount"
+              }
+            ]
+          },
+          {
+            "event": "close_day",
+            "when": "True",
+            "updates": [
+              {
+                "target": "statement_fee",
+                "expr": "turnover // 80"
+              }
+            ]
+          }
+        ]
+      },
+      "scenario": {
+        "initial": [
+          {
+            "key": "accrued",
+            "value": 0
+          },
+          {
+            "key": "turnover",
+            "value": 0
+          },
+          {
+            "key": "statement_fee",
+            "value": 0
+          }
+        ],
+        "events": [
+          {
+            "kind": "payment",
+            "label": "Первая успешная оплата",
+            "values": [
+              {
+                "key": "amount",
+                "value": 399
+              }
+            ]
+          },
+          {
+            "kind": "payment",
+            "label": "Вторая успешная оплата",
+            "values": [
+              {
+                "key": "amount",
+                "value": 401
+              }
+            ]
+          },
+          {
+            "kind": "close_day",
+            "label": "Закрытие операционного дня магазина",
+            "values": []
+          }
+        ]
+      },
+      "control": {
+        "initial": [
+          {
+            "key": "accrued",
+            "value": 0
+          },
+          {
+            "key": "turnover",
+            "value": 0
+          },
+          {
+            "key": "statement_fee",
+            "value": 0
+          }
+        ],
+        "events": [
+          {
+            "kind": "payment",
+            "label": "Первая успешная оплата",
+            "values": [
+              {
+                "key": "amount",
+                "value": 400
+              }
+            ]
+          },
+          {
+            "kind": "payment",
+            "label": "Вторая успешная оплата",
+            "values": [
+              {
+                "key": "amount",
+                "value": 401
+              }
+            ]
+          },
+          {
+            "kind": "close_day",
+            "label": "Закрытие операционного дня магазина",
+            "values": []
+          }
+        ]
+      }
+    },
+    "result": {
+      "version": "witness-v1",
+      "scenario": {
+        "initial": {
+          "statement_fee": 0
+        },
+        "steps": [
+          {
+            "step": 1,
+            "kind": "payment",
+            "label": "Первая успешная оплата",
+            "inputs": {
+              "amount": 399
+            },
+            "first": {
+              "statement_fee": 0
+            },
+            "second": {
+              "statement_fee": 0
+            },
+            "different": []
+          },
+          {
+            "step": 2,
+            "kind": "payment",
+            "label": "Вторая успешная оплата",
+            "inputs": {
+              "amount": 401
+            },
+            "first": {
+              "statement_fee": 0
+            },
+            "second": {
+              "statement_fee": 0
+            },
+            "different": []
+          },
+          {
+            "step": 3,
+            "kind": "close_day",
+            "label": "Закрытие операционного дня магазина",
+            "inputs": {},
+            "first": {
+              "statement_fee": 9
+            },
+            "second": {
+              "statement_fee": 10
+            },
+            "different": [
+              "statement_fee"
+            ]
+          }
+        ],
+        "first_difference": {
+          "step": 3,
+          "field": "statement_fee",
+          "first": 9,
+          "second": 10
+        },
+        "final": {
+          "first": {
+            "statement_fee": 9
+          },
+          "second": {
+            "statement_fee": 10
+          }
+        }
+      },
+      "control": {
+        "initial": {
+          "statement_fee": 0
+        },
+        "steps": [
+          {
+            "step": 1,
+            "kind": "payment",
+            "label": "Первая успешная оплата",
+            "inputs": {
+              "amount": 400
+            },
+            "first": {
+              "statement_fee": 0
+            },
+            "second": {
+              "statement_fee": 0
+            },
+            "different": []
+          },
+          {
+            "step": 2,
+            "kind": "payment",
+            "label": "Вторая успешная оплата",
+            "inputs": {
+              "amount": 401
+            },
+            "first": {
+              "statement_fee": 0
+            },
+            "second": {
+              "statement_fee": 0
+            },
+            "different": []
+          },
+          {
+            "step": 3,
+            "kind": "close_day",
+            "label": "Закрытие операционного дня магазина",
+            "inputs": {},
+            "first": {
+              "statement_fee": 10
+            },
+            "second": {
+              "statement_fee": 10
+            },
+            "different": []
+          }
+        ],
+        "first_difference": null,
+        "final": {
+          "first": {
+            "statement_fee": 10
+          },
+          "second": {
+            "statement_fee": 10
+          }
+        }
+      }
+    },
+    "audit": {
+      "verdict": "accepted",
+      "first_rule": "Ссылка на строку 9 точна. Ставка 1,25 % равна 1/80, поэтому целочисленное деление суммы оплаты в тиынах на 80 даёт начисление с округлением вниз. Для 399 тиынов начисление 4,9875 округляется до 4, для 401 тиына начисление 5,0125 округляется до 5. При закрытии дня в выписку попадает сумма округлённых начислений — 9 тиынов.",
+      "second_rule": "Ссылка на строку 13 точна. После первой оплаты оборот равен 399 тиынам, после второй — 800. При закрытии того же дня программа один раз применяет ставку к обороту. Деление 800 на 80 даёт ровно 10 тиынов, которые записываются в то же поле выписки.",
+      "scenario": "Сценарий воспроизводит строку 17 в условиях строк 3 и 5. У одного магазина в начале дня нет оплат, все суммы равны нулю. Две успешные оплаты в KZT идут в заданном порядке: 3,99 ₸ соответствуют 399 тиынам, 4,01 ₸ — 401 тиыну. После каждой оплаты поле комиссии сохраняет начальное значение 0. Магазин получает выписку при закрытии дня, и именно тогда, на третьем событии, впервые видит различие между трактовками — 9 или 10 тиынов.",
+      "control": "Контроль допустим для обеих трактовок. Изменена только первая оплата — с 399 до 400 тиынов. Она даёт ровно 5 тиынов комиссии. Вторая даёт 5,0125 тиына, поэтому при поштучном округлении сумма равна 5 + 5 = 10 тиынов. При расчёте с оборота 801 тиын начисление равно 10,0125 тиына и округляется до 10. Результаты совпадают, поскольку вся дробная часть приходится на одну оплату.",
+      "evidence": [
+        {
+          "line": 9,
+          "quote": "На каждую успешную оплату отдельно начислить 1,25 % от её суммы и округлить начисление вниз до целого тиына. В момент закрытия дня выставить в выписке магазина комиссию, равную сумме уже округлённых начислений."
+        },
+        {
+          "line": 13,
+          "quote": "На том же закрытии того же дня сложить исходные суммы всех успешных оплат, применить 1,25 % один раз к общей сумме и округлить вниз до целого тиына. Записать это значение в единственное поле комиссии за день в выписке этого магазина."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "document": "fee",
+  "baseline": "eval/executable/runs/fee.json",
+  "baseline_sha256": "eb66cdb3518c7fc5704882848ac2884b948f4f591d6e978e6d1ff3b927d4a792",
+  "finding_id": "D-01",
+  "commit": "534c090b283f",
+  "engine_sha256": "770fd9a440cc8a09254e02894bb6d46298f9290c33457bb846d05083fc9da6df",
+  "proposer": "gpt-6.2-sol",
+  "auditor": "gpt-6.2-astra",
+  "utc_end": "2026-11-26T21:25:12.593314+00:00",
+  "seconds": 4.23,
+  "usage": null,
+  "current_usage": null,
+  "fresh_calls": 1,
+  "restored_attempts": 0,
+  "attempts": [
+    {
+      "stage": "Построение примера D-01",
+      "status": "failed",
+      "usage": null,
+      "seconds": 4.23
+    }
+  ],
+  "item": {
+    "finding_id": "D-01",
+    "status": "unsupported",
+    "reason": "Модель не завершила построение или проверку примера. Расчёт можно повторить."
+  }
+}
