@@ -1,0 +1,16 @@
+{
+  "route": "local",
+  "started_utc": "2026-11-27T15:28:44.836Z",
+  "checkout_revision": "3c90b38b653d44ad7eb64ed79d564f291f58635b",
+  "origin": "http://127.0.0.1:51121",
+  "endpoint": "/api/project-runs",
+  "upload_sha256": "25a54aa29e17c3de0d24dd1d2adaf76d100671dcbf74df26b9cc528c200a38d4",
+  "submit_status": 202,
+  "status_text": "Полное ревью на сервере проекта · Отчёт готов",
+  "job_state": "done",
+  "execution": "project",
+  "html_sha256": "2de374958c6c27d40d1d48ec297efff8387b19079d74d355ad1ac34316cec200",
+  "json_sha256": "3a9cdce933f2f46c8d59e55bf24fdf8953a66023c6bd07cc2edbc23b82e305e0",
+  "downloaded_utc": "2026-11-27T15:33:03.877Z",
+  "finished_utc": "2026-11-27T15:33:03.882Z"
+}

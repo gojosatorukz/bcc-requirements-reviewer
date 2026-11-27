@@ -1,0 +1,24 @@
+{
+  "delivery_passed": true,
+  "input_sha256": "25a54aa29e17c3de0d24dd1d2adaf76d100671dcbf74df26b9cc528c200a38d4",
+  "model": "@cf/openai/gpt-oss-120b",
+  "provider": "cloudflare-workers-ai",
+  "fallback_from": {
+    "provider": "gemini-api",
+    "model": "gemini-3.5-flash-lite",
+    "reason": "HTTP 429"
+  },
+  "fresh_calls": 10,
+  "quality": {
+    "matched": [
+      {
+        "id": "D-01",
+        "question": "Какую надпись должен выводить терминал при измеренной толщине 23 мм?",
+        "names_threshold": true
+      }
+    ],
+    "other_candidates_for_manual_review": [],
+    "false_on_aligned_row": [],
+    "passed": true
+  }
+}
