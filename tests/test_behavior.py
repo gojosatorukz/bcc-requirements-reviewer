@@ -31,3 +31,24 @@ class BehaviorTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "anchor"):
             behavior.expand({"conflicts":[dict(candidate, first={"anchor":-1,"outcome":"Старая запись"})]}, anchors, source)
         self.assertEqual(behavior.expand({"conflicts":[]}, anchors, source), {"conflicts":[]})
+
+    def test_prediction_never_sees_expected_output_including_reordered_columns(self):
+        lines = ["## Functional requirements", "Publish the letter.",
+                 "## Acceptance", "| Given | Expected outcome | When |", "|---|---|---|",
+                 r"| draft A\|B | hidden-original | confirm |"]
+        source, reading, anchors = self.read(lines)
+        inputs = behavior.blind_inputs(segment(lines), source, reading, anchors)
+        self.assertNotIn("hidden-original", str(inputs))
+        self.assertEqual(inputs["cases"][0]["inputs"], [{"column":"Given", "value":r"draft A\|B"},
+                                                       {"column":"When","value":"confirm"}])
+        prediction = {"example":6, "bases":[2], "predicted":"Published"}
+        behavior.check_predictions({"predictions":[prediction]}, inputs)
+        with self.assertRaises(ValueError):
+            behavior.check_predictions({"predictions":[]}, inputs)
+        with self.assertRaises(ValueError):
+            behavior.check_predictions({"predictions":[dict(prediction,bases=[6])]}, inputs)
+        disagreement = {"checks":[{"example":6,"verdict":"disagrees"}],"conflicts":[]}
+        with self.assertRaises(ValueError):
+            behavior.check_comparisons(disagreement, [prediction], anchors, {2})
+        disagreement["conflicts"] = [{"first":{"anchor":6}, "second":{"anchor":2}}]
+        behavior.check_comparisons(disagreement, [prediction], anchors, {2})

@@ -341,19 +341,37 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
         reading, anchors = behavior.reading(segments, source)
 
         def compare_product():
-            wire, events = call_stage("Правила и примеры", behavior.INSTRUCTIONS, reading, behavior.SCHEMA,
-                                      lambda r: behavior.expand(r, anchors, source), model, checkpoint, digest)
-            return behavior.expand(wire, anchors, source), events
+            inputs = behavior.blind_inputs(segments, source, reading, anchors)
+            predictions, attempts = [], []
+            if inputs["cases"] and inputs["rules"]:
+                result, attempts = call_stage("Прогноз по правилам", behavior.PREDICT, inputs, behavior.PREDICTIONS,
+                                              lambda r: behavior.check_predictions(r, inputs), model, checkpoint, digest)
+                predictions = result["predictions"]
+
+            def verify_comparison(result):
+                behavior.expand(result, anchors, source)
+                if predictions:
+                    behavior.check_comparisons(result, predictions, anchors, set(reading["rules"]))
+
+            wire, events = call_stage("Правила и примеры", behavior.INSTRUCTIONS + (behavior.COMPARE if predictions else ""),
+                                      {**reading, "predictions": predictions}, behavior.COMPARISON if predictions else behavior.SCHEMA,
+                                      verify_comparison, model, checkpoint, digest)
+            return behavior.expand(wire, anchors, source), attempts + events
 
         tasks.append(compare_product)
     field_start = len(tasks)
     for offset in range(0, len(choices), 6):
         batch = choices[offset:offset + 6]
         operations = {c["operation"]: groups[c["operation"]] for c in batch}
-        tasks.append(partial(
-            call_stage, f"Поля ответов {batch[0]['id']}–{batch[-1]['id']}", response_fields.INSTRUCTIONS,
-            {"source": source, "examples": operations, "candidates": batch}, response_fields.SCHEMA,
-            lambda r, batch=batch: response_fields.verify(r, batch, source), model, checkpoint, digest))
+        stage = f"Поля ответов {batch[0]['id']}–{batch[-1]['id']}"
+        data = {"source": source, "examples": operations, "candidates": batch}
+        def verify_fields(r, batch=batch):
+            response_fields.verify(r, batch, source)
+        if codex_provider.provider_name() == "gemini-api":
+            tasks.append(partial(anchored, stage, response_fields.INSTRUCTIONS, data, response_fields.SCHEMA, verify_fields))
+        else:
+            tasks.append(partial(call_stage, stage, response_fields.INSTRUCTIONS, data, response_fields.SCHEMA,
+                                 verify_fields, model, checkpoint, digest))
     local_start = len(tasks)
     tasks.extend(partial(local, chunk) for chunk in chunks)
     results = run_required(tasks, workers)
