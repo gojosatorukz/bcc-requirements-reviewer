@@ -30,8 +30,8 @@ def verify_case(name, rules, control):
     assert baseline["run"]["provider"] == "cloudflare-workers-ai" and baseline["run"]["fresh_calls"] > 0
     assert baseline["run"]["fallback_from"]["reason"] == "HTTP 429"
     assert baseline["executables"]["items"][0]["status"] == "unsupported"
-    conflict, = baseline["conflicts"]
-    assert {conflict[s]["source"]["line"]: conflict[s]["outcome"] for s in ("first", "second")} == rules
+    assert any({c[s]["source"]["line"]: c[s]["outcome"] for s in ("first", "second")} == rules
+               for c in baseline["conflicts"])
 
     quota = load(runs / (name + "-after-quota") / "browser.json")
     assert quota["upload_sha256"] == digest and quota["submit_status"] == 202

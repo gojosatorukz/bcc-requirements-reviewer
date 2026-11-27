@@ -17,7 +17,7 @@ try {
     const response = page.waitForResponse(r=>new URL(r.url()).pathname==='/api/import-report' && r.request().method()==='POST');
     await page.locator('#import-file').setInputFiles(join(folder,'review.json'));
     const reply = await response;
-    assert.ok(reply.ok(),await reply.text());
+    assert.ok(reply.ok(), "Import HTTP " + reply.status());
     await page.locator('#review-origin').filter({hasText:'Из JSON'}).waitFor();
     const open = page.waitForEvent('popup');
     await page.locator('#active-difference').click();
@@ -31,7 +31,7 @@ try {
     const modelNote = await target.locator('.execution-caption').allTextContents();
     assert.ok(modelNote.some(note=>note.includes('gpt-6.2-astra')&&note.includes('gpt-oss-120b')));
     const receipt = {route:'import',origin:home,status:reply.status(),checked_utc:new Date().toISOString(),
-      anchor:await target.getAttribute('id'),import_sha256:(await reply.json()).sha256,displayed,control,modelNote};
+      anchor:await target.getAttribute('id'),import_sha256:new URL(await page.locator('#active-json-link').getAttribute('href'),home).searchParams.get('sha256'),displayed,control,modelNote};
     await writeFile(join(folder,'browser.json'),JSON.stringify(receipt,null,2)+'\n');
     console.log(name,displayed);
     await context.close();

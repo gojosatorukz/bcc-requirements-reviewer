@@ -1,0 +1,17 @@
+{
+  "route": "import",
+  "origin": "https://razbor-tz.onrender.com",
+  "status": 201,
+  "checked_utc": "2026-11-27T16:56:55.794Z",
+  "anchor": "execution-D-01",
+  "import_sha256": "0ac594558f108e5f872ed86b30d77e98a32907b02b566eca5a6f1e52182e82bc",
+  "displayed": [
+    "Deutsch",
+    "Español"
+  ],
+  "control": "Контрольный пример · исходы совпали\n\nПеред первым событием\n\nЯзык в поле track файла субтитровEnglish\n\nШаг 1\nПосле окончания эфира редактор экспортирует файл субтитров и проверяет поле track.\n\nЗначение на момент наблюденияEnglish\nИтог после последнего шага\nПоказатель\tПравило А\tПравило Б\nЯзык в поле track файла субтитров\nEnglish\nEnglish",
+  "modelNote": [
+    "Исполняемый пример",
+    "Исходное ревью: @cf/openai/gpt-oss-120b. Отдельный расчёт: gpt-6.2-astra."
+  ]
+}
