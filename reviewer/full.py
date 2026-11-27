@@ -472,14 +472,20 @@ def analyze(blocks, lines, model, checkpoint, digest, workers=6, pdf_json_blocks
                         "следуй явной политике: обязательное поле пропущено в примере — назови нарушение "
                         "примера; явно исключённое или необязательное поле не требует уточнения владельца.")
 
+    def source_pair(number):
+        candidate = candidates["conflicts"][number - 1]
+        return frozenset(candidate[side]["source"]["line"] for side in ("first", "second"))
+
+    verified_pairs = {source_pair(n) for n in proof_ids}
+    unverified_limits = {n for n in limit_ids if source_pair(n) not in verified_pairs}
+
     def verify_whole(result):
         ranked = materialize(result)
         check_whole(ranked, registry, candidates["conflicts"], source, http_status_policy=HTTP_STATUS_POLICY)
         check_critical_sources(ranked, candidates["conflicts"])
         for row in ranked["reconciled"]:
             cited = {entry["line"] for entry in row["evidence"]}
-            if not proof_ids:
-                count_limits.check_precedence(row, set(row["candidates"]).intersection(limit_ids))
+            count_limits.check_precedence(row, set(row["candidates"]).intersection(unverified_limits))
             for number in set(row["candidates"]).intersection(product_ids):
                 candidate = candidates["conflicts"][number - 1]
                 required = {candidate[side]["source"]["line"] for side in ("first", "second")}
