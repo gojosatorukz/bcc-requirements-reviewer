@@ -3,6 +3,7 @@ import unittest
 
 from reviewer import response_fields
 from reviewer.example_shapes import object_shapes
+from reviewer.full_render import reviewed_field_cells
 from reviewer.json_examples import inspect_examples
 from reviewer.segments import segment
 
@@ -69,3 +70,8 @@ class ResponseFieldReviewTests(unittest.TestCase):
         row["questions"] = []
         response_fields.verify(self.response, [self.choice], self.source)
         response_fields.check_questions(self.response, [self.choice], [], self.groups)
+        section = {"candidates": response_fields.describe([self.choice]), **self.response}
+        cell = reviewed_field_cells(section)[2, "stampId"]
+        self.assertIn("Исключено для HTTP 404", cell)
+        self.assertIn("Обязательно для HTTP 409", cell)
+        self.assertNotIn("?", cell)

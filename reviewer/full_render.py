@@ -241,15 +241,37 @@ def decision_brief(report):
             + '</p>' + "".join(cards) + '</section>')
 
 
-def response_field_comparison(lines, shapes, segments):
+def reviewed_field_cells(section):
+    if not section:
+        return {}
+    decisions = {a["candidate"]: a for a in section["assessments"]}
+    labels = {"required": "Обязательно", "excluded": "Исключено", "optional": "Необязательно"}
+    cells = {}
+    for c in section["candidates"]:
+        row = decisions[c["id"]]
+        statuses = {e["example"]: e["http_status"] for e in c["errors"]}
+        parts = []
+        for ruling in row["rulings"]:
+            if ruling["policy"] == "unspecified":
+                continue
+            codes = ", ".join(str(s) for s in dict.fromkeys(statuses[n] for n in ruling["examples"]))
+            refs = ", ".join(line_link(e["line"]) for e in ruling["evidence"])
+            parts.append(f'<p>{labels[ruling["policy"]]} для HTTP {codes}. {refs}</p>')
+        parts.extend(f'<p>{safe(q)}</p>' for q in row["questions"])
+        cells[c["operation"], c["field"]] = "".join(parts)
+    return cells
+
+
+def response_field_comparison(lines, shapes, segments, section=None):
     """Compare complete, observed key sets only within sibling HTTP response sections."""
     indexed = response_fields.response_groups(lines, shapes, segments)
+    decisions = reviewed_field_cells(section)
     tables = []
     for parent, examples in indexed.items():
         group = [(ex, (f"{ex['status']} (раздел {ex['heading_status']})"
                        if ex["heading_status"] and ex["heading_status"] != ex["status"] else str(ex["status"])))
                  for ex in examples]
-        if len(group) < 2:
+        if len(group) < 2 and not section:
             continue
         keys = list(dict.fromkeys(k for shape, _ in group for k in shape["keys"]))
         rows = []
@@ -262,15 +284,18 @@ def response_field_comparison(lines, shapes, segments):
                 elif shape["key_count"] == len(shape["keys"]):
                     absent.append(anchor)
                     absent_codes.append(label)
-            if present and absent:
+            decision = decisions.get((parent, key))
+            if decision is None and not section and present and absent:
                 codes = ", ".join(dict.fromkeys(absent_codes))
+                decision = (f'Обязано ли поле <code>{safe(key)}</code> присутствовать в ответах '
+                            f'{safe(codes)} для показанных случаев?')
+            if decision is not None:
                 rows.append(f'<tr><td><code>{safe(key)}</code></td><td>{", ".join(present)}</td>'
-                            f'<td>{", ".join(absent)}</td><td>Обязано ли поле <code>{safe(key)}</code> '
-                            f'присутствовать в ответах {safe(codes)} для показанных случаев?</td></tr>')
+                            f'<td>{", ".join(absent) or "—"}</td><td>{decision}</td></tr>')
         if rows:
             limit = '<p>Сопоставлены первые 32 имени поля.</p>' if len(keys) > 32 else ''
             tables.append(f'<p>Раздел ответов · {line_link(parent)}</p><div class="scroll"><table><thead><tr><th>Поле</th>'
-                          '<th>Есть в примере</th><th>Отсутствует в примере</th><th>Вопрос к контракту</th>'
+                          '<th>Есть в примере</th><th>Отсутствует в примере</th><th>Условия контракта</th>'
                           '</tr></thead><tbody>' + ''.join(rows) + '</tbody></table></div>' + limit)
     if not tables:
         return ''
@@ -280,7 +305,7 @@ def response_field_comparison(lines, shapes, segments):
             + ''.join(tables) + '</section>')
 
 
-def render_json_checks(checks, lines, shapes=(), segments=()):
+def render_json_checks(checks, lines, shapes=(), segments=(), field_review=None):
     examples = checks.get("examples", [])
     if not examples:
         return ""
@@ -302,7 +327,7 @@ def render_json_checks(checks, lines, shapes=(), segments=()):
         rows.append(f'<li>{line_link(item["start"])} · <strong>{status}</strong>{detail}</li>')
     return ('<section id="json-syntax"><h2>Синтаксис JSON-примеров</h2>'
             '<p>Парсер проверяет распознанные примеры. Условия обязательности полей и поведение API оцениваются в реестре требований.</p>'
-            '<ul>' + "".join(rows) + '</ul></section>' + response_field_comparison(lines, shapes, segments))
+            '<ul>' + "".join(rows) + '</ul></section>' + response_field_comparison(lines, shapes, segments, field_review))
 
 
 def render_decision_drafts(finding, candidates):
@@ -503,7 +528,7 @@ def render_full(report):
 <section id="actions"><h2>Что исправить в первую очередь</h2><p>Замечания в порядке приоритета. У каждого есть адресат, основание и предлагаемое изменение.</p>
 {''.join(findings) or '<p>Замечаний не выявлено.</p>'}</section>
 <section id="quality"><h2>Качество набора требований</h2>{axes}</section>
-{render_json_checks(report.get("json_checks", {}), lines, report.get("example_shapes", ()), report["segments"])}
+{render_json_checks(report.get("json_checks", {}), lines, report.get("example_shapes", ()), report["segments"], report.get("response_field_review"))}
 {qa_cases}
 <section id="register"><h2>Реестр и проверка каждого пункта</h2><p>Единица учёта — отдельно проверяемое обязательство или пример. Один исходный номер может соответствовать нескольким пунктам. Повторные утверждения из разных разделов остаются прослеживаемыми. Локальная оценка сопровождается ссылками на итоговые замечания или пояснения.</p>
 <table class="registry"><thead><tr><th scope="col">ID отчёта<br>ID в ТЗ</th><th>Формулировка и цитата</th><th>Проверка пункта</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
